@@ -1,207 +1,232 @@
-# Starter versão 2
+# Workflow
 
-Aplicação esqueleto para novos projetos utilizando Laravel 11.
+A biblioteca Workflow facilita o gerenciamento de fluxos de trabalho em aplicações. Ela permite criar, exibir e gerenciar definições de workflow, transições, estados, formulários associados e outras funcionalidades relacionadas.
 
-Para utilizar Laravel 8, veja a versão 1.
+## Features
 
------------------
+- Gerenciamento completo de workflows com definições armazenadas em banco de dados;
+- Suporte à biblioteca Symfony Workflow para transições e estados;
+- Integração com Laravel 11 em diante;
+- Representação visual de workflows.
 
-Esta aplicação é um esqueleto que já tem as principais bibliotecas USPDev pré configuradas:
+## Installation
 
-    "uspdev/laravel-replicado": "^1.0"
-    "uspdev/laravel-tools": "^1.2"
-    "uspdev/laravel-usp-theme": "^2.7"
-    "uspdev/senhaunica-socialite": "^4.3"
-    
-## Instalação
+### 1. **Instale a biblioteca pelo Composer**
 
-* Inicio
+Execute o comando abaixo para instalar o pacote:
 
 ```bash
-    git clone git@github.com:uspdev/starter sua-aplicacao
-    cd sua-aplicacao
-    composer update
-    cp .env.example .env
-    php artisan key:generate
-    php artisan migrate
+composer require uspdev/workflow
 ```
 
-* Crie seu repositório remoto e faça as seguintes configurações
+### 2. **Publicação de configurações e migrations**
+
+Execute os seguintes comandos para publicar as configurações e as migrations da biblioteca:
 
 ```bash
-    git remote remove origin
-    git remote add origin git@github.com:uspdev/sua-aplicacao
-    git push -u origin main
+php artisan vendor:publish --provider="Uspdev\Workflow\WorkflowServiceProvider" --tag=workflow-config
+php artisan vendor:publish --provider="Uspdev\Workflow\WorkflowServiceProvider" --tag=workflow-migrations
+
+php artisan vendor:publish --provider="Spatie\Activitylog\ActivitylogServiceProvider" --tag="activitylog-migrations"
+
+php artisan vendor:publish --tag=forms-migrations
+php artisan vendor:publish --tag=forms-config
+
 ```
 
-* ajuste o `composer.json` com os dados da sua aplicação
-* Utilize o `readme.md` como exemplo
-* Remova o que for desnecessário
-* Ajuste o `.env.example`
+### 3. **Rodando as migrations**
 
-OBS.: Caso não vá utilizar alguma biblioteca instalada, além de remover do composer.json
-verifique a necessidade de ajustes no `.env.example`. 
+Após a publicação, execute o comando de migração para criar as tabelas necessárias:
 
-## Testes
-
-    php artisan dusk
-
-### Testando envio de e-mails utilizando a plataforma Mailtrap
-
-Utilizando a plataforma [Mailtrap](https://mailtrap.io/) é possível capturar os e-mails enviados sem que estes cheguem à caixa de entrada dos destinatários, possibilitando assim testar e analisar o envio de e-mails antes de se colocar em produção.
-
-__Como Utilizar__
-    
-Após criar e entrar com uma conta na plataforma, é possível gerar as credenciais para o envio de e-mail no sistema utilizado, no caso do Laravel as credenciais seriam semelhantes à figura a seguir:
-
-![image](https://user-images.githubusercontent.com/47902146/206538191-1b75750d-819b-4bc6-a8cf-efd7b8bf993b.png)
-
-Assim, basta substituir tais credenciais no `.env` do projeto e enviar os e-mails normalmente que estes serão capturados na caixa de entrada do Mailtrap, sem serem enviados aos seus destinatários.
-
-## Histórico
-
-* 9/08/2024
-    - Versão 2, atualizado para laravel 11 e PHP 8.2.
-    
-* 15/12/2022
-    - instalado `laravel/dusk`: teste de navegador com testes basicos.
-    
-* 16/11/2022
-    - instalado `ybr-nx/laravel-mariadb`: permite utilizar json em mariadb de forma similar ao mysql
-    - instalado `spatie/commonmark-highlighter`
-    - helper `md2html($markdown)`
----
-
-# Minha Aplicação
-
-Diga o que é sua aplicação.
-## Funcionalidades
-
-* Descreva suas funcionalidades aqui
-* Pode colocar prints de tela
-
-## Requisitos
-
-O que é necessário para rodar esta aplicação
-
-## Atualização
-
-[Se houver instruções específicas sobre atualizações, descreva aqui.]
-
-### Em produção
-
-Para receber as últimas atualizações do sistema rode:
-
-```sh
-git pull
-composer install --no-dev
+```bash
 php artisan migrate
 ```
 
+## Configuration
 
-## Instalação
+A biblioteca pode ser configurada editando o arquivo `config/workflow.php`.
 
-[Descreva como instalar a aplicação]
+## Usage
 
-### Básico
+### 1. **Criando uma nova definição de workflow**
 
-```sh
-git clone git@github.com:uspdev/chamados
-composer install
-cp .env.example .env
-php artisan key:generate
+Utilize o método `Workflow::criarWorkflowDefinition` para criar uma nova definição na tabela `workflow_definitions`. Este método valida os dados enviados e os salva no banco de dados se estiverem corretos.
+
+```php
+use Illuminate\Http\Request;
+
+$workflowData  = [
+    'name' => 'simples', 
+    'description' => 'Fluxo de workflow simples', 
+    'definition' => json_encode([
+        'type' => 'workflow',
+        'title' => 'Workflow simples',
+        'name' => 'simples',
+        'description' => 'Workflow simples de teste',
+        'places' => [
+            'inicio' => [
+                'description' => 'Formulário inicial',
+                'forms' => 'textarea'
+            ],
+            'processamento1' => [
+                'description' => 'Etapa 1 do processo',
+                'forms' => 'textarea'
+            ],
+            'fim' => [
+                'description' => 'Finalizado',
+                'forms' => 'textarea',
+            ]
+        ],
+        'initial_places' => 'inicio',
+        'transitions' => [
+            'tr_inicio_p1' => [
+                'label' => 'Enviar solicitação',
+                'from' => 'inicio',
+                'to' => 'processamento1'
+            ],
+            'tr_p1_fim' => [
+                'label' => 'Finalizar',
+                'from' => 'processamento1',
+                'to' => 'fim'
+            ]
+        ],
+    ]);
+];
+
+$request = new Request($workflowData);
+
+Workflow::criarWorkflowDefinition($request);
 ```
 
-Configure o .env conforme a necessidade
+### 2. **Exibindo uma definição de workflows**
 
-### Cache (opcional)
+Para exibir uma definição de workflow em uma view, utilize o método `Workflow::obterDadosDaDefinicao`. Este método retorna os dados estruturados da definição, incluindo seu estado inicial, transições e caminho da representação visual.
 
-Algumas partes podem usar cache ([https://github.com/uspdev/cache](https://github.com/uspdev/cache)). Para utilizá-lo você precisa instalar e configurar o memcached no mesmo servidor da aplicação.
+```php
+$workflowDefinitionData = Workflow::obterDadosDaDefinicao($definitionName);
 
-```bash
-apt install memcached
-vim /etc/memcached.conf
-    I = 5M
-    -m 128
-
-/etc/init.d/memcached restart
+$definitionName = $workflowDefinitionData['definitionName'];
+$imagePath = $workflowDefinitionData['path'];
+$formattedJson = $workflowDefinitionData['formattedJson'];
 ```
 
-### Email
+Com os dados retornados, você pode exibir o JSON formatado ou a imagem gerada do workflow na interface do usuário.
 
-O gmail utiliza senhas de app (https://support.google.com/accounts/answer/185833?hl=pt-BR) desde maio/2022. Siga os passos para gerar uma senha de app para sua aplicação.
+### 3. **Editando uma definição de workflow**
 
-### Apache ou nginx
+Utilize o método `Workflow::atualizarWorkflow` para editar uma definição. Este método também valida os dados enviados e os salva no banco de dados se estiverem corretos.
 
-Deve apontar para a <pasta do projeto>/public, assim como qualquer projeto laravel.
-
-No Apache é possivel utilizar a extensão MPM-ITK (http://mpm-itk.sesse.net/) que permite rodar seu Servidor Virtual com usuário próprio. Isso facilita rodar o sistema como um usuário comum e não precisa ajustar as permissões da pasta storage/.
-
-```bash
-sudo apt install libapache2-mpm-itk
-sudo a2enmod mpm_itk
-sudo service apache2 restart
+```php
+public function update(Request $request)
+{
+    # Outras validações do update... 
+    # As validações do workflow já estão integradas na biblioteca
+    Workflow::atualizarWorkflow($request);
+    # Outras lógicas do update...
+}
 ```
 
-Dentro do seu virtualhost coloque
+### 4. **Apagando uma definição de workflow**
 
-```apache
-<IfModule mpm_itk_module>
-AssignUserId nome_do_usuario nome_do_grupo
-</IfModule>
+Para excluir uma definição, utilize o método `Workflow::deletarDefinicaodeWorkflow`.
+
+```php
+Workflow::deletarDefinicaodeWorkflow($definitionName);
 ```
 
-### Senha única
+### 5. **Listando as definições de workflows**
 
-Cadastre uma nova URL no configurador de senha única utilizando o caminho https://seu_app/callback. Guarde o callback_id para colocar no arquivo .env.
+Para listar as definições de workflow, utilize o método `Workflow::obterTodosWorkflowDefinitions`. Este método retorna todas as definições de workflow presentes no banco de dados.
 
-### Banco de dados
+```php
+$workflowDefinitions = Workflow::obterTodosWorkflowDefinitions();
+```
 
-* DEV
+Com os dados retornados, você pode exibir o JSON formatado ou a imagem gerada do workflow na interface do usuário.
 
-    `php artisan migrate:fresh --seed`
+### 6. **Criando um objeto de workflow**
 
-* Produção
+Para instanciar um novo objeto de workflow baseado em uma definição existente, utilize o método `Workflow::criarWorkflowObject`. Ele inicializa o objeto no estado inicial definido pela configuração.
 
-    `php artisan migrate`
+```php
+$WorkflowObject = Workflow::criarWorkflowObject('pull_requests');
+```
 
-### Supervisor (opcional)
+### 7. **Exibindo um objeto de workflow**
 
-Para as filas de envio de email o sistema precisa de um gerenciador que mantenha rodando o processo que monitora as filas. O recomendado é o **Supervisor**. No Ubuntu ou Debian instale com:
+Para exibir um objeto de workflow em uma view, utilize o método `Workflow::obterDadosDoObjeto`. Este método retorna os dados estruturados do objeto, incluindo sua definição, transições, formulários, título, atividades e submissões de formulário.
 
-    sudo apt install supervisor
+```php
+$workflowObjectData = Workflow::obterDadosDoObjeto($workflowObjectId);
 
-Modelo de arquivo de configuração. Como **`root`**, crie o arquivo `/etc/supervisor/conf.d/chamados_queue_worker_default.conf` com o conteúdo abaixo:
+$workflowObject = $workflowObjectData['workflowObject'];
+$workflowDefinition = $workflowObjectData['workflowDefinition'];
+$workflowsTransitions = $workflowObjectData['workflowsTransitions'];
+$formHtml = $workflowObjectData['formHtml'];
+$title = $workflowObjectData['title'];
+$activities = $workflowObjectData['activities'];
+$formSubmissions = $workflowObjectData['formSubmissions'];
+```
 
-    [program:chamados_queue_worker_default]
-    command=/usr/bin/php /home/sistemas/chamados/artisan queue:listen --queue=default --tries=3 --timeout=60
-    process_num=1
-    username=www-data
-    numprocs=1
-    process_name=%(process_num)s
-    priority=999
-    autostart=true
-    autorestart=unexpected
-    startretries=3
-    stopsignal=QUIT
-    stderr_logfile=/var/log/supervisor/chamados_queue_worker_default.log
+### 8. **Exibindo todos os objetos de uma definição**
 
-Ajustes necessários:
+Para exibir todos os objetos de uma definição de workflow, utilize o método `Workflow::listarWorkflowsdaDefinition`. Este método retorna os objetos de workflow, as transições daquela definição e a própria definição
 
-    command=<ajuste o caminho da aplicação>
-    username=<nome do usuário do processo do chamados>
-    stderr_logfile = <aplicacao>/storage/logs/<seu arquivo de log>
+```php
+$workflowsToDisplay = Workflow::listarWorkflowsdaDefinition($definitionName);
 
-Reinicie o **Supervisor**
+$workflowObjects = $workflowsToDisplay['workflows'];
+$workflowTransitions = $workflowsToDisplay['workflowsTransitions'];
+$workflowDefinition = $workflowsToDisplay['workflowDefinition'];
+```
 
-    sudo supervisorctl reread
-    sudo supervisorctl update
-    sudo supervisorctl restart all
+### 9. **Exibindo todos os objetos criados pelo usuário**
 
-## Problemas e soluções
+Para exibir todos os objetos criados pelo usuário, utilize o método `Workflow::listarWorkflowsdoUser`. É possível passar um id de usuário como parâmetro, mas se não for fornecido, será utilizado o id do usuário autenticado no sistema. O método retorna os objetos de workflow e os dados do objeto, incluindo estado do dele e sua definição de workflow
 
-Alguma dica de como resolver problemas comuns?
+```php
+$workflowsToDisplay = Workflow::listarWorkflowsdoUser($id);
 
-## Histórico
+$workflowObjects = $workflowsToDisplay['workflows'];
+$workflowData = $workflowsToDisplay['workflowData'];
+```
 
-Registre o log das principais alterações
+### 10. **Gerenciando transições de estado**
+
+Utilize o método `Workflow::aplicarTransition` para mudar o estado de um objeto de workflow com base nas transições definidas.
+
+```php
+Workflow::aplicarTransition($workflowObjectId, 'tr_opened_in_review');
+```
+
+Esse método verifica se a transição é válida no estado atual antes de aplicá-la.
+
+### 11. **Apagando um objeto de workflow**
+
+Para excluir um objeto, utilize o método `Workflow::deletarWorkflow`.
+
+```php
+Workflow::deletarWorkflow($workflowObjectId);
+```
+
+### 12. **Enviando um formulário**
+
+Para fazer a submissão de um formulário de um objeto de workflow, utilize o método `Workflow::enviarFormulario`
+
+```php
+Workflow::enviarFormulario($request);
+```
+
+## Contributing
+
+Contributions are welcome! Please follow these steps to contribute:
+
+Fork the repository.
+Create a new branch (git checkout -b feature/YourFeature).
+Make your changes and commit them (git commit -m 'Add some feature').
+Push to the branch (git push origin feature/YourFeature).
+Create a new Pull Request.
+
+## License
+
+This package is licensed under the MIT License. See the LICENSE file for details.

@@ -38,48 +38,37 @@ $submenu2 = [
 $menu = [
     [
         'text' => '<i class="fas fa-home"></i> Home',
-        'url' => 'home',
+        'url' => 'workflows',
     ],
     [
-        # este item de menu será substituido no momento da renderização
-        'key' => 'menu_dinamico',
-    ],
-    [
-        'text' => 'Drop Down',
-        'submenu' => $submenu2,
-        'can' => '',
-    ],
-    [
-        'text' => 'Está logado',
-        'url' => config('app.url') . '/logado', // com caminho absoluto
+        'text' => 'Novo requerimento',
+        'url' => 'workflows/viewcreateobject',
         'can' => 'user',
     ],
     [
-        'text' => 'Menu gerente',
-        'url' => 'gerente',
-        'can' => 'gerente',
+        'text' => 'Meus requerimentos',
+        'url' => 'workflows/showuserobjects',
+        'can' => 'user',
     ],
     [
-        'text' => 'Menu admin',
-        'submenu' => $admin,
-        'can' => 'admin',
+        'text' => 'Atendimentos',
+        'url' => 'workflows/atendimentos',
+        'can' => 'user',
     ],
 ];
 
 $right_menu = [
+    [
+        'text' => '<span class="text-danger">Gerenciamento de workflows</span>',
+        'can' => 'admin',
+        'url' => 'workflows/listdefinitions'
+    ],
     [
         // menu utilizado para views da biblioteca senhaunica-socialite.
         'key' => 'senhaunica-socialite',
     ],
     [
         'key' => 'laravel-tools',
-    ],
-    [
-        'text' => '<i class="fas fa-cog"></i>',
-        'title' => 'Configurações',
-        'target' => '_blank',
-        'url' => config('app.url') . '/item1',
-        'align' => 'right',
     ],
 ];
 
