@@ -90,6 +90,20 @@ class WorkflowController extends Controller
         return view('userObjects', compact('workflowsDisplay'));
     }
 
+    public function showForm($id, $transition)
+    {
+        $workflowObjectData = Workflow::obterDadosDoObjeto($id);
+
+        $selectedForm = collect($workflowObjectData['forms'])->firstWhere('transition', $transition);
+
+        if (!$selectedForm) {
+            return redirect()->back()->with('error', 'Nenhum formulário encontrado para essa transição.');
+        }
+
+        return view('form', compact('workflowObjectData', 'selectedForm', 'transition'));
+    }
+
+
     public function showObject($id)
     {
         $workflowObjectData = Workflow::obterDadosDoObjeto($id);

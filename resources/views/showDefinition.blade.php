@@ -4,24 +4,24 @@
   @section('content')
     <a href="{{ route('workflows.index') }}" class="link-primary">Voltar à pagina inicial</a>
     <div class="row">
-      @foreach ($workflowDefinitionData['places'] as $key => $place)
+      @foreach ($workflowDefinitionData['roles'] as $role => $name)
         <div class="col-md-4">
 
           <div class="card m-3">
             <div class="card">
-              <form method="post" id="form-{{ $key }}" action="{{ route('workflows.setuser') }}">
+              <form method="post" id="form-{{ $role }}" action="{{ route('workflows.setuser') }}">
                 @csrf
                 @method('put')
-                <input type="hidden" name="place" value="{{ $key }}">
+                <input type="hidden" name="role" value="{{ $role }}">
                 <input type="hidden" name="workflowDefinitionName" value="{{ $workflowDefinitionData['definitionName'] }}">
                 <div class="card-header py-1">
                   <span class="h5">
-                    {{ $place['description'] }}
+                    {{ $name }}
                     @include('partials.codpes-adicionar-btn')
                   </span><br>
                 </div>
                 <div class="card-body py-1">
-                  @foreach (Spatie\Permission\Models\Role::findByName($key)->users as $user)
+                  @foreach (Spatie\Permission\Models\Role::findByName($role)->users as $user)
                     <div class="hover">
                       <span>{{ $user->name }}</span>
                       <span class="hide">

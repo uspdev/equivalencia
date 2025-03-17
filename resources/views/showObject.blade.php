@@ -11,8 +11,10 @@
           - ID {{ $workflowObjectData['workflowObject']->id }}
         @endif
       </h3>
-      <p><strong>Estado Atual:</strong>
-        {{ $workflowObjectData['workflowDefinition']->definition['places'][$workflowObjectData['workflowObject']->state]['description'] }}
+      <p><strong>Estado Atual:</strong> |
+        @foreach ($workflowObjectData['workflowObject']->state as $state => $one)
+          {{ $workflowObjectData['workflowDefinition']->definition['places'][$state]['description'] }} |
+        @endforeach
       </p>
       @php
         $places = $workflowObjectData['workflowDefinition']->definition['places'];
@@ -21,66 +23,84 @@
         $placeKeys = array_keys($places);
 
         foreach ($placeKeys as $index => $placeKey) {
-            if ($workflowObjectData['workflowObject']->state == $placeKey) {
-                $currentStep = $index + 1; 
+            if (in_array($placeKey, $workflowObjectData['workflowObject']->state)) {
+                $currentStep = $index + 1;
                 break;
             }
         }
 
         $progress = ($currentStep / $totalSteps) * 100;
+
+        $enabledTransitions = $workflowObjectData['workflowsTransitions']['enabled'] ?? [];
+        $hasMultipleTransitions = count($enabledTransitions) > 1;
       @endphp
 
-      <div class="mb-4">
+      {{-- <div class="mb-4">
         <div class="progress" style="height: 25px;">
           <div class="progress-bar progress-bar-striped" role="progressbar" style="width: {{ $progress }}%;"
             aria-valuenow="{{ $progress }}" aria-valuemin="0" aria-valuemax="100">
             {{ round($progress) }}%
           </div>
         </div>
-      </div>
+      </div> --}}
 
-      @if (count($workflowObjectData['forms']) > 1)
-        <div class="btn-group d-flex flex-wrap" role="group">
-          @foreach ($workflowObjectData['workflowsTransitions']['all'] as $transitionName)
+      <div class="d-flex flex-wrap
+      @if (count($workflowObjectData['forms']) < 1)
+          input-group" role="group">
+      @else
+          btn-group" role="group">
+      @endif
+        @foreach ($workflowObjectData['workflowsTransitions']['all'] as $transitionName)
+          @if (count($workflowObjectData['forms']) < 1)
             <form action="{{ route('workflows.applyTransition', $workflowObjectData['workflowObject']->id) }}"
-              method="POST" class="d-inline">
+              method="POST" class="d-inline d-flex">
               @csrf
               <input type="hidden" name="transition" value="{{ $transitionName }}">
               <input type="hidden" name="workflowDefinitionName"
                 value="{{ $workflowObjectData['workflowDefinition']->definition['name'] }}">
+          @endif
+          @php
+            $hasForm = collect($workflowObjectData['forms'])->firstWhere('transition', $transitionName);
+          @endphp
 
-              <button type="submit"
-                class="m-1 btn 
-                        @if (
-                            !\Illuminate\Support\Facades\Auth::user()->hasRole($workflowObjectData['workflowObject']->state) &&
-                                !\Illuminate\Support\Facades\Gate::allows('admin')) btn-secondary" disabled
-                        @else
-                          @if (in_array($transitionName, $workflowObjectData['workflowsTransitions']['enabled'])) btn-primary" 
-                          @else 
-                            btn-secondary" disabled @endif @endif>
-                    {{ $workflowObjectData['workflowDefinition']->definition['transitions'][$transitionName]['label'] ?? Str::replace('_', ' ', ucfirst($transitionName)) }}
-                </button>
+          <button type="submit" data-transition="{{ $transitionName }}"
+            @if (!$hasForm) data-url="{{ route('workflows.applyTransition', $workflowObjectData['workflowObject']->id) }}" 
+                            data-workflow="{{ $workflowObjectData['workflowDefinition']->definition['name'] }}" @endif
+            class="m-1 btn transition-btn rounded
+            @if (
+                !\Illuminate\Support\Facades\Auth::user()->hasRole($workflowObjectData['workflowObject']->state) &&
+                    !\Illuminate\Support\Facades\Gate::allows('admin')) btn-secondary" disabled
+            @else
+                @if (in_array($transitionName, $workflowObjectData['workflowsTransitions']['enabled'])) btn-primary"
+                @else btn-secondary" disabled @endif 
+            @endif">
+            {{ $workflowObjectData['workflowDefinition']->definition['transitions'][$transitionName]['label'] ?? Str::replace('_', ' ', ucfirst($transitionName)) }}
+          </button>
+
+          @if (count($workflowObjectData['forms']) < 1)
             </form>
-@endforeach
+          @endif
+        @endforeach
       </div>
-      @endif
-      
+
       @if (
           \Illuminate\Support\Facades\Auth::user()->hasRole($workflowObjectData['workflowObject']->state) ||
               \Illuminate\Support\Facades\Gate::allows('admin'))
-      {{-- @foreach ($workflowObjectData['forms'] as $form) --}}
-        <div class="mb-3">
-                <strong>Formulário para a transição {{ $workflowObjectData['forms'][0]['transition'] }}</strong>
-                {!! $workflowObjectData['forms'][0]['html'] !!}
-        </div>
-        {{-- @endforeach --}}
+        @if (!$hasMultipleTransitions && isset($workflowObjectData['forms'][0]))
+          <div class="mt-3">
+            <strong>Formulário para a transição {{ $workflowObjectData['forms'][0]['transition'] }}</strong>
+            {!! $workflowObjectData['forms'][0]['html'] !!}
+          </div>
+        @endif
       @endif
     </div>
   </div>
+  @if (count($workflowObjectData['forms']) > 0) @include('partials.transition-modal') @endif
+
   @if (
-        \Illuminate\Support\Facades\Auth::user()->hasRole($workflowObjectData['workflowObject']->state) ||
-            \Illuminate\Support\Facades\Gate::allows('admin'))
-  <div class="card mt-2">
+      \Illuminate\Support\Facades\Auth::user()->hasRole($workflowObjectData['workflowObject']->state) ||
+          \Illuminate\Support\Facades\Gate::allows('admin'))
+    <div class="card mt-2">
       <div class="card-body">
         <div class="row">
           <div class="col-md-8">
@@ -120,19 +140,18 @@
           </div>
           <div class="col-md-4">
             <div class="card">
-    <div class="card-header h5">Registro de Atividades</div>
-    <div class="card-body">
-      @foreach ($workflowObjectData['activities'] as $activity)
-        <p>
-          {{ $activity['created_at'] }} |
-          {{ $activity['user'] }} -
-          {{ $activity['description'] }}
-        </p>
-      @endforeach
-    </div>
-    @else
-
-    @endif
+              <div class="card-header h5">Registro de Atividades</div>
+              <div class="card-body">
+                @foreach ($workflowObjectData['activities'] as $activity)
+                  <p>
+                    {{ $activity['created_at'] }} |
+                    {{ $activity['user'] }} -
+                    {{ $activity['description'] }}
+                  </p>
+                @endforeach
+              </div>
+            @else
+  @endif
 
   </div>
   </div>

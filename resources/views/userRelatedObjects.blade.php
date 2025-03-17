@@ -34,7 +34,9 @@
               </a>
             </td>
             <td>
-              <span class="badge  bg-{{ $badgeColor }}">{{ $workflowObject->state }} </span>
+              @foreach ($workflowObject->state as $state => $number)
+                <span class="badge  bg-{{ $badgeColor }}">{{ $state }}</span>
+              @endforeach
             </td>
             <td>{{ $workflowsDisplay['workflowData'][$workflowObject->id]['workflowDefinition']['definition']['title'] }}</td>
             <td>{{ $workflowsDisplay['workflowData'][$workflowObject->id]['user']->name }}</td>

@@ -32,6 +32,7 @@ Route::get('/workflows/viewcreateobject', [WorkflowController::class, 'viewCreat
 Route::get('/workflows/createobject/{definitionName}', [WorkflowController::class, 'createObject'])->name('workflows.createObject');
 Route::post('/workflows/createobject/{definitionName}', [WorkflowController::class, 'submitForm']);
 Route::get('/workflows/object/{id}', [WorkflowController::class, 'showObject'])->name('workflows.showObject');
+Route::get('/workflows/object/{id}/form/{transition}', [WorkflowController::class, 'showForm'])->name('workflows.showForm');
 Route::post('/workflows/object/{id}', [WorkflowController::class, 'submitForm'])->name('workflows.showObject');
 Route::get('/workflows/showuserobjects', [WorkflowController::class, 'showUserObjects'])->name('workflows.show-user-objects');
 Route::post('workflows/apply-transition/{id}', [WorkflowController::class, 'applyTransition'])->name('workflows.applyTransition');
