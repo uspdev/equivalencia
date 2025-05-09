@@ -33,7 +33,11 @@
               </a>
             </td>
             <td>
-              <span class="badge  bg-{{ $badgeColor }}">{{ $workflowObject->state }} </span>
+              <span class="badge bg-{{ $badgeColor }}">
+                  {{ implode(', ', array_map(function($key, $value) {
+                      return "$key";
+                  }, array_keys($workflowObject->state), $workflowObject->state)) }}
+              </span>
             </td>
             <td>{{ $workflowsDisplay['workflowData'][$workflowObject->id]['workflowDefinition']['definition']['title'] }}</td>
             <td>{{ \Carbon\Carbon::parse($workflowObject->created_at)->format('d/m/Y H:i') }}</td>

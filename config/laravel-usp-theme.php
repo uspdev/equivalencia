@@ -59,6 +59,11 @@ $menu = [
 
 $right_menu = [
     [
+        'text' => '<span class="text-danger">Formulários</span>',
+        'url' => 'uspdev-forms/form-definitions',
+        'can' => 'admin'
+    ],
+    [
         'text' => '<span class="text-danger">Gerenciamento de workflows</span>',
         'can' => 'admin',
         'url' => 'workflows/listdefinitions'
