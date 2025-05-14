@@ -131,7 +131,21 @@
 
                     <h4>Conteúdo:</h4>
                     @foreach ($formSubmission->data as $key => $value)
-                      <p><strong>{{ ucfirst($key) }}:</strong> {{ $value }}</p>
+                      @if ($key == 'arquivo')
+                        <div class="d-flex">
+                          <div class="card d-flex justify-content-center align-items-center mb-1"
+                            style="width: 132px; height: 75px; overflow: hidden; background: #000; margin-right: 10px;">
+                            <a href="{{ asset('storage/' . $value['stored_path']) }}" target="_blank" download style="color: white; text-decoration: none;">
+                                <i class="fas fa-file-alt fa-2x"></i>
+                                <div style="font-size: 12px;">
+                                    {{ strtoupper(pathinfo($value['original_name'], PATHINFO_EXTENSION)) }}
+                                </div>
+                            </a>
+                          </div>
+                        </div>
+                      @else
+                        <p><strong>{{ ucfirst($key) }}:</strong> {{ $value }}</p>
+                      @endif                    
                     @endforeach
                   </div>
                 </div>
