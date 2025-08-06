@@ -1,20 +1,19 @@
-@extends('layouts.app')
-
+@extends('uspdev-forms::layouts.app')
 @can('admin')
   @section('content')
-    <div class="container mt-2">
-      <div class="d-flex justify-content-between align-items-center">
-        <h1 class="mb-3">Definições de workflow</h1>
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <a href="{{ route('workflows.create-definition') }}" class="btn btn-primary">Nova Definição</a>
+    <div class="card">
+      <div class="card-header h4 card-header-sticky d-flex justify-content-between align-items-center">
+        <div>
+          <span class="text-danger">USPdev forms</span> >
+          Definições de Workflow
+        </div>
+        <div>
+          <a href="{{ route('workflows.create-definition') }}" class="btn btn-sm btn-primary">Nova Definição de Workflow</a>
         </div>
       </div>
-      <p>Estas são as definições de workflow/requerimento cadastradas no sistema.
-        Para criar uma nova definição, clique em "Nova definição" acima.
-        Para gerenciar uma definição, clique em seu nome ou, para excluir, clique no botão à frente da definição.</p>
-      <div class="table-responsive">
-        <table class="table table-bordered table-striped table-hover">
-          <thead class="table-light">
+      <div class="card-body">
+        <table class="table table-bordered table-hover">
+          <thead>
             <tr>
               <th>Nome</th>
               <th>Descrição</th>
