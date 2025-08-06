@@ -64,7 +64,7 @@ $right_menu = [
         'can' => 'admin'
     ],
     [
-        'text' => '<span class="text-danger">Gerenciamento de workflows</span>',
+        'text' => '<span class="text-danger">Workflows</span>',
         'can' => 'admin',
         'url' => 'workflows/listdefinitions'
     ],

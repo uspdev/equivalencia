@@ -2,7 +2,7 @@
 
 @can('admin')
   @section('content')
-    <a href="{{ route('workflows.list-definitions') }}" class="link-primary"><i class="fas fa-arrow-left"></i> Voltar ao gerenciamento</a>
+    <a href="{{ route('workflows.list-definitions') }}" class="link-primary"><i class="fas fa-arrow-left"></i> Voltar aos Workflows</a>
     <div class="row">
       @foreach ($workflowDefinitionData['roles'] as $role => $name)
         <div class="col-md-4">

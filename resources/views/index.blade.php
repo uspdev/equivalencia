@@ -2,7 +2,7 @@
 
 @section('content')
  <div class="container mt-5">
-        <h1>Gerenciamento de Workflows</h1>
+        <h1>Workflows</h1>
 
         <form action="{{ route('workflows.create-definition') }}" method="POST" class="mb-3">
             @csrf

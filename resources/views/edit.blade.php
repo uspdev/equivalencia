@@ -3,7 +3,7 @@
 @can('admin')
   @section('content')
     <div class="container mt-5">
-      <a href="{{ route('workflows.list-definitions') }}" class="link-primary"><i class="fas fa-arrow-left"></i> Voltar ao gerenciamento</a>
+      <a href="{{ route('workflows.list-definitions') }}" class="link-primary"><i class="fas fa-arrow-left"></i> Voltar aos Workflows</a>
       <h1 class="mb-4">Editar workflow {{ $workflow->name }}</h1>
 
       <form action="{{ route('workflows.updateDefinition') }}" method="POST">
