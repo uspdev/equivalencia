@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-  <a href="{{ route('workflows.index') }}" class="link-primary">Voltar à pagina inicial</a>
+  <a href="{{ route('workflows.index') }}" class="link-primary"><i class="fas fa-arrow-left"></i> Voltar à pagina inicial</a>
   <h1>Gerenciar Workflows - {{ $workflowsDisplay['workflowDefinition']->name }}</h1>
 
   @if (session('error'))
