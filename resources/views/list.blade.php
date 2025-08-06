@@ -4,7 +4,7 @@
     <div class="card">
       <div class="card-header h4 card-header-sticky d-flex justify-content-between align-items-center">
         <div>
-          <span class="text-danger">USPdev forms</span> >
+          <span class="text-danger">Workflows</span> >
           Definições de Workflow
         </div>
         <div>
