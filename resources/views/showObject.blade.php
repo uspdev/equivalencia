@@ -61,15 +61,18 @@
           @endif
           @php
             $hasForm = collect($workflowObjectData['forms'])->firstWhere('transition', $transitionName);
+            $hasPermission = false;
+            if(in_array($transitionName, $workflowObjectData['workflowsTransitions']['enabled'])){
+              $place = $workflowObjectData['workflowDefinition']->definition['transitions'][$transitionName]['from'];
+              $role = array_values($workflowObjectData['workflowDefinition']->definition['places'][$place]['role'])[0];
+              $hasPermission = \Illuminate\Support\Facades\Auth::user()->hasRole($role) || \Illuminate\Support\Facades\Gate::allows('admin');
+            }
           @endphp
-
           <button type="submit" data-transition="{{ $transitionName }}"
             @if (!$hasForm) data-url="{{ route('workflows.applyTransition', $workflowObjectData['workflowObject']->id) }}" 
                             data-workflow="{{ $workflowObjectData['workflowDefinition']->definition['name'] }}" @endif
             class="m-1 btn transition-btn rounded
-            @if (
-                !\Illuminate\Support\Facades\Auth::user()->hasRole($workflowObjectData['workflowObject']->state) &&
-                    !\Illuminate\Support\Facades\Gate::allows('admin')) btn-secondary" disabled
+            @if (!$hasPermission) btn-secondary" disabled
             @else
                 @if (in_array($transitionName, $workflowObjectData['workflowsTransitions']['enabled'])) btn-primary"
                 @else btn-secondary" disabled @endif 
