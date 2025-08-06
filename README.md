@@ -1,6 +1,8 @@
-# Workflow
+# Equivalência
 
-A biblioteca Workflow facilita o gerenciamento de fluxos de trabalho em aplicações. Ela permite criar, exibir e gerenciar definições de workflow, transições, estados, formulários associados e outras funcionalidades relacionadas.
+O projeto Equivalência tem como objetivo informatizar e padronizar o processo de requerimentos de equivalência de disciplinas.
+Tem como pilares principais as bibliotecas uspdev/workflow e uspdev/forms, que foram construídas com foco na generalização.
+Logo, o projeto Equivalência pode ser utilizado e adaptado em outros contextos, com vários tipos de requerimentos.
 
 ## Features
 

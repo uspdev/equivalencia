@@ -13,13 +13,18 @@
         {
             "name": "Masaki Kawabata Neto",
             "email": "kawabata@usp.br"
+        },
+        {
+            "name": "Antonio Augusto de Campos",
+            "email": "campos.antonio@usp.br"
         }
     ],
     "require": {
         "php": "^8.2",
         "illuminate/support": "^11.0",
-        "uspdev/forms": "dev-main",
+        "uspdev/forms": "^0.3",
         "spatie/laravel-activitylog": "^4.9",
+        "spatie/laravel-permission": "^6.15",
         "symfony/workflow": "^7.1",
         "zerodahero/laravel-workflow": "^5.0",
         "graphp/graph": "^1@dev",

@@ -2,49 +2,115 @@
 
 namespace Uspdev\Workflow;
 
+use stdClass;
+use App\Models\User;
+use Uspdev\Forms\Form;
+use Illuminate\Http\Request;
+use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Uspdev\Forms\Models\FormDefinition;
+use Uspdev\Forms\Models\FormSubmission;
+use Spatie\Activitylog\Models\Activity;
+use Spatie\Permission\Models\Permission;
+use Illuminate\Support\Facades\Validator;
 use Symfony\Component\Workflow\Definition;
 use Symfony\Component\Workflow\Transition;
-use Symfony\Component\Workflow\MarkingStore\MethodMarkingStore;
-use Symfony\Component\Workflow\Workflow as SymfonyWorkflow;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use Uspdev\Workflow\Models\WorkflowDefinition;
 use Uspdev\Workflow\Models\WorkflowObject;
-use Uspdev\Workflow\Models\User;
-
-use Uspdev\Forms\Form;
-use Spatie\Activitylog\Models\Activity;
-use stdClass;
+use Uspdev\Workflow\Models\WorkflowDefinition;
+use Symfony\Component\Workflow\Workflow as SymfonyWorkflow;
+use Symfony\Component\Workflow\MarkingStore\MethodMarkingStore;
 
 class Workflow
 {
+
+    /**
+     * Retorna todas as definições de workflow persistidas no banco de dados
+     * 
+     * @return Array
+     */
     public static function obterTodosWorkflowDefinitions()
     {
         return WorkflowDefinition::all();
     }
 
+    /**
+     * Retorna uma definição de workflow
+     * Com o nome passado de parâmetro na chamada do método
+     * 
+     * @param String $definitionName
+     * @return WorkflowDefinition
+     */
     public static function obterWorkflowDefinition($definitionName)
     {
         return WorkflowDefinition::where('name', $definitionName)->firstOrFail();
     }
 
+    /**
+     * Retorna todas os objetos de workflow persistidos no banco de dados
+     * 
+     * @return Array
+     */
     public static function obterTodosWorkflowObjects()
     {
         return WorkflowObject::all();
     }
 
+    /**
+     * Retorna um objeto de workflow
+     * Com o id correspondente ao passado de parâmetro na chamada do método
+     * 
+     * @param Integer $id
+     * @return WorkflowObject
+     */
     public static function obterWorkflowObject($id)
     {
         return WorkflowObject::findOrFail($id);
     }
 
+    /**
+     * Retorna os registros de atividade para um objeto
+     * Com o id correspondente ao passado de parâmetro na chamada do método
+     * 
+     * @param Integer $id
+     * @return Array
+     */
     public static function obterAtividades($id)
     {
-        return Activity::where('subject_type', WorkflowObject::class)
+        
+        $atividades = Activity::where('subject_type', WorkflowObject::class)
             ->where('subject_id', $id)
             ->get();
+
+            $resultadoFormatado = $atividades->map(function ($atividade) {
+            $workflowObject = Workflow::obterWorkflowObject($atividade->subject_id);
+            $workflowDefinition = SELF::obterWorkflowDefinition($workflowObject->workflow_definition_name);  
+            $stateData = json_decode($atividade->properties, true);
+            $nomeBonito = $workflowDefinition->definition['places'][$stateData['state']] ?? $stateData['state'];
+            $user = $atividade->causer_id ? User::find($atividade->causer_id) : null;
+
+            return [
+                'id' => $atividade->id,
+                'description' => "Alterado para: " . ($nomeBonito['description'] ?? 'Descrição não disponível'),
+                'objectId' => $atividade->subject_id,
+                'user' => $user ? $user->name : 'Não definido',
+                'created_at' => \Carbon\Carbon::parse($atividade->created_at)->format('d/m/Y H:i'),
+                'updated_at' => \Carbon\Carbon::parse($atividade->updated_at)->format('d/m/Y H:i'),
+            ];
+        });
+
+        return $resultadoFormatado;
     }
 
+
+    /**
+     * Retorna as transições de uma instância de SymfonyWorkflow
+     * Passada de parâmetro na chamada do método
+     * 
+     * @param SymfonyWorkflow $workflowInstance
+     * @return Array
+     */
     public static function obterNomeDasTransitions(SymfonyWorkflow $workflowInstance)
     {
         $allTransitions =  $workflowInstance->getDefinition()->getTransitions();
@@ -54,25 +120,44 @@ class Workflow
         }, $allTransitions) ?: [];
     }
 
+    /**
+     * Retorna as transições habilitadas para um objeto de workflow
+     * baseado uma instância de SymfonyWorkflow passada de parâmetro na chamada do método
+     * 
+     * Possui duas maneiras de receber o objeto como parâmetro
+     * A primeira, o objeto de WorkflowObject persistido no banco
+     * E a segunda, utilizada para quando o objeto ainda não foi persistido no banco
+     * Nesse caso, é utilizada uma stdClass que possui as mesmas propriedades que o WorkflowObject
+     * 
+     * @param SymfonyWorkflow $workflowInstance
+     * @param WorkflowObject $workflowObject = null
+     * @param stdClass $fakeWorkflowObject = null
+     * @return Array
+     */
     public static function obterNomeDasTransitionsHabilitadas(SymfonyWorkflow $workflowInstance, WorkflowObject $workflowObject = null, stdClass $fakeWorkflowObject = null)
     {
         $workflowObject = $workflowObject ?? $fakeWorkflowObject;
+
         $enabledTransitions = $workflowInstance->getEnabledTransitions($workflowObject);
-
-
         return array_map(function ($transition) {
             return $transition->getName();
         }, $enabledTransitions) ?: [];
     }
 
+    /**
+     * Retorna o html de um formulário referente ao estado do objeto naquela definição
+     * 
+     * @param WorkflowObject $workflowObject
+     * @param WorkflowDefinition $workflowDefinition
+     * @return String HTML formatado
+     */
     public static function obterHtml(WorkflowObject $workflowObject, WorkflowDefinition $workflowDefinition)
     {
         $definitionData = $workflowDefinition->definition;
 
         if (isset($definitionData['places'][$workflowObject->state]['forms'])) {
             $formName = $definitionData['places'][$workflowObject->state]['forms'];
-            $key = $workflowObject->id;
-            $form = new Form($key);
+            $form = new Form(['key' => $workflowObject->id]);
             $formHtml = $form->generateHtml($formName);
         } else {
             $formHtml = '';
@@ -81,6 +166,19 @@ class Workflow
         return $formHtml;
     }
 
+    /**
+     * Retorna dados relevantes referentes uma definição de workflow
+     * Com o nome passado de parâmetro na chamada do método
+     * 
+     * Os dados são retornados em um array com as seguintes chaves:
+     * 'workflowDefinition' - o campo 'definition' da própria definição de workflow
+     * 'definitionName' - o nome da definição
+     * 'path' - o caminho para onde a imagem da definição foi gerada
+     * 'places' - array com os 'places' da definição
+     * 
+     * @param String $definitionName
+     * @return Array $workflowData
+     */
     public static function obterDadosDaDefinicao($definitionName)
     {
         $workflowDefinition = Workflow::obterWorkflowDefinition($definitionName);
@@ -89,16 +187,41 @@ class Workflow
         $workflowDefinition->generatePng();
         $path = "storage/app/public/" . $definitionName . ".png";
         $formattedJson = json_encode($definitionData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        
+        $roles = [];
+        foreach($workflowDefinition->definition['places'] as $place){
+            $keyRole = key($place['role']);
+            $role = $place['role'][$keyRole];
+            $roles[$role] = $keyRole;
+        }
 
         $workflowData['workflowDefinition'] = $workflowDefinition;
         $workflowData['definitionName'] = $definitionName;
         $workflowData['path'] = $path;
         $workflowData['formattedJson'] = $formattedJson;
-        $workflowData['places'] = $workflowDefinition->definition['places'];
+        $workflowData['roles'] = array_unique($roles);
 
         return $workflowData;
     }
 
+    /**
+     * Retorna dados relevantes referentes um objeto de workflow
+     * Com o id correspondente ao passado de parâmetro na chamada do método
+     * 
+     * Os dados são retornados em um array com as seguintes chaves:
+     * 'workflowObject' - O próprio objeto de workflow
+     * 'workflowDefinition' - O objeto da definição referente ao workflowObject
+     * 'workflowsTransitions' - Array de transições com as chaves 'enabled', 'all' e 'currentState'
+     *  essas chaves contém, respectivamente, as transições habilitadas para o objeto, todas as transições
+     *  da definição e o estado atual do objeto
+     * 'formHtml' - HMTL formatado do formulário relacionado ao estado/place atual do objeto
+     * 'title' - Título da definição
+     * 'activity' - Array de registro de atividades para aquele objeto
+     * 'formSubmissions' - Array de submissões de formulários para aquele objeto
+     * 
+     * @param Integer $workflowObjectId
+     * @return Array $workflowObjectData
+     */
     public static function obterDadosDoObjeto($workflowObjectId)
     {
         $workflowObject = Workflow::obterWorkflowObject($workflowObjectId);
@@ -106,29 +229,82 @@ class Workflow
         $workflowDefinition = Workflow::obterWorkflowDefinition($workflowObject->workflow_definition_name);
         $workflowInstance = Workflow::criarSymfonyWorkflow($workflowDefinition);
 
-        $workflowsTransitions[$workflowObject->id] = [
-            'enabled' => Workflow::obterNomeDasTransitionsHabilitadas($workflowInstance, $workflowObject),
-            'all' => Workflow::obterNomeDasTransitions($workflowInstance),
-            'currentState' => $workflowObject->state,
-        ];
+        $workflowsTransitions['enabled'] =  Workflow::obterNomeDasTransitionsHabilitadas($workflowInstance, $workflowObject);
+        $workflowsTransitions['all'] =  Workflow::obterNomeDasTransitions($workflowInstance);
+        $workflowsTransitions['currentState'] =  $workflowObject->state;
+        $workflowsTransitions['allowed'] = [];
 
-        $formHtml = Workflow::obterHtml($workflowObject, $workflowDefinition);
+        $form = new Form(['key' =>$workflowObjectId]);
+
+        $forms = [];
+        
+        foreach($workflowsTransitions['enabled'] as $enabledTransition){
+            if (isset($workflowDefinition->definition['transitions'][$enabledTransition]['forms'])) {
+                foreach($workflowDefinition->definition['transitions'][$enabledTransition]['forms'] as $formName){
+
+                    $formHtml = $form->generateHtml($formName);
+                    $formHtml = str_replace("workflowDefinitionName", $workflowDefinition->name, $formHtml);
+                    $statesString = '';
+                    foreach ($workflowObject->state as $state => $value) {
+                        $statesString .= $state;
+                        $statesString .= ', ';
+                    }
+                    $statesString = \Illuminate\Support\Str::beforeLast($statesString, ', ');
+                    $formHtml = str_replace("place_name", $statesString, $formHtml);
+                    $formHtml = str_replace("transition_name", $enabledTransition, $formHtml);
+
+                    $formData['transition'] =  $enabledTransition;
+                    $formData['html'] =  $formHtml;
+                    $forms[] = $formData;
+                }
+            }
+        }
+
         $title = $workflowDefinition->definition['title'];
         $activities = Workflow::obterAtividades($workflowObject->id);
-        $form = new Form($workflowObject->id);
+        $form = new Form(['key' => $workflowObject->id]);
         $formSubmissions = $form->listSubmission();
+        if (!Gate::allows('admin')) {
+            $formSubmissions = $formSubmissions->filter(function ($submission) use ($workflowObject, $workflowDefinition) {
+                $transition = $submission['data']['transition'];
+                $to = $workflowDefinition->definition['transitions'][$transition]['tos'];
+                $initial = $workflowDefinition->definition['initial_places'];
+                
+                $workflowInstance = Workflow::criarSymfonyWorkflow($workflowDefinition);
+                $fakeWorkflowObject = new \stdClass();
+                $fakeWorkflowObject->currentState = $to;
+                $enabledTransitions =  Workflow::obterNomeDasTransitionsHabilitadas($workflowInstance, null, $fakeWorkflowObject);
+                if (empty($enabledTransitions)) {
+                    return true;
+                }
+
+                return $submission['data']['place'] == $workflowObject->state || $workflowObject->state == $to || $submission['data']['place'] == $initial;
+            });
+        }        
 
         $workflowObjectData['workflowObject'] = $workflowObject;
         $workflowObjectData['workflowDefinition'] = $workflowDefinition;
         $workflowObjectData['workflowsTransitions'] = $workflowsTransitions;
-        $workflowObjectData['formHtml'] = $formHtml;
+        $workflowObjectData['forms'] = $forms;
         $workflowObjectData['title'] = $title;
         $workflowObjectData['activities'] = $activities;
-        $workflowObjectData['formSubmissions'] = $formSubmissions;
+        $workflowObjectData['formSubmissions'] = collect($formSubmissions);
 
         return $workflowObjectData;
     }
 
+    /**
+     * Retorna um WorkflowObject referente à definição de workflow
+     * passada como parâmetro na chamada do método, no estado em que também foi passado
+     * como parâmetro. Pode receber um codpes para ser referenciado na criação do objeto.
+     * Se esse codpes não for passado como parâmetro, a criação do objeto utiliza o codpes
+     * do usuário autenticado no sistema
+     * 
+     * @param String $definitionName
+     * @param String $state
+     * @param Integer $userCodpes
+     * @return WorkflowObject
+     */
     public static function criarWorkflow($definitionName, $state, $userCodpes = null)
     {
         $userCodpes = $userCodpes ?: auth()->user()->codpes;
@@ -138,6 +314,14 @@ class Workflow
         return WorkflowObject::create(array_merge($state, $definitionName, ['user_codpes' => $userCodpes]));
     }
 
+    /**
+     * Atualiza uma WorkflowDefinition com os dados passados como parâmetros pelo $request
+     * Valida todos os dados antes de fazer a atualização da definição
+     * 
+     * @param String $request->name
+     * @param String $request->description
+     * @param Json $request->defintion
+     */
     public static function atualizarWorkflow(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -157,6 +341,14 @@ class Workflow
         $workflow->save();
     }
 
+    /**
+     * Cria uma WorkflowDefinition com os dados passados como parâmetros pelo $request
+     * Valida todos os dados antes de fazer a criação da definição
+     * 
+     * @param String $request->name
+     * @param String $request->description
+     * @param Json $request->defintion
+     */
     public static function criarWorkflowDefinition(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -171,6 +363,23 @@ class Workflow
                 ->withInput();
         }
 
+        $def = json_decode($request->definition, true);
+        if (isset($def['places'])) {
+            foreach ($def['places'] as $key => $value) {
+                $keyRole = key($value['role']);
+                $roleName = $value['role'][$keyRole] ?? $key;
+        
+                $role = Role::firstOrCreate(['name' => $roleName]);
+        
+                $permission = Permission::firstOrCreate(['name' => $key]);
+        
+                if (!$role->hasPermissionTo($permission)) {
+                    $role->givePermissionTo($permission);
+                }
+            }
+        }
+        
+
         WorkflowDefinition::create([
             'name' => $request->name,
             'description' => $request->description,
@@ -178,74 +387,86 @@ class Workflow
         ]);
     }
 
+    /**
+     * Cria um objeto com as mesmas propriedades de um WorkfloWObject 
+     * baseado na definição passada como parâmetro por seu nome.
+     * Contudo, não cria diretamente um WorkflowObject, pois isso envolveria a
+     * persistência indesejada no banco de dados nesse momento, visto que a persistência
+     * só deve ocorrer após alguma atualização referente a esse objeto recém criado.
+     * 
+     * Retorna o mesmo tipo de array que o método obterDadosDoObjeto
+     * 
+     * @param String $workflowDefinitionName
+     * @return Array $workflowObjectData
+     */
     public static function criarWorkflowObject($workflowDefinitionName)
     {
         $workflowDefinition = Workflow::obterWorkflowDefinition($workflowDefinitionName);
         $workflow = Workflow::criarSymfonyWorkflow($workflowDefinition);
 
         $initialState = $workflow->getDefinition()->getInitialPlaces();
-        $formattedState = implode(', ', $initialState);
-        $state = ['state' => $formattedState];
+        foreach($initialState as $state) {
+            $states = [$state => 1];
 
-        // $workflow_definition_name = ['workflow_definition_name' => $workflowDefinitionName];
-
-        // $workflowObject = Workflow::criarWorkflow($workflow_definition_name, $state);
+        }
 
         $workflowInstance = Workflow::criarSymfonyWorkflow($workflowDefinition);
 
         $fakeWorkflowObject = new \stdClass();
-        $fakeWorkflowObject->state = $formattedState;
+        $fakeWorkflowObject->state = $states;
         $fakeWorkflowObject->id = '0';
-        $fakeWorkflowObject->currentState = $formattedState;
+        $fakeWorkflowObject->currentState = $states;
         $fakeWorkflowObject->workflowDefinitionName = $workflowDefinitionName;
 
-        $workflowsTransitions[0] = [
-            'enabled' => Workflow::obterNomeDasTransitionsHabilitadas($workflowInstance, null, $fakeWorkflowObject),
-            'all' => Workflow::obterNomeDasTransitions($workflowInstance),
-            'currentState' => $state,
-        ];
+        $workflowsTransitions['enabled'] =  Workflow::obterNomeDasTransitionsHabilitadas($workflowInstance, null, $fakeWorkflowObject);
+        $workflowsTransitions['all'] =  Workflow::obterNomeDasTransitions($workflowInstance);
+        $workflowsTransitions['currentState'] =  $state;
+
+        $forms = [];
+        foreach($workflowsTransitions['enabled'] as $enabledTransition){
+            if (isset($workflowDefinition->definition['transitions'][$enabledTransition]['forms'])) {
+                foreach($workflowDefinition->definition['transitions'][$enabledTransition]['forms'] as $formName){
+                    $form = new Form();
+                    $formHtml = $form->generateHtml($formName);
+                    $formHtml = str_replace("workflowDefinitionName", $workflowDefinition->name, $formHtml);
+                    $formHtml = str_replace("workflowDefinitionName", $workflowDefinition->name, $formHtml);
+                    $statesString = '';
+                    foreach ($states as $state => $value) {
+                        $statesString .= $state;
+                        $statesString .= ', ';
+                    }
+                    $statesString = \Illuminate\Support\Str::beforeLast($statesString, ', ');
+                    $formHtml = str_replace("place_name", $statesString, $formHtml);            $formHtml = str_replace("transition_name", $enabledTransition, $formHtml);
 
 
-        $formName = $workflowDefinition->definition['places'][$formattedState]['forms'];
+                    $formData['transition'] =  $enabledTransition;
+                    $formData['html'] =  $formHtml;
+                    $forms[] = $formData;
+                }
+            }
+        }
 
-        $form = new Form();
-        $formHtml = $form->generateHtml($formName);
-
-        $title = $workflowDefinition->definition['title'];
-        $workflowObjectData['workflowObject'] = $fakeWorkflowObject;
-        $workflowObjectData['workflowDefinition'] = $workflowDefinition;
-        $workflowObjectData['workflowsTransitions'] = $workflowsTransitions;
-        $workflowObjectData['formHtml'] = $formHtml;;
-        $workflowObjectData['title'] = $title;
-        $workflowObjectData['activities'] = [];
-        $workflowObjectData['formSubmissions'] = [];
+        $workflowObjectData = [
+        'workflowObject' => $fakeWorkflowObject,
+        'workflowDefinition' => $workflowDefinition,
+        'workflowsTransitions' => $workflowsTransitions,
+        'forms' => $forms,
+        'title' => $workflowDefinition->definition['title'],
+        'activities' => [],
+        'formSubmissions' => [],
+        'formRequired' => !empty($formName)
+    ];
 
         return $workflowObjectData;
     }
 
-    public static function definirUsuarios(Request $request)
-    {
-        $codpes_rem = $request->input('codpes_rem');
-        $codpes_add = $request->input('codpes_add');
-        $place = $request->input('place');
-        $workflowDefinitionName = $request->input('workflowDefinitionName');
-        $workflowDefinition = WorkflowDefinition::where('name',  $workflowDefinitionName)->first();
-
-        if (!$workflowDefinition) {
-            return response()->json(['message' => 'Workflow não encontrado'], 404);
-        }
-
-        $userToRemove = User::where('codpes', $codpes_rem)->first();
-        if ($userToRemove) {
-            $workflowDefinition->users()->wherePivot('place', $place)->detach($userToRemove->codpes);
-        }
-
-        if (isset($codpes_add)) {
-            $userToAdd = User::findOrCreateFromReplicado($codpes_add);
-            $workflowDefinition->users()->attach($userToAdd->codpes, ['place' => $place]);
-        }
-    }
-
+    /**
+     * Cria uma instância de SymfonyWorkflow baseado na WorkflowDefinition
+     * passada como parâmetro na chamada do método
+     * 
+     * @param WorkflowDefinition $workflowDefinition
+     * @return SymfonyWorkflow
+     */
     public static function criarSymfonyWorkflow(WorkflowDefinition $workflowDefinition)
     {
         $definitionData = $workflowDefinition->definition;
@@ -264,26 +485,43 @@ class Workflow
             $workflowDefinition = new Definition(
                 $places,
                 array_map(function ($name, $transition) {
-                    return new Transition($name, $transition['from'], $transition['to']);
+                    $tos = is_array($transition['tos']) ? $transition['tos'] : [$transition['tos']];
+                    return new Transition($name, $transition['from'], $tos);
                 }, array_keys($transitions), $transitions)
             );
 
-            return new SymfonyWorkflow($workflowDefinition, new MethodMarkingStore(true, 'currentState'));
+            return new SymfonyWorkflow($workflowDefinition, new MethodMarkingStore(false, 'currentState'));
         }
     }
 
+    /**
+     * Exclui um WorkflowObject com o Id passado
+     * 
+     * @param Integer $workflowId
+     */
     public static function deletarWorkflow($workflowId)
     {
         $workflowObject = WorkflowObject::findOrFail($workflowId);
         $workflowObject->delete();
     }
 
+    /**
+     * Exclui uma WorkflowDefinition com o nome passado
+     * 
+     * @param String $definitionName
+     */
     public static function deletarDefinicaodeWorkflow($definitionName)
     {
         $workflowDefinition = WorkflowDefinition::where('name', $definitionName)->firstOrFail();
         $workflowDefinition->delete();
     }
 
+    /**
+     * Lista todos os WorkflowObjects relacionados à WorkflowDefinition com o nome passado
+     * 
+     * @param String $definitionName
+     * @return Array $workflowsDisplay
+     */
     public static function listarWorkflowsdaDefinition($definitionName)
     {
         $workflowsDisplay = [];
@@ -298,13 +536,13 @@ class Workflow
 
         foreach ($workflows as $workflowObject) {
             $enabledTransitions = [];
-            $currentState = $workflowObject->state;
-
+            $currentStates = $workflowObject->state;
             foreach ($transitionsData as $transitionName => $transition) {
-                if ($transition['from'] === $currentState) {
+                if (in_array($transition['from'], $currentStates)) {
                     $enabledTransitions[] = $transitionName;
                 }
             }
+            
 
             $allTransitions = array_keys($transitionsData);
 
@@ -322,6 +560,14 @@ class Workflow
         return $workflowsDisplay;
     }
 
+    /**
+     * Lista todos os WorkflowObjects criados pelo usuário passado pelo codpes
+     * na chamada do método. Se não for passado parâmetro, será utilizado o codpes
+     * do usuário autenticado no sistema
+     * 
+     * @param Integer $userCodpes
+     * @return Array $workflowsDisplay
+     */
     public static function listarWorkflowsdoUser($userCodpes = null)
     {
         $userCodpes = $userCodpes ?: auth()->user()->codpes;
@@ -351,81 +597,209 @@ class Workflow
         return $workflowsDisplay;
     }
 
-    public static function aplicarTransition($id, $transition, $workflowDefinitionName) //voltar aqui
+    /**
+     * Verifica se o formulário requer que algum campo
+     * seja obrigatoriamente preenchido
+     * 
+     * @param String $formName
+     * @return boolean
+     */
+    public static function verificarFormRequired($formName)
     {
-        // dd($workflowDefinitionName);
+        $formDefinition = FormDefinition::where('name', $formName)->firstOrFail();
+        $formFields = $formDefinition->fields;
 
+        foreach($formFields as $field){
+            if(isset($field["required"])){
+                if ($field["required"]==true) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Verifica se a transition requer o preechimento
+     * de algum formulário e se esse formulário já foi
+     * submetido
+     * 
+     * @param String $transition
+     * @param WorkflowObject $workflowObject
+     * @param WorkflowDefinition $workflowDefinition
+     * @return boolean
+     */
+    public static function verificarFormParaTransition($transition, $workflowObject, $workflowDefinition)
+    {
+        if (isset($workflowDefinition->definition['transitions'][$transition]['forms'])) {
+            foreach($workflowDefinition->definition['transitions'][$transition]['forms'] as $formName){
+
+                $form = new Form();
+                if ($form->getDefinition($formName) != null) {
+                    
+                    $formRequired = self::verificarFormRequired($formName);
+                    if ($formRequired) {
+                        $cond['form_definition_id'] = $form->getDefinition($formName)->id;
+
+                        $submissions = FormSubmission::where($cond)->get();
+                        $hasSubmission = $submissions->where('key', $workflowObject->id)->isNotEmpty();
+                        if (!$hasSubmission) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+
+    /**
+     * Verifica se um WorkflowObject passado por seu id pode realizar certa
+     * transição também passada por parâmetro. Caso possa, o método aplica essa
+     * tal transição e salva o objeto com seu novo estado.
+     * 
+     * @param Integer $id
+     * @param String $transition
+     * @param String $workflowDefinitionName
+     */
+    public static function aplicarTransition($id, $transition, $workflowDefinitionName) 
+    {
         $workflowDefinition = WorkflowDefinition::where('name', $workflowDefinitionName)->firstOrFail();
-        if ($id == 0) {
-            $workflow_definition_name = ['workflow_definition_name' => $workflowDefinitionName];
 
-            $state = $workflowDefinition['definition']['initial_places'];
-            $workflowObject = Workflow::criarWorkflow($workflow_definition_name, $state);
-            // dd($workflowObject);
+        if ($id == 0) {
+            DB::beginTransaction();
+            $workflow_definition_name = ['workflow_definition_name' => $workflowDefinitionName];
+            $states = [];
+            if(is_array($workflowDefinition['definition']['initial_places'])){
+                foreach($workflowDefinition['definition']['initial_places'] as $state){
+                    $states = [$state => 1];
+                }
+            } else {
+                $states = [$workflowDefinition['definition']['initial_places'] => 1];
+            }
+
+            $workflowObject = Workflow::criarWorkflow($workflow_definition_name, $states);
 
             $workflowObject->save();
+
+            $workflow = SELF::criarSymfonyWorkflow($workflowDefinition);
+            if ($workflow->can($workflowObject, $transition)) {
+                $success = self::verificarFormParaTransition($transition, $workflowObject, $workflowDefinition);
+
+                if (!$success) {
+                    DB::rollback();
+                    return 0;
+                } 
+                DB::commit();
+
+                $state = $workflow->apply($workflowObject, $transition);
+                $currentState = $workflow->getMarking($workflowObject)->getPlaces();
+                $formattedState = implode(', ', array_keys($currentState));
+                $workflowObject->updateState($formattedState);
+                $workflowObject->state = $state;
+                $workflowObject->save();
+            } else {
+                DB::rollback();
+                return 0;
+            }
         } else {
             $workflowObject = WorkflowObject::findOrFail($id);
         }
 
         $workflow = SELF::criarSymfonyWorkflow($workflowDefinition);
-
         if ($workflow->can($workflowObject, $transition)) {
 
-            // if (isset($workflowDefinition->definition['places'][$workflowObject->state]['forms'])) {
-            //     $form = new Form();
-            //     if ($form->getDefinition($workflowDefinition->definition['places'][$workflowObject->state]['forms']) != null) {
-            //         $cond['form_definition_id'] = $form->getDefinition($workflowDefinition->definition['places'][$workflowObject->state]['forms'])->id;
+            $success = self::verificarFormParaTransition($transition, $workflowObject, $workflowDefinition);
+            if (!$success) {
+                return $workflowObject->id;
+            } 
 
-            //         $submissions = FormSubmission::where($cond)->get();
+            $state = $workflow->apply($workflowObject, $transition);
+            
+            $places = $state->getPlaces();
 
-            //         $hasSubmission = $submissions->where('key', $workflowObject->id)->isNotEmpty();
-            //         if (!$hasSubmission) {
-            //             return back()
-            //                 ->with('error', 'Você deve enviar o formulário necessário antes de aplicar essa transição!');
-            //         }
-            //     }
-            // }
-
-            $workflow->apply($workflowObject, $transition);
-
-            $currentState = $workflow->getMarking($workflowObject)->getPlaces();
-            $formattedState = implode(', ', array_keys($currentState));
-            $workflowObject->updateState($formattedState);
-            $workflowObject->state = $formattedState;
+            foreach ($places as $place => $number) {
+                if (isset($workflowDefinition->definition['places'][$place]['max'])) {
+                    $max = $workflowDefinition->definition['places'][$place]['max'];
+            
+                    if ($number > $max) {
+                        $places[$place] = $max;  
+                    }
+                }
+            }
+            
+            $workflowObject->state = $places;
+            
 
             $workflowObject->save();
+
+            
+            $workflowObject->save();
         }
-        // dd($workflowObject);
         return $workflowObject->id;
     }
 
+    /**
+     * Lida com a submissão de um formulário através da biblioteca Uspdev/Forms
+     */
     public static function enviarFormulario(Request $request)
     {
+
+        if ($request->input('form_key') == config('forms.defaultKey')) {
+
+            $workflowDefinitionName = $request->input('definition_name');
+
+            $workflow_definition_name = ['workflow_definition_name' => $workflowDefinitionName];
+
+            $workflowDefinition = WorkflowDefinition::where('name', $workflowDefinitionName)->firstOrFail();
+
+            $states = [];
+            if(is_array($workflowDefinition['definition']['initial_places'])){
+                foreach($workflowDefinition['definition']['initial_places'] as $state){
+                    $states = [$state => 1];
+                }
+            } else {
+                $states = [$workflowDefinition['definition']['initial_places'] => 1];
+            }
+
+            $workflowObject = Workflow::criarWorkflow($workflow_definition_name, $states);
+
+            $workflowObject->save();
+            $request->merge(['form_key' => $workflowObject->id]);
+        }
+
         $form = new Form();
         $form->handleSubmission($request);
+        $id = $workflowObject->id ?? $request->input('form_key');
+        self::aplicarTransition($id, $request->input('transition'), $request->input('definition_name'));
+        return $id;
     }
 
+    /**
+     * Lista todos os WorkflowObjects relacionados a um usuário através de seu estado.
+     * Se um usuário estiver relacionado a um place de uma WorkflowDefinition e o WorkflowObject
+     * estiver nesse place, o WorkflowObject será listado. O usuário pode ser passado pelo codpes
+     * na chamada do método, caso contrário, será utilizado o codpes do usuário autenticado no sistema.
+     * 
+     * @param Integer $userCodpes
+     * @return Array $workflowsDisplay
+     */
     public static function listarWorkflowsObjectsRelacionados($userCodpes = null)
     {
         $userCodpes = $userCodpes ?: auth()->user()->codpes;
 
         $user = User::where('codpes', $userCodpes)->first();
-        $workflowDefinitions = $user->workflowDefinitions;
-
+        $places = $user->getAllPermissions();
         $workflowObjects = collect();
 
-        foreach ($workflowDefinitions as $workflowDefinition) {
-            $place = $workflowDefinition->pivot->place;
-
-            $objects = WorkflowObject::where('workflow_definition_name', $workflowDefinition->name)
-                ->where('user_codpes', $user->codpes)
-                ->where('state', $place)
-                ->get();
-
+        foreach ($places as $place) {
+            $objects = WorkflowObject::whereJsonContains('state', [$place->name => 1])->get();
             $workflowObjects = $workflowObjects->merge($objects);
         }
+
         $workflowData = [];
+
         foreach ($workflowObjects as $workflowObject) {
             $workflowDefinition = Workflow::obterWorkflowDefinition($workflowObject->workflow_definition_name);
             $workflowInstance = Workflow::criarSymfonyWorkflow($workflowDefinition);
@@ -433,6 +807,7 @@ class Workflow
 
             $workflowData[$workflowObject->id]['workflowDefinition'] = $workflowDefinition;
             $workflowData[$workflowObject->id]['user'] = User::where('codpes', $workflowObject->user_codpes)->first();
+
             if ($workflowObject->state == $workflowDefinition->definition['initial_places']) {
                 $workflowData[$workflowObject->id]['state'] = 'start';
             } else if (count($enabledTransitions) > 0) {
@@ -441,9 +816,47 @@ class Workflow
                 $workflowData[$workflowObject->id]['state'] = 'end';
             }
         }
+
         $workflowsDisplay['workflows'] = $workflowObjects;
         $workflowsDisplay['workflowData'] = $workflowData;
-
+        
         return $workflowsDisplay;
     }
+
+     /**
+     * Cria ou remove o relacionamento de um usuário com um place de uma WorkflowDefinition
+     * 
+     * @param Integer $request->codpes_rem
+     * @param Integer $request->codpes_add
+     * @param String $request->place
+     * @param String $request->workflowDefinitionName
+     */
+    public static function definirUsuarios(Request $request)
+    {
+        $codpes_rem = $request->input('codpes_rem');
+        $codpes_add = $request->input('codpes_add');
+        $role = $request->input('role');
+
+        $user      = Auth::user();
+        if (! $user->hasRole($role) && ! Gate::allows('admin')) {
+            return response()->json(['alert-danger' => 'Você não tem permissão para gerenciar este departamento.'], 403);
+        }
+
+        if ($codpes_rem) {
+            $userToRemove = User::where('codpes', $codpes_rem)->first();
+            if ($userToRemove) {
+                $userToRemove->removeRole($role);
+                $request->session()->flash('alert-warning', 'Usuário removido com sucesso!');
+            }
+        }
+
+        if ($codpes_add) {
+            $userToAdd = User::findOrCreateFromReplicado($codpes_add);
+            if ($userToAdd) {
+                $userToAdd->assignRole($role);
+                $request->session()->flash('alert-success', 'Usuário adicionado com sucesso!');
+            }
+        }
+    }
+
 }

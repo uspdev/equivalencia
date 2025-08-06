@@ -8,8 +8,6 @@ use Graphp\Graph\Graph;
 use Graphp\GraphViz\GraphViz;
 use Illuminate\Support\Facades\File;
 use Illuminate\Database\QueryException;
-use Uspdev\Workflow\Models\User;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class WorkflowDefinition extends Model
 {
@@ -29,21 +27,13 @@ class WorkflowDefinition extends Model
         'definition' => 'array', 
     ];
 
-
-    public function users()
-    {
-        return $this->belongsToMany(User::class, 'user_workflow_definition', 'workflow_definition_name', 'user_codpes')
-                ->withPivot('place')->withTimestamps();
-    }
-
     
-
     public function generatePng()
     {
         $graph = new Graph();
 
         $graph->setAttribute('graphviz.graph.rankdir', 'TB');
-        $graph->setAttribute('graphviz.graph.size', '5,9');
+        $graph->setAttribute('graphviz.graph.size', '5,15');
         $graph->setAttribute('graphviz.graph.ratio', 'fill');
 
         $definition = $this->definition;
@@ -83,11 +73,12 @@ class WorkflowDefinition extends Model
         foreach ($definition['transitions'] as $transitionName => $transition) {
 
             $fromPlace = $vertices[$transition['from']];
-            $toPlace = $vertices[$transition['to']];
+            $toPlaces = is_array($transition['tos']) ? $transition['tos'] : [$transition['tos']];
 
-            $edge = $graph->createEdgeDirected($fromPlace, $toPlace);
-            $edge->setAttribute('graphviz.label', $transitionName);
-
+            foreach($toPlaces as $toPlace){
+                $edge = $graph->createEdgeDirected($fromPlace, $vertices[$toPlace]);
+                $edge->setAttribute('graphviz.label', $transitionName);
+            }
         }
 
         $graphviz = new GraphViz();
