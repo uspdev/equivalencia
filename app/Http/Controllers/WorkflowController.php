@@ -70,6 +70,7 @@ class WorkflowController extends Controller
     public function viewCreateObject()
     {
         $workflowDefinitions = Workflow::obterTodosWorkflowDefinitions();
+        \UspTheme::activeUrl('viewcreateobject');
 
         return view('createObject', compact('workflowDefinitions'));
     }
@@ -83,6 +84,8 @@ class WorkflowController extends Controller
 
     public function showUserObjects()
     {
+        \UspTheme::activeUrl('showuserobjects');
+
         $userCodpes = auth()->user()->codpes;
 
         $workflowsDisplay = Workflow::listarWorkflowsdoUser($userCodpes);
@@ -137,6 +140,8 @@ class WorkflowController extends Controller
 
     public function atendimentos()
     {
+        \UspTheme::activeUrl('atendimentos');
+
         $workflowsDisplay = Workflow::listarWorkflowsObjectsRelacionados();
         return view('userRelatedObjects', compact('workflowsDisplay'));
 

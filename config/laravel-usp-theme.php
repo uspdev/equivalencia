@@ -38,21 +38,21 @@ $submenu2 = [
 $menu = [
     [
         'text' => '<i class="fas fa-home"></i> Home',
-        'url' => 'workflows',
+        'url' => './',
     ],
     [
         'text' => 'Novo requerimento',
-        'url' => 'workflows/viewcreateobject',
+        'url' => 'viewcreateobject',
         'can' => 'user',
     ],
     [
         'text' => 'Meus requerimentos',
-        'url' => 'workflows/showuserobjects',
+        'url' => 'showuserobjects',
         'can' => 'user',
     ],
     [
         'text' => 'Atendimentos',
-        'url' => 'workflows/atendimentos',
+        'url' => 'atendimentos',
         'can' => 'user',
     ],
 ];
@@ -66,7 +66,7 @@ $right_menu = [
     [
         'text' => '<span class="text-danger">Workflows</span>',
         'can' => 'admin',
-        'url' => 'workflows/listdefinitions'
+        'url' => 'listdefinitions'
     ],
     [
         // menu utilizado para views da biblioteca senhaunica-socialite.
