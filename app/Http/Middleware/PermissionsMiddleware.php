@@ -19,6 +19,9 @@ class PermissionsMiddleware
             'Alunoead',
             'Alunopd',
         ];
+        if (!$user) {
+            return $next($request);
+        }
         $userPermissions = $user->permissions->pluck('name')->toArray();
 
         if ($user && $userPermissions) {
