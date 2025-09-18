@@ -17,7 +17,8 @@ use App\Http\Controllers\WorkflowController;
 Route::get('/', function () {
     return view('welcome');
 });
-
+Route::middleware(['auth'])->group(function () {
+    
 Route::get('/', [WorkflowController::class, 'home'])->name('workflows.index');
 
 Route::get('/createdefinition', [WorkflowController::class, 'createDefinition'])->name('workflows.create-definition');
@@ -40,6 +41,7 @@ Route::delete('/delete-object/{object}', [WorkflowController::class, 'deleteObje
 
 Route::put('/listdefinitions/setuser', [WorkflowController::class, 'setUser'])->name('workflows.setuser');
 Route::get('/atendimentos', [WorkflowController::class, 'atendimentos'])->name('workflows.atendimentos');
+});
 
 // Permite usar Gate::check('user')na view 404
 Route::fallback(function(){
