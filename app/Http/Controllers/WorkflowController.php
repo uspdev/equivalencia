@@ -134,6 +134,7 @@ class WorkflowController extends Controller
 
     public function submitForm(Request $request) 
     {
+        $request->merge(['id' => null]);
         $workflowObjectId = Workflow::enviarFormulario($request);
         return redirect()->route('workflows.showObject', ['id' => $workflowObjectId]);
     }
