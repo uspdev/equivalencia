@@ -11,11 +11,16 @@
           - ID {{ $workflowObjectData['workflowObject']->id }}
         @endif
       </h3>
-      <p><strong>Estado Atual:</strong> |
+      <p><strong>Estado Atual:</strong>
         @foreach ($workflowObjectData['workflowObject']->state as $state => $one)
-          {{ $workflowObjectData['workflowDefinition']->definition['places'][$state]['description'] }} |
+          {{ $workflowObjectData['workflowDefinition']->definition['places'][$state]['description'] }} | &rarr; <strong>Próximos Estados:</strong>
+          @foreach ($workflowObjectData['workflowDefinition']->definition['transitions'] as $transition)
+            @if ($transition['from'] == $state)
+              {{ $transition['label'] }} |
+            @endif
+          @endforeach
         @endforeach
-      </p>
+        </p>
       @php
         $places = $workflowObjectData['workflowDefinition']->definition['places'];
         $totalSteps = count($places);
@@ -99,7 +104,7 @@
     </div>
   </div>
   @if (count($workflowObjectData['forms']) > 0) @include('partials.transition-modal') @endif
-
+  
   @if (
       \Illuminate\Support\Facades\Auth::user()->hasRole($workflowObjectData['workflowObject']->state) ||
           \Illuminate\Support\Facades\Gate::allows('admin'))
@@ -122,13 +127,16 @@
                 <div class="card mb-2">
                   <div class="submission-details card-body">
                     <h4>Submissão</h4>
-                    @can('admin')
-                      <p><strong>ID do formulário: </strong> {{ $formSubmission->form_definition_id }}</p>
-                      <p><strong>ID da submissão: </strong> {{ $formSubmission->id }}</p>
-                    @endcan
+                    <p>
+                      <strong>Id do workflow: </strong> {{ $formSubmission->key }}
+                      @can('admin')
+                      |
+                      <strong>ID do formulário: </strong> {{ $formSubmission->form_definition_id }} |
+                      <strong>ID da submissão: </strong> {{ $formSubmission->id }} |
+                      <strong>Criado: </strong> {{ $formSubmission->created_at }} 
+                      @endcan
+                    </p>
                     <p><strong>Nome do usuário: </strong> {{ $userName }}</p>
-                    <p><strong>Id do workflow: </strong> {{ $formSubmission->key }}</p>
-                    <p><strong>Criado: </strong> {{ $formSubmission->created_at }}</p>
                     <p><strong>Estado:</strong> {{ isset($formSubmission->place) ? $formSubmission->place : '' }}
                     </p>
 
