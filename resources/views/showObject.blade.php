@@ -11,9 +11,16 @@
           - ID {{ $workflowObjectData['workflowObject']->id }}
         @endif
       </h3>
-      <p><strong>Estado Atual:</strong> |
+      <p><strong>Estado Atual:</strong>
         @foreach ($workflowObjectData['workflowObject']->state as $state => $one)
           {{ $workflowObjectData['workflowDefinition']->definition['places'][$state]['description'] }} |
+          &rarr;
+          <strong>Próximo Estado:</strong>
+          @foreach ($workflowObjectData['workflowDefinition']->definition['transitions'] as $transition )
+            @if ($transition['from'] == $state)
+              {{ $transition['label'] }} |
+            @endif
+          @endforeach
         @endforeach
       </p>
       @php
@@ -123,16 +130,19 @@
                   <div class="submission-details card-body">
                     <h4>Submissão</h4>
                     @can('admin')
-                      <p><strong>ID do formulário: </strong> {{ $formSubmission->form_definition_id }}</p>
-                      <p><strong>ID da submissão: </strong> {{ $formSubmission->id }}</p>
+                    <p>
+                      <strong>Id do workflow: </strong> {{ $formSubmission->key }} |
+                      <strong>ID da submissão: </strong> {{ $formSubmission->id }} |
+                      <strong>Criado: </strong> {{ $formSubmission->created_at }} |
+                    </p>
                     @endcan
+                    <p><strong>ID do formulário: </strong> {{ $formSubmission->form_definition_id }}</p>
                     <p><strong>Nome do usuário: </strong> {{ $userName }}</p>
-                    <p><strong>Id do workflow: </strong> {{ $formSubmission->key }}</p>
-                    <p><strong>Criado: </strong> {{ $formSubmission->created_at }}</p>
                     <p><strong>Estado:</strong> {{ isset($formSubmission->place) ? $formSubmission->place : '' }}
                     </p>
 
                     <h4>Conteúdo:</h4>
+                    <p>
                     @foreach ($formSubmission->data as $key => $value)
                       @if ($key == 'arquivo')
                         <div class="d-flex">
@@ -147,9 +157,14 @@
                           </div>
                         </div>
                       @else
-                        <p><strong>{{ ucfirst($key) }}:</strong> {{ $value }}</p>
+                        @if ($key == "obs")
+                          <p><strong>{{ ucfirst($key) }}:</strong> {{ $value }}</p>
+                        @else
+                          <strong>{{ ucfirst($key) }}:</strong> {{ $value }} |
+                        @endif
                       @endif                    
                     @endforeach
+                    </p>
                   </div>
                 </div>
               @endforeach
