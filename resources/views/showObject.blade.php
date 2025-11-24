@@ -93,7 +93,7 @@
         @endforeach
       </div>
 
-      @if (
+      {{-- @if (
           \Illuminate\Support\Facades\Auth::user()->hasRole($workflowObjectData['workflowObject']->state) ||
               \Illuminate\Support\Facades\Gate::allows('admin'))
         @if (!$hasMultipleTransitions && isset($workflowObjectData['forms'][0]))
@@ -104,12 +104,29 @@
         @endif
       @endif
     </div>
-  </div>
+  </div> --}}
   @if (count($workflowObjectData['forms']) > 0) @include('partials.transition-modal') @endif
 
-  @if (
-      \Illuminate\Support\Facades\Auth::user()->hasRole($workflowObjectData['workflowObject']->state) ||
-          \Illuminate\Support\Facades\Gate::allows('admin'))
+  @php
+    $lead_tr[] = [];
+  @endphp
+
+  @foreach ($workflowObjectData['workflowObject']->state as $name => $one)
+        @foreach($workflowObjectData['workflowsTransitions']['all'] as $key => $tr_name)
+          @php  
+            $tos = $workflowObjectData['workflowDefinition']->definition['transitions'][$tr_name]['tos'];
+            $tos = is_array($tos)? $tos : [$tos];
+            foreach ($tos as $key => $value) 
+            {
+              if($value == $name)
+              {
+                $lead_tr[] = $tr_name;
+              }
+            }
+          @endphp
+        @endforeach
+  @endforeach
+
     <div class="card mt-2">
       <div class="card-body">
         <div class="row">
@@ -128,49 +145,48 @@
 
                 <div class="card mb-2">
                   <div class="submission-details card-body">
-                    <h4>Submissão</h4>
-                    @can('admin')
-                    <p>
-                      <strong>Id do workflow: </strong> {{ $formSubmission->key }} |
-                      <strong>ID da submissão: </strong> {{ $formSubmission->id }} |
-                      <strong>Criado: </strong> {{ $formSubmission->created_at }} |
-                    </p>
-                    @endcan
-                    <p><strong>ID do formulário: </strong> {{ $formSubmission->form_definition_id }}</p>
-                    <p><strong>Nome do usuário: </strong> {{ $userName }}</p>
-                    <p><strong>Estado:</strong> {{ isset($formSubmission->place) ? $formSubmission->place : '' }}
-                    </p>
+                    @if (\Illuminate\Support\Facades\Gate::allows('admin') || in_array($formSubmission->data['transition'],$lead_tr))
+                      @can('admin')
+                      <p>
+                        <strong>Id do workflow: </strong> {{ $formSubmission->key }} |
+                        <strong>ID da submissão: </strong> {{ $formSubmission->id }} |
+                        <strong>Criado: </strong> {{ $formSubmission->created_at }} |
+                      </p>
+                      @endcan
+                      <p><strong>ID do formulário: </strong> {{ $formSubmission->form_definition_id }}</p>
+                      <p><strong>Nome do usuário: </strong> {{ $userName }}</p>
+                      <p><strong>Estado:</strong> {{ isset($formSubmission->place) ? $formSubmission->place : '' }}
+                      </p>
 
-                    <h4>Conteúdo:</h4>
-                    <p>
-                    @foreach ($formSubmission->data as $key => $value)
-                      @if ($key == 'arquivo')
-                        <div class="d-flex">
-                          <div class="card d-flex justify-content-center align-items-center mb-1"
-                            style="width: 132px; height: 75px; overflow: hidden; background: #000; margin-right: 10px;">
-                            <a href="{{ asset('storage/' . $value['stored_path']) }}" target="_blank" download style="color: white; text-decoration: none;">
-                                <i class="fas fa-file-alt fa-2x"></i>
-                                <div style="font-size: 12px;">
-                                    {{ strtoupper(pathinfo($value['original_name'], PATHINFO_EXTENSION)) }}
-                                </div>
-                            </a>
+                      <h4>Conteúdo:</h4>
+                      <p>
+                      @foreach ($formSubmission->data as $key => $value)
+                        @if ($key == 'arquivo')
+                          <div class="d-flex">
+                            <div class="card d-flex justify-content-center align-items-center mb-1"
+                              style="width: 132px; height: 75px; overflow: hidden; background: #000; margin-right: 10px;">
+                              <a href="{{ asset('storage/' . $value['stored_path']) }}" target="_blank" download style="color: white; text-decoration: none;">
+                                  <i class="fas fa-file-alt fa-2x"></i>
+                                  <div style="font-size: 12px;">
+                                      {{ strtoupper(pathinfo($value['original_name'], PATHINFO_EXTENSION)) }}
+                                  </div>
+                              </a>
+                            </div>
                           </div>
-                        </div>
-                      @else
-                        @if ($key == "obs")
-                          <p><strong>{{ ucfirst($key) }}:</strong> {{ $value }}</p>
                         @else
-                          <strong>{{ ucfirst($key) }}:</strong> {{ $value }} |
+                          
+                            <strong>{{ ucfirst($key) }}:</strong> {{ $value }} |
+                          
                         @endif
-                      @endif                    
-                    @endforeach
+                      @endforeach
                     </p>
                   </div>
                 </div>
+                @endif
               @endforeach
             @endif
           </div>
-          <div class="col-md-4">
+          <div class="col-md-4 ms-auto">
             <div class="card">
               <div class="card-header h5">Registro de Atividades</div>
               <div class="card-body">
@@ -182,8 +198,6 @@
                   </p>
                 @endforeach
               </div>
-            @else
-  @endif
 
   </div>
   </div>
