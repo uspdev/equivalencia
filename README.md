@@ -19,10 +19,15 @@ Logo, o projeto Equivalência pode ser utilizado e adaptado em outros contextos,
 ## Instalação e Configuração
 
 ### 1. **Clonar o repositório:**
-    git clone git@github.com/uspdev/equivalencia
+    git clone https://github.com/uspdev/equivalencia.git
 
 ### 2. **Instalar as dependências através do composer:**
+- Instala as dependências:
     composer install
+
+- Atualiza-as para a versão mais recente disponível:
+    composer update
+
 
 ### 3. **Gerar arquivo env baseado no exemplo**
     cp .env.example .env
