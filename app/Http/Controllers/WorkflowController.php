@@ -10,7 +10,7 @@ class WorkflowController extends Controller
 {
     public function home()
     {
-        return redirect()->route('workflows.show-user-objects');
+        return view('home');
     }
 
     public function createDefinition()
