@@ -19,10 +19,18 @@ Logo, o projeto Equivalência pode ser utilizado e adaptado em outros contextos,
 ## Instalação e Configuração
 
 ### 1. **Clonar o repositório:**
-    git clone git@github.com/uspdev/equivalencia
+    git clone https://github.com/uspdev/equivalencia.git
 
 ### 2. **Instalar as dependências através do composer:**
-    composer install
+- Instala as dependências:
+```bash
+composer install
+```
+
+- Atualiza-as para a versão mais recente disponível:
+```bash
+composer update
+```
 
 ### 3. **Gerar arquivo env baseado no exemplo**
     cp .env.example .env
@@ -42,16 +50,16 @@ Logo, o projeto Equivalência pode ser utilizado e adaptado em outros contextos,
 
 - 'SENHAUNICA_DEV' => Link para o host do senhaunica, utilizado para autenticação
 
-### 5. **Gerar chave da aplicação**
+### 4. **Gerar chave da aplicação**
     php artisan key:generate
 
-### 6. **Rodando as migrations**
+### 5. **Rodando as migrations**
 Após a configuração do ambiente e geração da chave da aplicação, utilize o comando a seguir para criar as tabelas necessárias no DB:
 
 ```bash
 php artisan migrate
 ```
-### 5. **Populando o banco de dados**
+### 6. **Populando o banco de dados**
     php artisan db:seed
 
 ## Contributing
