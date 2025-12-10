@@ -40,7 +40,7 @@ Logo, o projeto Equivalência pode ser utilizado e adaptado em outros contextos,
 
 - 'DB_PASSWORD' => Senha de acesso ao banco de dados
 
-- 'SENHAUNICA_DEV' => Link para o host do senhaunica, utilziado para autenticação
+- 'SENHAUNICA_DEV' => Link para o host do senhaunica, utilizado para autenticação
 
 ### 5. **Gerar chave da aplicação**
     php artisan key:generate
