@@ -15,10 +15,29 @@
         @foreach ($workflowObjectData['workflowObject']->state as $state => $one)
           {{ $workflowObjectData['workflowDefinition']->definition['places'][$state]['description'] }} |
           &rarr;
-          <strong>Próximo Estado:</strong>
-          @foreach ($workflowObjectData['workflowDefinition']->definition['transitions'] as $transition )
-            @if ($transition['from'] == $state)
-              {{ $transition['label'] }} |
+          <strong>Ações:</strong>
+          @foreach ($workflowObjectData['workflowDefinition']->definition['transitions'] as $transitionName => $transitionData )
+            @if ($transitionData['from'] == $state)
+              @php
+                $has_role = false;
+                $need_role = $workflowObjectData['workflowDefinition']->definition['places'][$state]['role'];
+                foreach($need_role as $role_name => $role)
+                {
+
+                  $has_role = \Illuminate\Support\Facades\Auth::user()->hasRole($role) || \Illuminate\Support\Facades\Gate::allows('admin');
+                }
+              @endphp
+              @if($has_role)
+              <button type="submit" data-transition="{{ $transitionName }}" 
+
+              data-url="{{ route('workflows.applyTransition',$workflowObjectData['workflowObject']->id) }}"
+
+              data-workflow="{{ $workflowObjectData['workflowDefinition']->definition['name'] }}"
+              class="m-1 btn transition-btn rounded btn-primary "
+              >
+                {{ $transitionData['label'] }}
+              </button> |
+              @endif
             @endif
           @endforeach
         @endforeach
@@ -75,20 +94,22 @@
               $hasPermission = \Illuminate\Support\Facades\Auth::user()->hasRole($role) || \Illuminate\Support\Facades\Gate::allows('admin');
             }
           @endphp
-          <button type="submit" data-transition="{{ $transitionName }}"
-            @if (!$hasForm) data-url="{{ route('workflows.applyTransition', $workflowObjectData['workflowObject']->id) }}" 
-                            data-workflow="{{ $workflowObjectData['workflowDefinition']->definition['name'] }}" @endif
-            class="m-1 btn transition-btn rounded
-            @if (!$hasPermission) btn-secondary" disabled
-            @else
-                @if (in_array($transitionName, $workflowObjectData['workflowsTransitions']['enabled'])) btn-primary"
-                @else btn-secondary" disabled @endif 
-            @endif">
-            {{ $workflowObjectData['workflowDefinition']->definition['transitions'][$transitionName]['label'] ?? Str::replace('_', ' ', ucfirst($transitionName)) }}
-          </button>
+          @if (\Illuminate\Support\Facades\Gate::allows('admin'))
+            <button type="submit" data-transition="{{ $transitionName }}"
+              @if (!$hasForm) data-url="{{ route('workflows.applyTransition', $workflowObjectData['workflowObject']->id) }}" 
+                              data-workflow="{{ $workflowObjectData['workflowDefinition']->definition['name'] }}" @endif
+              class="m-1 btn transition-btn rounded
+              @if (!$hasPermission) btn-secondary" disabled
+              @else
+                  @if (in_array($transitionName, $workflowObjectData['workflowsTransitions']['enabled'])) btn-primary"
+                  @else btn-secondary" disabled @endif 
+              @endif">
+              {{ $workflowObjectData['workflowDefinition']->definition['transitions'][$transitionName]['label'] ?? Str::replace('_', ' ', ucfirst($transitionName)) }}
+            </button>
 
-          @if (count($workflowObjectData['forms']) < 1)
-            </form>
+            @if (count($workflowObjectData['forms']) < 1)
+              </form>
+            @endif
           @endif
         @endforeach
       </div>
