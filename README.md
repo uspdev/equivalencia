@@ -23,11 +23,14 @@ Logo, o projeto Equivalência pode ser utilizado e adaptado em outros contextos,
 
 ### 2. **Instalar as dependências através do composer:**
 - Instala as dependências:
-    composer install
+```bash
+composer install
+```
 
 - Atualiza-as para a versão mais recente disponível:
-    composer update
-
+```bash
+composer update
+```
 
 ### 3. **Gerar arquivo env baseado no exemplo**
     cp .env.example .env
