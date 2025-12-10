@@ -50,16 +50,16 @@ composer update
 
 - 'SENHAUNICA_DEV' => Link para o host do senhaunica, utilizado para autenticação
 
-### 5. **Gerar chave da aplicação**
+### 4. **Gerar chave da aplicação**
     php artisan key:generate
 
-### 6. **Rodando as migrations**
+### 5. **Rodando as migrations**
 Após a configuração do ambiente e geração da chave da aplicação, utilize o comando a seguir para criar as tabelas necessárias no DB:
 
 ```bash
 php artisan migrate
 ```
-### 5. **Populando o banco de dados**
+### 6. **Populando o banco de dados**
     php artisan db:seed
 
 ## Contributing
