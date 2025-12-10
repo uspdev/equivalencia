@@ -17,10 +17,10 @@ use App\Http\Controllers\WorkflowController;
 Route::get('/', function () {
     return view('welcome');
 });
-Route::middleware(['auth'])->group(function () {
-    
+
 Route::get('/', [WorkflowController::class, 'home'])->name('workflows.index');
 
+Route::middleware(['auth'])->group(function () {
 Route::get('/createdefinition', [WorkflowController::class, 'createDefinition'])->name('workflows.create-definition');
 Route::post('/createdefinition', [WorkflowController::class, 'storeDefinition'])->name('workflows.store-definition');
 Route::get('/listdefinitions', [WorkflowController::class, 'listDefinitions'])->name('workflows.list-definitions');
