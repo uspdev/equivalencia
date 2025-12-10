@@ -11,42 +11,48 @@ Logo, o projeto Equivalência pode ser utilizado e adaptado em outros contextos,
 - Integração com Laravel 11 em diante;
 - Representação visual de workflows.
 
-## Installation
+## Requisitos
 
-### 1. **Instale a biblioteca pelo Composer**
+- PHP 8.2 ou maior;
+- Composer;
 
-Execute o comando abaixo para instalar o pacote:
+## Instalação e Configuração
 
-```bash
-composer require uspdev/workflow
-```
+### 1. **Clonar o repositório:**
+    git clone git@github.com/uspdev/equivalencia
 
-### 2. **Publicação de configurações e migrations**
+### 2. **Instalar as dependências através do composer:**
+    composer install
 
-Execute os seguintes comandos para publicar as configurações e as migrations da biblioteca:
+### 3. **Gerar arquivo env baseado no exemplo**
+    cp .env.example .env
 
-```bash
-php artisan vendor:publish --provider="Uspdev\Workflow\WorkflowServiceProvider" --tag=workflow-config
-php artisan vendor:publish --provider="Uspdev\Workflow\WorkflowServiceProvider" --tag=workflow-migrations
+#### 3.1 **Configurar .env**
+- 'APP_NAME' => Nome de exibição da aplicação
 
-php artisan vendor:publish --provider="Spatie\Activitylog\ActivitylogServiceProvider" --tag="activitylog-migrations"
+- 'APP_URL' => Link do servidor de hosting da aplicação
 
-php artisan vendor:publish --tag=forms-migrations
-php artisan vendor:publish --tag=forms-config
+- 'DB_HOST' => Host do banco de dados
 
-```
+- 'DB_DATABASE' => Nome do banco de dados a ser utilizado
 
-### 3. **Rodando as migrations**
+- 'DB_USERNAME' => Nome de usuário do banco de dados
 
-Após a publicação, execute o comando de migração para criar as tabelas necessárias:
+- 'DB_PASSWORD' => Senha de acesso ao banco de dados
+
+- 'SENHAUNICA_DEV' => Link para o host do senhaunica, utilizado para autenticação
+
+### 5. **Gerar chave da aplicação**
+    php artisan key:generate
+
+### 6. **Rodando as migrations**
+Após a configuração do ambiente e geração da chave da aplicação, utilize o comando a seguir para criar as tabelas necessárias no DB:
 
 ```bash
 php artisan migrate
 ```
-
-## Configuration
-
-A biblioteca pode ser configurada editando o arquivo `config/workflow.php`.
+### 5. **Populando o banco de dados**
+    php artisan db:seed
 
 ## Usage
 
