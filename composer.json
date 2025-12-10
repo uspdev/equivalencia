@@ -1,7 +1,7 @@
 {
-    "name": "uspdev/starter",
+    "name": "uspdev/equivalencia",
     "type": "project",
-    "description": "Esqueleto para nova aplicação Uspdev",
+    "description": "Aproveitamento de estudos (equivalencia)",
     "authors": [
         {
             "name": "Masaki Kawabata Neto",
@@ -11,12 +11,12 @@
     ],
     "keywords": [
         "uspdev",
-        "starter"
+        "equivalencia de disciplinas",
+        "aproveitamento de estudos",
     ],
     "license": "MIT",
     "require": {
         "php": "^8.2",
-        "graphp/graph": "^1@dev",
         "guzzlehttp/guzzle": "^7.0.1",
         "laravel/framework": "^11.0",
         "laravel/sanctum": "^4.0",
