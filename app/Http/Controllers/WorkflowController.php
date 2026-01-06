@@ -168,7 +168,7 @@ class WorkflowController extends Controller
         fwrite($json_file,$json_encoded);
         fclose($json_file);
 
-        return redirect()->route('workflows.showDefinition',$workflowDef['name']);
+        return redirect()->route('workflows.list-definitions')->with('alert-success','Workflow exportado com sucesso !');
     }
     
 }

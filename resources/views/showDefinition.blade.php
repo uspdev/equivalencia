@@ -44,8 +44,6 @@
       <h1 class="mb-4 ml-2">Detalhes do workflow {{ $workflowDefinitionData['definitionName'] }}</h1>
       <a href="{{ route('workflows.editDefinition', $workflowDefinitionData['definitionName']) }}"
         class="btn btn-warning btn-sm mb-3 ml-4">Editar workflow</a>
-      <a href="{{ route('workflows.exportDefinition', $workflowDefinitionData['definitionName']) }}"
-      class="btn btn-primary btn-sm mb-3 ml-4">Exportar workflow</a>
     </div>
     <div class="row ml-2">
       <div class="col-md-7">
