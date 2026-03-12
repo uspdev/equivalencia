@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Uspdev\Workflow\Workflow;
-use Uspdev\Forms\Form;
 
 class WorkflowController extends Controller
 {
@@ -37,7 +36,7 @@ class WorkflowController extends Controller
     public function showDefinition($definitionName)
     {
         $workflowDefinitionData = Workflow::obterDadosDaDefinicao($definitionName);
-        
+
         return view('showDefinition', compact('workflowDefinitionData'));
     }
 
@@ -58,7 +57,7 @@ class WorkflowController extends Controller
     public function editDefinition($definitionName)
     {
         $workflow = Workflow::obterWorkflowDefinition($definitionName);
-    
+
         return view('edit', compact('workflow'));
     }
 
@@ -80,8 +79,9 @@ class WorkflowController extends Controller
     public function createObject($definitionName)
     {
         $workflowObjectData = Workflow::criarWorkflowObject($definitionName);
+        $workflowObjectData = $this->prepararDadosDaTelaDoObjeto($workflowObjectData);
 
-        return view('showObject', compact('workflowObjectData'));
+        return view('show.showObject', compact('workflowObjectData'));
     }
 
     public function showUserObjects()
@@ -101,184 +101,284 @@ class WorkflowController extends Controller
 
         $selectedForm = collect($workflowObjectData['forms'])->firstWhere('transition', $transition);
 
-        if (!$selectedForm) {
+        if (! $selectedForm) {
             return redirect()->back()->with('error', 'Nenhum formulário encontrado para essa transição.');
         }
 
         return view('form', compact('workflowObjectData', 'selectedForm', 'transition'));
     }
 
-
     public function showObject($id)
     {
         $workflowObjectData = Workflow::obterDadosDoObjeto($id);
-        $workflowObjectData['userGuidance'] = $this->buildUserGuidance($workflowObjectData);
-        $workflowObjectData['userStateHistory'] = $this->buildUserStateHistory($workflowObjectData);
+        $workflowObjectData = $this->prepararDadosDaTelaDoObjeto($workflowObjectData);
 
-        return view('showObject', compact('workflowObjectData'));
+        return view('show.showObject', compact('workflowObjectData'));
+    }
+
+    private function prepararDadosDaTelaDoObjeto(array $workflowObjectData): array
+    {
+        $workflowObjectData['orientacaoUsuario'] = $this->construirOrientacaoUsuario($workflowObjectData);
+        $workflowObjectData['historicoEstados'] = $this->construirHistoricoEstados($workflowObjectData);
+        $workflowObjectData['transicoesVisiveis'] = $this->construirTransicoesVisiveis($workflowObjectData);
+        $workflowObjectData['transicoesEntrada'] = $this->construirTransicoesEntrada($workflowObjectData);
+        $workflowObjectData['transicoesAdmin'] = $this->construirTransicoesAdmin($workflowObjectData);
+
+        return $workflowObjectData;
+    }
+
+    // Mapeia [chaveEstado => [nomeTransicao => dadosTransicao]] para cada estado atual,
+    // filtrando apenas as transições que o usuário tem papel para executar.
+    private function construirTransicoesVisiveis(array $workflowObjectData): array
+    {
+        $transicoes = $workflowObjectData['workflowDefinition']->definition['transitions'] ?? [];
+        $lugares = $workflowObjectData['workflowDefinition']->definition['places'] ?? [];
+        $usuario = auth()->user();
+        $resultado = [];
+
+        foreach (array_keys($workflowObjectData['workflowObject']->state ?? []) as $chaveEstado) {
+            $resultado[$chaveEstado] = [];
+            foreach ($transicoes as $nomeTransicao => $dadosTransicao) {
+                if (($dadosTransicao['from'] ?? null) !== $chaveEstado) {
+                    continue;
+                }
+                $temPapel = false;
+                foreach (array_values($lugares[$chaveEstado]['role'] ?? []) as $papel) {
+                    if (($usuario && $usuario->hasRole($papel)) || Gate::allows('admin')) {
+                        $temPapel = true;
+                        break;
+                    }
+                }
+                if ($temPapel) {
+                    $resultado[$chaveEstado][$nomeTransicao] = $dadosTransicao;
+                }
+            }
+        }
+
+        return $resultado;
+    }
+
+    // Monta a lista de transições que levam AO estado atual do objeto,
+    // usada para filtrar o que deve ser exibido ao usuário no histórico.
+    private function construirTransicoesEntrada(array $workflowObjectData): array
+    {
+        $transicoes = $workflowObjectData['workflowDefinition']->definition['transitions'] ?? [];
+        $estadoAtual = $workflowObjectData['workflowObject']->state ?? [];
+        $antecedentes = [];
+
+        foreach (array_keys($estadoAtual) as $nomeEstado) {
+            foreach ($transicoes as $nomeTransicao => $dadosTransicao) {
+                $destinos = $dadosTransicao['tos'] ?? [];
+                $destinos = is_array($destinos) ? $destinos : [$destinos];
+                if (in_array($nomeEstado, $destinos, true)) {
+                    $antecedentes[] = $nomeTransicao;
+                }
+            }
+        }
+
+        return array_unique($antecedentes);
+    }
+
+    // Prepara dados enriquecidos de cada transição para a seção de administrador,
+    // incluindo se ela tem formulário, se o usuário tem permissão e se está habilitada.
+    private function construirTransicoesAdmin(array $workflowObjectData): array
+    {
+        $transicoes = $workflowObjectData['workflowDefinition']->definition['transitions'] ?? [];
+        $lugares = $workflowObjectData['workflowDefinition']->definition['places'] ?? [];
+        $listaHabilitadas = $workflowObjectData['workflowsTransitions']['enabled'] ?? [];
+        $formularios = $workflowObjectData['forms'] ?? [];
+        $usuario = auth()->user();
+        $resultado = [];
+
+        foreach ($workflowObjectData['workflowsTransitions']['all'] ?? [] as $nomeTransicao) {
+            $dadosTransicao = $transicoes[$nomeTransicao] ?? [];
+            $temFormulario = collect($formularios)->firstWhere('transition', $nomeTransicao) !== null;
+            $estaHabilitada = in_array($nomeTransicao, $listaHabilitadas, true);
+            $temPermissao = false;
+
+            if ($estaHabilitada) {
+                $estadoOrigem = $dadosTransicao['from'] ?? null;
+                $valoresPapeis = $estadoOrigem ? array_values($lugares[$estadoOrigem]['role'] ?? []) : [];
+                foreach ($valoresPapeis as $papel) {
+                    if (($usuario && $usuario->hasRole($papel)) || Gate::allows('admin')) {
+                        $temPermissao = true;
+                        break;
+                    }
+                }
+            }
+
+            $resultado[$nomeTransicao] = [
+                'label' => $dadosTransicao['label'] ?? Str::replace('_', ' ', ucfirst($nomeTransicao)),
+                'temFormulario' => $temFormulario,
+                'estaHabilitada' => $estaHabilitada,
+                'temPermissao' => $temPermissao,
+            ];
+        }
+
+        return $resultado;
     }
 
     // Método para construir as orientações ao usuário com base
     // nos estados atuais e transições disponíveis
     // Ele analisa os estados atuais do objeto, verifica as transições disponíveis para o usuário
     // e retorna uma estrutura de dados que pode ser usada na view para exibir mensagens e ações relevantes
-    private function buildUserGuidance(array $workflowObjectData): array
+    private function construirOrientacaoUsuario(array $workflowObjectData): array
     {
-        $places = $workflowObjectData['workflowDefinition']->definition['places'] ?? [];
+        $lugares = $workflowObjectData['workflowDefinition']->definition['places'] ?? [];
         // Obter as chaves dos estados atuais do objeto e mapear para suas descrições
-        $currentStateKeys = array_keys($workflowObjectData['workflowObject']->state ?? []);
-        $currentStateDescriptions = collect($currentStateKeys)
-            ->map(function ($stateKey) use ($places) {
-                return $places[$stateKey]['description'] ?? $stateKey;
+        $chavesEstadoAtual = array_keys($workflowObjectData['workflowObject']->state ?? []);
+        $descricoesEstadoAtual = collect($chavesEstadoAtual)
+            ->map(function ($chaveEstado) use ($lugares) {
+                return $lugares[$chaveEstado]['description'] ?? $chaveEstado;
             })
             ->values()
             ->all();
 
-        $availableTransitions = $this->getVisibleTransitionsForCurrentUser($workflowObjectData);
-        if (!empty($availableTransitions)) {
+        $transicoesDisponiveis = $this->obterTransicoesVisiveisParaUsuario($workflowObjectData);
+        if (! empty($transicoesDisponiveis)) {
             return [
-                'variant' => 'warning',
-                'title' => 'Ação necessária',
-                'message' => 'Existe uma ação pendente para você nesta solicitação.',
-                'currentStates' => $currentStateDescriptions,
-                'availableActions' => array_values($availableTransitions),
+                'variante' => 'warning',
+                'titulo' => 'Ação necessária',
+                'mensagem' => 'Existe uma ação pendente para você nesta solicitação.',
+                'estadosAtuais' => $descricoesEstadoAtual,
+                'acoesDisponiveis' => array_values($transicoesDisponiveis),
             ];
         }
 
-        $combinedStateText = Str::lower(implode(' ', $currentStateDescriptions));
+        $textoEstados = Str::lower(implode(' ', $descricoesEstadoAtual));
 
-        if (Str::contains($combinedStateText, ['analise', 'análise', 'conferencia', 'conferência', 'deliberar'])) {
+        if (Str::contains($textoEstados, ['analise', 'análise', 'conferencia', 'conferência', 'deliberar'])) {
             return [
-                'variant' => 'info',
-                'title' => 'Em análise',
-                'message' => 'Seu formulário está em análise. Nenhuma ação necessária no momento.',
-                'currentStates' => $currentStateDescriptions,
-                'availableActions' => [],
+                'variante' => 'info',
+                'titulo' => 'Em análise',
+                'mensagem' => 'Seu formulário está em análise. Nenhuma ação necessária no momento.',
+                'estadosAtuais' => $descricoesEstadoAtual,
+                'acoesDisponiveis' => [],
             ];
         }
 
-        if (Str::contains($combinedStateText, ['concluido', 'concluído', 'finalização', 'deferido', 'indeferido'])) {
+        if (Str::contains($textoEstados, ['concluido', 'concluído', 'finalizado', 'deferido', 'indeferido'])) {
             return [
-                'variant' => 'success',
-                'title' => 'Processo concluído',
-                'message' => 'A solicitação foi finalizada. Nenhuma ação necessária no momento.',
-                'currentStates' => $currentStateDescriptions,
-                'availableActions' => [],
+                'variante' => 'success',
+                'titulo' => 'Processo concluído',
+                'mensagem' => 'A solicitação foi finalizada. Nenhuma ação necessária no momento.',
+                'estadosAtuais' => $descricoesEstadoAtual,
+                'acoesDisponiveis' => [],
             ];
         }
 
         return [
-            'variant' => 'info',
-            'title' => 'Acompanhamento da solicitação',
-            'message' => 'Nenhuma ação necessária no momento.',
-            'currentStates' => $currentStateDescriptions,
-            'availableActions' => [],
+            'variante' => 'info',
+            'titulo' => 'Acompanhamento da solicitação',
+            'mensagem' => 'Nenhuma ação necessária no momento.',
+            'estadosAtuais' => $descricoesEstadoAtual,
+            'acoesDisponiveis' => [],
         ];
     }
+
     // Método para obter as transições visíveis para o usuário com base nos estados atuais do objeto e nas regras de acesso
-    private function getVisibleTransitionsForCurrentUser(array $workflowObjectData): array
+    private function obterTransicoesVisiveisParaUsuario(array $workflowObjectData): array
     {
-        $visibleTransitions = [];
-        $transitions = $workflowObjectData['workflowDefinition']->definition['transitions'] ?? [];
-        $places = $workflowObjectData['workflowDefinition']->definition['places'] ?? [];
-        $currentStateKeys = array_keys($workflowObjectData['workflowObject']->state ?? []);
-        $enabledTransitions = $workflowObjectData['workflowsTransitions']['enabled'] ?? [];
-        $user = auth()->user();
-    
-        foreach ($currentStateKeys as $stateKey) {
-            //  Verificar cada transição para ver se ela é aplicável ao estado atual e se o usuário tem permissão para executá-la
-            foreach ($transitions as $transitionName => $transitionData) {
-                if (($transitionData['from'] ?? null) !== $stateKey) {
+        $transicoesVisiveis = [];
+        $transicoes = $workflowObjectData['workflowDefinition']->definition['transitions'] ?? [];
+        $lugares = $workflowObjectData['workflowDefinition']->definition['places'] ?? [];
+        $chavesEstadoAtual = array_keys($workflowObjectData['workflowObject']->state ?? []);
+        $transicoesHabilitadas = $workflowObjectData['workflowsTransitions']['enabled'] ?? [];
+        $usuario = auth()->user();
+
+        foreach ($chavesEstadoAtual as $chaveEstado) {
+            // Verificar cada transição para ver se ela é aplicável ao estado atual e se o usuário tem permissão para executá-la
+            foreach ($transicoes as $nomeTransicao => $dadosTransicao) {
+                if (($dadosTransicao['from'] ?? null) !== $chaveEstado) {
                     continue;
                 }
 
-                if (!in_array($transitionName, $enabledTransitions, true)) {
+                if (! in_array($nomeTransicao, $transicoesHabilitadas, true)) {
                     continue;
                 }
                 // Verificar se o usuário tem pelo menos um dos papéis necessários para executar a transição
-                $needRoles = array_values($places[$stateKey]['role'] ?? []);
-                $hasRole = false;
-                foreach ($needRoles as $role) {
-                    if (($user && $user->hasRole($role)) || Gate::allows('admin')) {
-                        $hasRole = true;
+                $papeisNecessarios = array_values($lugares[$chaveEstado]['role'] ?? []);
+                $temPapel = false;
+                foreach ($papeisNecessarios as $papel) {
+                    if (($usuario && $usuario->hasRole($papel)) || Gate::allows('admin')) {
+                        $temPapel = true;
                         break;
                     }
                 }
                 // Se o usuário tiver permissão, adicionar a transição à lista de transições visíveis
-                if ($hasRole) {
-                    $visibleTransitions[$transitionName] =
-                        $transitionData['label'] ?? Str::replace('_', ' ', ucfirst($transitionName));
+                if ($temPapel) {
+                    $transicoesVisiveis[$nomeTransicao] =
+                        $dadosTransicao['label'] ?? Str::replace('_', ' ', ucfirst($nomeTransicao));
                 }
             }
         }
 
-        return $visibleTransitions;
+        return $transicoesVisiveis;
     }
 
     // Método para construir o histórico de estados do usuário com base nas submissões de formulários relacionadas ao objeto
-    private function buildUserStateHistory(array $workflowObjectData): array
+    private function construirHistoricoEstados(array $workflowObjectData): array
     {
-        $transitions = $workflowObjectData['workflowDefinition']->definition['transitions'] ?? [];
-        $places = $workflowObjectData['workflowDefinition']->definition['places'] ?? [];
-        
-        // Percorrer as submissões de formulários, ordenando por data de criação, e construir uma descrição legível 
+        $transicoes = $workflowObjectData['workflowDefinition']->definition['transitions'] ?? [];
+        $lugares = $workflowObjectData['workflowDefinition']->definition['places'] ?? [];
+
+        // Percorrer as submissões de formulários, ordenando por data de criação, e construir uma descrição legível
         // do histórico de estados e transições para o usuário
         return collect($workflowObjectData['formSubmissions'] ?? [])
             ->sortByDesc('created_at')
-            ->map(function ($submission) use ($transitions, $places) {
-                $data = $submission->data ?? [];
-                $placeValue = $submission->place ?? ($data['place'] ?? null);
-                $transitionName = $data['transition'] ?? null;
+            ->map(function ($submissao) use ($transicoes, $lugares) {
+                $dados = $submissao->data ?? [];
+                $valorEstado = $submissao->place ?? ($dados['place'] ?? null);
+                $nomeTransicao = $dados['transition'] ?? null;
                 // Tratar o valor do estado para criar uma descrição legível
-                $stateDescriptions = collect(explode(',', (string) $placeValue))
-                    ->map(function ($state) {
-                        return trim($state);
+                $descricoesEstado = collect(explode(',', (string) $valorEstado))
+                    ->map(function ($estado) {
+                        return trim($estado);
                     })
                     ->filter()
-                    ->map(function ($stateKey) use ($places) {
-                        return $places[$stateKey]['description'] ?? $stateKey;
+                    ->map(function ($chaveEstado) use ($lugares) {
+                        return $lugares[$chaveEstado]['description'] ?? $chaveEstado;
                     })
                     ->values()
                     ->all();
 
-                $transitionLabel = $transitionName
-                    ? ($transitions[$transitionName]['label'] ?? Str::replace('_', ' ', ucfirst($transitionName)))
+                $rotuloTransicao = $nomeTransicao
+                    ? ($transicoes[$nomeTransicao]['label'] ?? Str::replace('_', ' ', ucfirst($nomeTransicao)))
                     : null;
-      
-                $reason = $data['retorno'] ?? null;
-                $isReturn = $transitionLabel
-                    ? Str::contains(Str::lower($transitionLabel), ['devolv', 'retorn'])
+
+                $motivo = $dados['retorno'] ?? null;
+                $ehRetorno = $rotuloTransicao
+                    ? Str::contains(Str::lower($rotuloTransicao), ['devolv', 'retorn'])
                     : false;
 
-                if ($isReturn && $reason) {
-                    $detail = 'Formulário retornado ao usuário. Motivo: ' . $reason;
-                } elseif ($isReturn) {
-                    $detail = 'Formulário retornado ao usuário para correção.';
-                } elseif ($reason) {
-                    $detail = $reason;
-                } elseif (!empty($stateDescriptions)) {
-                    $detail = 'Estado atualizado para: ' . implode(', ', $stateDescriptions) . '.';
+                if ($ehRetorno && $motivo) {
+                    $detalhe = 'Formulário retornado ao usuário. Motivo: '.$motivo;
+                } elseif ($ehRetorno) {
+                    $detalhe = 'Formulário retornado ao usuário para correção.';
+                } elseif ($motivo) {
+                    $detalhe = $motivo;
+                } elseif (! empty($descricoesEstado)) {
+                    $detalhe = 'Estado atualizado para: '.implode(', ', $descricoesEstado).'.';
                 } else {
-                    $detail = 'Movimentação registrada no fluxo.';
+                    $detalhe = 'Movimentação registrada no fluxo.';
                 }
 
-                $title = $transitionLabel
-                    ? $transitionLabel
-                    : (!empty($stateDescriptions) ? implode(', ', $stateDescriptions) : 'Atualização de solicitação');
+                $titulo = $rotuloTransicao
+                    ? $rotuloTransicao
+                    : (! empty($descricoesEstado) ? implode(', ', $descricoesEstado) : 'Atualização de solicitação');
 
                 return [
-                    'title' => $title,
-                    'detail' => $detail,
-                    'created_at' => $submission->created_at,
+                    'titulo' => $titulo,
+                    'detalhe' => $detalhe,
+                    'created_at' => $submissao->created_at,
                 ];
             })
-            ->filter(function ($entry) {
-                return !empty($entry['title']);
+            ->filter(function ($entrada) {
+                return ! empty($entrada['titulo']);
             })
             ->values()
             ->all();
     }
-
 
     public function deleteObject($workflowObjectId)
     {
@@ -289,19 +389,20 @@ class WorkflowController extends Controller
 
     public function applyTransition(Request $request, $id)
     {
-        $workflowObjectId = Workflow::aplicarTransition($id, $request->input('transition'), $request->input('workflowDefinitionName'));        
+        $workflowObjectId = Workflow::aplicarTransition($id, $request->input('transition'), $request->input('workflowDefinitionName'));
 
-        if($workflowObjectId == 0)
-        {
+        if ($workflowObjectId == 0) {
             return redirect()->route('workflows.createObject', ['definitionName' => $request->input('workflowDefinitionName')]);
         }
+
         return redirect()->route('workflows.showObject', ['id' => $workflowObjectId]);
     }
 
-    public function submitForm(Request $request) 
+    public function submitForm(Request $request)
     {
         $request->merge(['id' => null]);
         $workflowObjectId = Workflow::enviarFormulario($request);
+
         return redirect()->route('workflows.showObject', ['id' => $workflowObjectId]);
     }
 
@@ -310,8 +411,8 @@ class WorkflowController extends Controller
         \UspTheme::activeUrl('atendimentos');
 
         $workflowsDisplay = Workflow::listarWorkflowsObjectsRelacionados();
+
         return view('userRelatedObjects', compact('workflowsDisplay'));
 
     }
-    
 }
