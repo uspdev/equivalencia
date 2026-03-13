@@ -80,6 +80,7 @@ class WorkflowController extends Controller
     {
         $workflowObjectData = Workflow::criarWorkflowObject($definitionName);
         $workflowObjectData = $this->prepararDadosDaTelaDoObjeto($workflowObjectData);
+        $workflowObjectData['orientacaoUsuario'] = [];
 
         return view('show.showObject', compact('workflowObjectData'));
     }
