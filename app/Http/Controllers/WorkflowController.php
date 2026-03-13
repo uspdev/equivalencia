@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Uspdev\Workflow\Workflow;
+use Uspdev\Forms\Form;
 
 class WorkflowController extends Controller
 {
