@@ -10,7 +10,7 @@
             class="m-1 btn transition-btn rounded btn-primary">
             {{ $dadosTransicao['label'] }}
         </button>
-        @if (!$loop->last) | @endif
+        @notLast('|')
     @empty
         <p class="text-muted">Nenhuma ação disponível.</p>
     @endforelse
