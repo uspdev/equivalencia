@@ -66,25 +66,51 @@
                     @foreach ($campos as $key => $value)
                         @if (in_array($key, $camposApenasAdmin, true))
                             @can('admin')
+                                @php
+                                    $labelCampo = $key === 'coddis' ? 'Disciplina' : ucfirst(str_replace('_', ' ', $key));
+                                    $valorExibido = $value;
+
+                                    if ($key === 'coddis' && !empty($value)) {
+                                        try {
+                                            $nomeDisciplina = \Uspdev\Replicado\Graduacao::nomeDisciplina((string) $value);
+                                            $valorExibido = $nomeDisciplina ?: $value;
+                                        } catch (\Throwable $e) {
+                                            $valorExibido = $value;
+                                        }
+                                    }
+                                @endphp
                                 <div class="col-md-6">
                                     <div class="border rounded p-2 h-100 bg-light">
                                         <small class="text-muted d-block text-uppercase">
-                                            {{ ucfirst(str_replace('_', ' ', $key)) }}
+                                            {{ $labelCampo }}
                                         </small>
                                         <span class="fw-semibold">
-                                            {{ is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : $value }}
+                                            {{ is_array($valorExibido) ? json_encode($valorExibido, JSON_UNESCAPED_UNICODE) : $valorExibido }}
                                         </span>
                                     </div>
                                 </div>
                             @endcan
                         @elseif (in_array($key, $camposVisiveisUsuario, true) || auth()->user()?->can('admin'))
+                            @php
+                                $labelCampo = $key === 'coddis' ? 'Disciplina' : ucfirst(str_replace('_', ' ', $key));
+                                $valorExibido = $value;
+
+                                if ($key === 'coddis' && !empty($value)) {
+                                    try {
+                                        $nomeDisciplina = \Uspdev\Replicado\Graduacao::nomeDisciplina((string) $value);
+                                        $valorExibido = $nomeDisciplina ?: $value;
+                                    } catch (\Throwable $e) {
+                                        $valorExibido = $value;
+                                    }
+                                }
+                            @endphp
                             <div class="col-md-6">
                                 <div class="border rounded p-2 h-100 bg-light">
                                     <small class="text-muted d-block text-uppercase">
-                                        {{ ucfirst(str_replace('_', ' ', $key)) }}
+                                        {{ $labelCampo }}
                                     </small>
                                     <span class="fw-semibold">
-                                        {{ is_array($value) ? json_encode($value, JSON_UNESCAPED_UNICODE) : $value }}
+                                        {{ is_array($valorExibido) ? json_encode($valorExibido, JSON_UNESCAPED_UNICODE) : $valorExibido }}
                                     </span>
                                 </div>
                             </div>
