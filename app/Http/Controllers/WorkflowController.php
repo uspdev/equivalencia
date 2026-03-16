@@ -181,7 +181,7 @@ class WorkflowController extends Controller
         return array_unique($antecedentes);
     }
 
-    // Prepara dados enriquecidos de cada transição para a seção de administrador,
+    // Prepara dados de cada transição para a seção de administrador,
     // incluindo se ela tem formulário, se o usuário tem permissão e se está habilitada.
     private function construirTransicoesAdmin(array $workflowObjectData): array
     {

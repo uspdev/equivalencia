@@ -1,7 +1,7 @@
 {{-- Histórico de estados da solicitação voltado ao usuário comum.
      Exibe título da ação, data e descrição amigável sem dados sensíveis.
      Usa workflowObjectData['historicoEstados'] preparado no controller. --}}
-<div class="col-md-4 ms-auto">
+<div class="col-12 col-xl-4 mt-3 mt-xl-0">
     <div class="card h-100">
         <div class="card-header">
             <span class="h5 mb-0">Histórico de Estados</span>

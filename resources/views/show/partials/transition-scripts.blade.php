@@ -7,6 +7,133 @@
         @parent
         <script>
             $(document).ready(function () {
+                var objectId = '{{ $workflowObjectData['workflowObject']->id ?? 'novo' }}';
+
+                function storageKey(transitionName) {
+                    return 'workflow_form_' + objectId + '_' + transitionName;
+                }
+
+                function getTransitionNameFromForm(formElement) {
+                    var wrapper = $(formElement).closest('.inline-transition-form');
+                    return wrapper.data('transition') || $(formElement).find('input[name="transition"]').val() || '';
+                }
+
+                function collectFormData(formElement) {
+                    var payload = {};
+                    var form = $(formElement);
+
+                    form.find('input, textarea, select').each(function () {
+                        var field = $(this);
+                        var name = field.attr('name');
+                        if (!name || name === '_token' || name === 'workflowObject' || name === 'workflowDefinitionName') {
+                            return;
+                        }
+
+                        if (field.is(':file')) {
+                            return;
+                        }
+
+                        if (field.is(':checkbox')) {
+                            if (!Object.prototype.hasOwnProperty.call(payload, name)) {
+                                payload[name] = [];
+                            }
+                            if (field.is(':checked')) {
+                                payload[name].push(field.val());
+                            }
+                            return;
+                        }
+
+                        if (field.is(':radio')) {
+                            if (field.is(':checked')) {
+                                payload[name] = field.val();
+                            }
+                            return;
+                        }
+
+                        payload[name] = field.val();
+                    });
+
+                    return payload;
+                }
+
+                function saveFormState(formElement) {
+                    var transitionName = getTransitionNameFromForm(formElement);
+                    if (!transitionName) {
+                        return;
+                    }
+                    sessionStorage.setItem(storageKey(transitionName), JSON.stringify(collectFormData(formElement)));
+                }
+
+                function restoreFormState(formElement, transitionName) {
+                    if (!transitionName) {
+                        return;
+                    }
+
+                    var raw = sessionStorage.getItem(storageKey(transitionName));
+                    if (!raw) {
+                        return;
+                    }
+
+                    var data;
+                    try {
+                        data = JSON.parse(raw);
+                    } catch (e) {
+                        return;
+                    }
+
+                    var form = $(formElement);
+                    Object.keys(data).forEach(function (name) {
+                        var value = data[name];
+                        var fields = form.find('[name="' + name + '"]');
+                        if (!fields.length) {
+                            return;
+                        }
+
+                        var first = fields.first();
+
+                        if (first.is(':checkbox')) {
+                            var values = Array.isArray(value) ? value : [value];
+                            fields.each(function () {
+                                var checked = values.indexOf($(this).val()) !== -1;
+                                $(this).prop('checked', checked).trigger('change');
+                            });
+                            return;
+                        }
+
+                        if (first.is(':radio')) {
+                            fields.each(function () {
+                                var checked = $(this).val() == value;
+                                $(this).prop('checked', checked).trigger('change');
+                            });
+                            return;
+                        }
+
+                        if (first.is('select[multiple]') && Array.isArray(value)) {
+                            first.val(value).trigger('change');
+                            return;
+                        }
+
+                        first.val(value).trigger('change');
+                    });
+                }
+
+                $('.inline-transition-form form').each(function () {
+                    var form = $(this);
+                    form.on('input change', 'input, textarea, select', function () {
+                        saveFormState(form);
+                    });
+
+                    form.on('click', 'button, a', function () {
+                        var buttonText = ($(this).text() || '').toLowerCase();
+                        if (buttonText.indexOf('voltar') !== -1 || buttonText.indexOf('anterior') !== -1) {
+                            setTimeout(function () {
+                                saveFormState(form);
+                                restoreFormState(form, getTransitionNameFromForm(form));
+                            }, 50);
+                        }
+                    });
+                });
+
                 $('.transition-btn').on('click', function (e) {
                     var transitionName = $(this).data('transition');
                     var transitionUrl  = $(this).data('url');
@@ -35,6 +162,8 @@
                         if (transitionForm.find('input[name="workflowDefinitionName"]').length === 0 && workflowName) {
                             transitionForm.append('<input type="hidden" name="workflowDefinitionName" value="' + workflowName + '">');
                         }
+
+                        restoreFormState(transitionForm, transitionName);
 
                         $('html, body').animate({ scrollTop: formsContainer.offset().top - 20 }, 200);
                         return;

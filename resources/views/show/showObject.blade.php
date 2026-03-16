@@ -24,7 +24,9 @@
         <div class="card mt-2">
             <div class="card-body">
                 <div class="row">
-                    @include('show.partials.submissoes-admin')
+                    <div class="col-12 col-xl-8">
+                        @include('show.partials.submissoes')
+                    </div>
                     @include('show.partials.historico-estados')
                 </div>
             </div>
