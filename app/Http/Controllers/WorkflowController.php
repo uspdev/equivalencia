@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Uspdev\Workflow\Workflow;
-use Uspdev\Forms\Form;
 
 class WorkflowController extends Controller
 {
@@ -123,7 +122,6 @@ class WorkflowController extends Controller
         $workflowObjectData['orientacaoUsuario'] = $this->construirOrientacaoUsuario($workflowObjectData);
         $workflowObjectData['historicoEstados'] = $this->construirHistoricoEstados($workflowObjectData);
         $workflowObjectData['transicoesVisiveis'] = $this->construirTransicoesVisiveis($workflowObjectData);
-        $workflowObjectData['transicoesEntrada'] = $this->construirTransicoesEntrada($workflowObjectData);
         $workflowObjectData['transicoesAdmin'] = $this->construirTransicoesAdmin($workflowObjectData);
 
         return $workflowObjectData;
@@ -158,27 +156,6 @@ class WorkflowController extends Controller
         }
 
         return $resultado;
-    }
-
-    // Monta a lista de transições que levam AO estado atual do objeto,
-    // usada para filtrar o que deve ser exibido ao usuário no histórico.
-    private function construirTransicoesEntrada(array $workflowObjectData): array
-    {
-        $transicoes = $workflowObjectData['workflowDefinition']->definition['transitions'] ?? [];
-        $estadoAtual = $workflowObjectData['workflowObject']->state ?? [];
-        $antecedentes = [];
-
-        foreach (array_keys($estadoAtual) as $nomeEstado) {
-            foreach ($transicoes as $nomeTransicao => $dadosTransicao) {
-                $destinos = $dadosTransicao['tos'] ?? [];
-                $destinos = is_array($destinos) ? $destinos : [$destinos];
-                if (in_array($nomeEstado, $destinos, true)) {
-                    $antecedentes[] = $nomeTransicao;
-                }
-            }
-        }
-
-        return array_unique($antecedentes);
     }
 
     // Prepara dados de cada transição para a seção de administrador,
