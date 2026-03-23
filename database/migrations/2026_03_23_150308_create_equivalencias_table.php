@@ -22,7 +22,7 @@ return new class extends Migration
             // CAMPOS COMPARTILHADOS
             $table->string('coddis', 7);
             $table->string('nome_disciplina', 240)->nullable();
-            $table->tinyInteger('creditos')->nullable();
+            $table->tinyInteger('creditos')->nullable()->default(0);
             $table->smallInteger('carga_horaria')->nullable();
             $table->string('nomcur', 100)->nullable();
 
