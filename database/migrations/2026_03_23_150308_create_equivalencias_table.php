@@ -14,27 +14,27 @@ return new class extends Migration
         Schema::create('equivalencias', function (Blueprint $table) {
             $table->id();
 
-            // CAMPOS USP 
-            $table->string('verdis')->nullable();
-            $table->string('codcur')->nullable();
-            $table->string('codhab')->nullable();
-            
+            // CAMPOS USP
+            $table->tinyInteger('verdis')->nullable();
+            $table->integer('codcur')->nullable();
+            $table->smallInteger('codhab')->nullable();
+
             // CAMPOS COMPARTILHADOS
-            $table->string('coddis');
-            $table->string('nome_disciplina')->nullable();
-            $table->integer('creditos')->nullable();
-            $table->integer('carga_horaria')->nullable();
-            $table->string('curso')->nullable();
+            $table->string('coddis', 7);
+            $table->string('nome_disciplina', 240)->nullable();
+            $table->tinyInteger('creditos')->nullable();
+            $table->smallInteger('carga_horaria')->nullable();
+            $table->string('nomcur', 100)->nullable();
 
             // DISCIPLINA EXTERNA
             $table->string('ies')->nullable();
             $table->integer('ano')->nullable();
-            $table->enum('semestre', [1, 2])->nullable();
-            $table->string('frequencia')->nullable();
-            $table->decimal('nota', 4, 2)->nullable();
+            $table->integer('semestre')->nullable();
+            $table->decimal('frequencia', 5, 2)->nullable();
+            $table->decimal('nota', 5, 2)->nullable();
 
-            // tipo (requerida ou cursada)
-            $table->enum('tipo', ['requerida', 'cursada'])->nullable();
+
+            $table->char('tipo', 1)->nullable(); // cursada ou requerida (c ou r)
 
             // RELACIONAMENTO
             $table->foreignId('equivalencias_id')
