@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreEquivalenciaRequest extends FormRequest
 {
@@ -11,7 +12,7 @@ class StoreEquivalenciaRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,9 +23,20 @@ class StoreEquivalenciaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'coddis' => 'required|string|max:7',
+            'coddis' => [
+                'required',
+                'string',
+                'max:7',
+                Rule::unique('equivalencias')->whereNull('equivalencias_id'),
+            ],
 
             'nome_disciplina' => 'nullable|string|max:240',
+
+            'verdis' => 'nullable|integer|min:0|max:127',
+
+            'codcur' => 'nullable|integer|min:0',
+
+            'codhab' => 'nullable|integer|min:0|max:32767',
 
             'creditos' => 'nullable|integer|min:0|max:20',
 
@@ -40,15 +52,12 @@ class StoreEquivalenciaRequest extends FormRequest
 
             'frequencia' => 'nullable|numeric|min:0|max:100',
 
-            'equivalencias_id' => [
-                'nullable',
-                'exists:equivalencias,id',
-                function ($attribute, $value, $fail) {
-                    if ($value == $this->id) {
-                        $fail('Uma equivalência não pode referenciar a si mesma.');
-                    }
-                },
-            ],
+            'ies' => 'nullable|string|max:255',
+
+            'pdf_path' => 'nullable|string|max:255',
+
+            // store cria apenas disciplina USP (pai)
+            'equivalencias_id' => 'prohibited',
         ];
     }
 }

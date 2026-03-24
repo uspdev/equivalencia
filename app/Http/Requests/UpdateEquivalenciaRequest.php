@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Equivalencia;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateEquivalenciaRequest extends FormRequest
 {
@@ -12,7 +13,7 @@ class UpdateEquivalenciaRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -22,8 +23,44 @@ class UpdateEquivalenciaRequest extends FormRequest
      */
     public function rules(): array
     {
+        $equivalencia = $this->route('equivalencia');
+        $equivalenciaId = $equivalencia instanceof Equivalencia
+            ? $equivalencia->id
+            : $equivalencia;
+
         return [
-            'coddis' => 'sometimes|string|max:7',
+            'coddis' => [
+                'sometimes',
+                'string',
+                'max:7',
+                Rule::unique('equivalencias')
+                    ->whereNull('equivalencias_id')
+                    ->ignore($equivalenciaId),
+            ],
+
+            'nome_disciplina' => 'sometimes|nullable|string|max:240',
+
+            'verdis' => 'sometimes|nullable|integer|min:0|max:127',
+
+            'codcur' => 'sometimes|nullable|integer|min:0',
+
+            'codhab' => 'sometimes|nullable|integer|min:0|max:32767',
+
+            'creditos' => 'sometimes|nullable|integer|min:0|max:20',
+
+            'carga_horaria' => 'sometimes|nullable|integer|min:0|max:1000',
+
+            'nomcur' => 'sometimes|nullable|string|max:100',
+
+            'ano' => 'sometimes|nullable|integer|min:1900|max:'.date('Y'),
+
+            'semestre' => 'sometimes|nullable|integer|in:1,2',
+
+            'nota' => 'sometimes|nullable|numeric|min:0|max:10',
+
+            'frequencia' => 'sometimes|nullable|numeric|min:0|max:100',
+
+            'ies' => 'sometimes|nullable|string|max:255',
 
             'tipo' => 'nullable|in:c,r',
 
@@ -31,8 +68,10 @@ class UpdateEquivalenciaRequest extends FormRequest
                 'nullable',
                 'exists:equivalencias,id',
                 function ($attribute, $value, $fail) {
-
-                    $id = $this->route('equivalencia'); // id da URL
+                    $routeEquivalencia = $this->route('equivalencia');
+                    $id = $routeEquivalencia instanceof Equivalencia
+                        ? $routeEquivalencia->id
+                        : $routeEquivalencia;
 
                     if ($value == $id) {
                         $fail('Não pode referenciar a si mesmo.');
@@ -53,6 +92,8 @@ class UpdateEquivalenciaRequest extends FormRequest
                     }
                 },
             ],
+
+            'pdf_path' => 'sometimes|nullable|string|max:255',
         ];
     }
 }
