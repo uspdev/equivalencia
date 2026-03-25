@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\EquivalenciaController;
 use App\Http\Controllers\WorkflowController;
 
 /*
@@ -18,6 +19,12 @@ use App\Http\Controllers\WorkflowController;
 Route::get('/', [WorkflowController::class, 'home'])->name('workflows.index');
 
 Route::middleware(['auth'])->group(function () {
+    Route::resource('equivalencias', EquivalenciaController::class);
+    Route::post('/equivalencias/{equivalencia}/equivalencias', [EquivalenciaController::class, 'addEquivalencia'])
+        ->name('equivalencias.add-equivalencia');
+    Route::delete('/equivalencias/{equivalencia}/equivalencias/{equivalenciaFilha}', [EquivalenciaController::class, 'destroyEquivalencia'])
+        ->name('equivalencias.destroy-equivalencia');
+
     Route::get('/createdefinition', [WorkflowController::class, 'createDefinition'])->name('workflows.create-definition');
     Route::post('/createdefinition', [WorkflowController::class, 'storeDefinition'])->name('workflows.store-definition');
     Route::get('/listdefinitions', [WorkflowController::class, 'listDefinitions'])->name('workflows.list-definitions');
