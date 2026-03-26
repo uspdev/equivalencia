@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="container mt-3">
-    <h2 class="mb-3">Nova disciplina USP</h2>
+    <h2 class="mb-3">Nova disciplina requerida</h2>
 
     @if ($errors->any())
         <div class="alert alert-danger">

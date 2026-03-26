@@ -3,13 +3,13 @@
 @section('content')
 <div class="container mt-3">
     <div class="mb-3">
-        <h2 class="mb-3">Disciplinas USP</h2>
-        <a href="{{ route('equivalencias.create') }}" class="btn btn-primary">Nova disciplina USP</a>
+        <h2 class="mb-3">Disciplinas Requeridas</h2>
+        <a href="{{ route('equivalencias.create') }}" class="btn btn-primary">Nova disciplina requerida</a>
     </div>
     <div class="card">
         <div class="card-body">
             @if ($disciplinas->isEmpty())
-                <p class="mb-0">Nenhuma disciplina USP cadastrada.</p>
+                <p class="mb-0">Nenhuma disciplina requerida cadastrada.</p>
             @else
                 <div class="table-responsive">
                     <table class="table table-striped table-bordered datatable-simples mb-0">

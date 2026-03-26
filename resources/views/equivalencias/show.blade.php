@@ -3,11 +3,11 @@
 @section('content')
 <div class="container mt-3">
     <div class="mb-3">
-        <h2 class="mb-0">Disciplina USP: {{ $disciplina->coddis }}</h2>
+        <h2 class="mb-0">Disciplina Requerida: {{ $disciplina->coddis }}</h2>
     </div>
 
     <div class="card mb-4">
-        <div class="card-header">Dados da disciplina USP</div>
+        <div class="card-header">Dados da disciplina requerida</div>
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-striped table-bordered mb-0">
@@ -46,17 +46,17 @@
     </div>
 
     <div class="card mb-4">
-        <div class="card-header">Adicionar equivalência</div>
+        <div class="card-header">Adicionar disciplina cursada</div>
         <div class="card-body">
             {!! $formHtmlEquivalencia !!}
         </div>
     </div>
 
     <div class="card">
-        <div class="card-header">Equivalências cadastradas</div>
+        <div class="card-header">Disciplinas cursadas equivalentes cadastradas</div>
         <div class="card-body p-0">
             @if ($equivalencias->isEmpty())
-                <p class="p-3 mb-0">Nenhuma equivalência cadastrada para esta disciplina.</p>
+                <p class="p-3 mb-0">Nenhuma disciplina cursada equivalente cadastrada para esta disciplina.</p>
             @else
                 <div class="table-responsive">
                     <table class="table table-striped table-bordered datatable-simples mb-0">
