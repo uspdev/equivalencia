@@ -34,7 +34,7 @@ return new class extends Migration
             $table->decimal('nota', 5, 2)->nullable();
 
 
-            $table->char('tipo', 1)->nullable(); // cursada ou requerida (c ou r)
+            $table->char('tipo', 1)->default('r'); // cursada ou requerida (c ou r)
 
             // RELACIONAMENTO
             $table->foreignId('equivalencias_id')
