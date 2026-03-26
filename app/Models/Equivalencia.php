@@ -30,6 +30,10 @@ class Equivalencia extends Model
         'pdf_path',
     ];
 
+    protected $attributes = [
+        'tipo' => self::TIPO_REQUERIDA,
+    ];
+
     protected $casts = [
         'verdis' => 'integer',
         'codcur' => 'integer',
@@ -47,33 +51,49 @@ class Equivalencia extends Model
     // e pode ser equivalente a várias outras disciplinas (children)
     public function disciplinaUsp()
     {
-        return $this->belongsTo(Equivalencia::class, 'equivalencias_id');
+        return $this->belongsTo(Equivalencia::class, 'equivalencias_id')
+            ->where('tipo', self::TIPO_REQUERIDA);
+    }
+
+    public function parent()
+    {
+        return $this->disciplinaUsp();
     }
 
     // Uma disciplina pode ser equivalente a várias outras disciplinas (children)
     public function equivalentes()
     {
-        return $this->hasMany(Equivalencia::class, 'equivalencias_id');
+        return $this->hasMany(Equivalencia::class, 'equivalencias_id')
+            ->where('tipo', self::TIPO_CURSADA);
     }
 
     // ======= Escopos para facilitar consultas =============
     public function scopeUsp(Builder $query): Builder
     {
-        return $query->whereNull('equivalencias_id');
+        return $query
+            ->whereNull('equivalencias_id')
+            ->where('tipo', self::TIPO_REQUERIDA);
     }
 
     public function scopeEquivalencia(Builder $query): Builder
     {
-        return $query->whereNotNull('equivalencias_id');
+        return $query
+            ->whereNotNull('equivalencias_id')
+            ->where('tipo', self::TIPO_CURSADA);
     }
 
     public function isUsp(): bool
     {
-        return $this->equivalencias_id === null;
+        return $this->equivalencias_id === null && $this->tipo === self::TIPO_REQUERIDA;
     }
 
     public function isEquivalencia(): bool
     {
-        return $this->equivalencias_id !== null;
+        return $this->equivalencias_id !== null && $this->tipo === self::TIPO_CURSADA;
+    }
+
+    public function permiteEquivalenciaDireta(): bool
+    {
+        return $this->isUsp() && $this->equivalentes()->exists();
     }
 }
