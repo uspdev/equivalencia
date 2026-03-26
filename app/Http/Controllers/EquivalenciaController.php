@@ -7,6 +7,7 @@ use App\Http\Requests\StoreEquivalenciaRequest;
 use App\Http\Requests\UpdateEquivalenciaRequest;
 use App\Models\Equivalencia;
 use Uspdev\Forms\Form;
+use Uspdev\Replicado\Graduacao;
 
 class EquivalenciaController extends Controller
 {
@@ -31,7 +32,7 @@ class EquivalenciaController extends Controller
      */
     public function create()
     {
-        $campos = ['coddis', 'nome_disciplina', 'verdis', 'codcur', 'codhab'];
+        $campos = ['coddis'];
 
         return view('equivalencias.create', [
             'formHtml' => $this->buildFormHtml(
@@ -50,6 +51,8 @@ class EquivalenciaController extends Controller
     {
         $dados = $request->validated();
         $dados['equivalencias_id'] = null;
+        $dados['tipo'] = Equivalencia::TIPO_REQUERIDA;
+        $dados = $this->preencherDadosDisciplinaUsp($dados);
 
         $equivalencia = Equivalencia::create($dados);
 
@@ -63,7 +66,7 @@ class EquivalenciaController extends Controller
      */
     public function show(Equivalencia $equivalencia)
     {
-        abort_if($equivalencia->isEquivalencia(), 404);
+        abort_unless($equivalencia->isUsp(), 404);
 
         $equivalencia->load(['equivalentes' => function ($query) {
             $query->orderBy('coddis');
@@ -80,11 +83,8 @@ class EquivalenciaController extends Controller
                     'coddis',
                     'nome_disciplina',
                     'ies',
-                    'ano',
-                    'semestre',
-                    'nota',
-                    'frequencia',
-                    'tipo',
+                    'creditos',
+                    'carga_horaria',
                 ])
             ),
         ]);
@@ -95,14 +95,10 @@ class EquivalenciaController extends Controller
      */
     public function edit(Equivalencia $equivalencia)
     {
-        abort_if($equivalencia->isEquivalencia(), 404);
+        abort_unless($equivalencia->isUsp(), 404);
 
         $dadosPadrao = [
             'coddis' => $equivalencia->coddis,
-            'nome_disciplina' => $equivalencia->nome_disciplina,
-            'verdis' => $equivalencia->verdis,
-            'codcur' => $equivalencia->codcur,
-            'codhab' => $equivalencia->codhab,
         ];
 
         return view('equivalencias.edit', [
@@ -121,10 +117,12 @@ class EquivalenciaController extends Controller
      */
     public function update(UpdateEquivalenciaRequest $request, Equivalencia $equivalencia)
     {
-        abort_if($equivalencia->isEquivalencia(), 404);
+        abort_unless($equivalencia->isUsp(), 404);
 
         $dados = $request->validated();
-        unset($dados['equivalencias_id']);
+        $dados['tipo'] = Equivalencia::TIPO_REQUERIDA;
+
+        $dados = $this->preencherDadosDisciplinaUsp($dados, $equivalencia->coddis);
 
         $equivalencia->update($dados);
 
@@ -138,7 +136,7 @@ class EquivalenciaController extends Controller
      */
     public function destroy(Equivalencia $equivalencia)
     {
-        abort_if($equivalencia->isEquivalencia(), 404);
+        abort_unless($equivalencia->isUsp(), 404);
 
         $equivalencia->delete();
 
@@ -149,10 +147,11 @@ class EquivalenciaController extends Controller
 
     public function addEquivalencia(StoreEquivalenciaFilhaRequest $request, Equivalencia $equivalencia)
     {
-        abort_if($equivalencia->isEquivalencia(), 404);
+        abort_unless($equivalencia->isUsp(), 404);
 
         $dados = $request->validated();
         $dados['equivalencias_id'] = $equivalencia->id;
+        $dados['tipo'] = Equivalencia::TIPO_CURSADA;
 
         Equivalencia::create($dados);
 
@@ -163,7 +162,7 @@ class EquivalenciaController extends Controller
 
     public function destroyEquivalencia(Equivalencia $equivalencia, Equivalencia $equivalenciaFilha)
     {
-        abort_if($equivalencia->isEquivalencia(), 404);
+        abort_unless($equivalencia->isUsp(), 404);
         abort_unless($equivalenciaFilha->equivalencias_id === $equivalencia->id, 404);
 
         $equivalenciaFilha->delete();
@@ -173,6 +172,7 @@ class EquivalenciaController extends Controller
             ->with('success', 'Equivalência removida com sucesso.');
     }
 
+    // Cria um formulário HTML para as views, utilizando a classe Form do pacote Uspdev/Forms.
     private function buildFormHtml(string $name, string $action, string $method, array $values): string
     {
         $form = new Form([
@@ -188,6 +188,8 @@ class EquivalenciaController extends Controller
         return $form->generateHtml($name, $formSubmission) ?? '';
     }
 
+    // Recupera os valores antigos (old input) para os campos do formulário,
+    // utilizando os valores padrão fornecidos caso não haja old input.
     private function oldInputForFields(array $fields, array $defaults = []): array
     {
         $values = [];
@@ -197,5 +199,47 @@ class EquivalenciaController extends Controller
         }
 
         return $values;
+    }
+
+    // A partir do código da disciplina (coddis), busca os dados da disciplina no Replicado e preenche os campos correspondentes.
+    private function preencherDadosDisciplinaUsp(array $dados, ?string $coddisAtual = null): array
+    {
+        $coddis = $dados['coddis'] ?? $coddisAtual;
+
+        $disciplina = $this->buscarDisciplinaNoReplicado($coddis);
+
+        if (! $disciplina) {
+            return $dados;
+        }
+
+        // Preenche os campos da disciplina USP com os dados do Replicado, caso estejam disponíveis.
+        $dados['nome_disciplina'] = $disciplina['nomdis'] ?? $dados['nome_disciplina'] ?? null;
+        $dados['verdis'] = $disciplina['verdis'] ?? $dados['verdis'] ?? null;
+        $dados['creditos'] = $disciplina['creaul'] ?? $dados['creditos'] ?? null;
+        $dados['carga_horaria'] = $disciplina['numhor'] ?? $dados['carga_horaria'] ?? null;
+        $dados['nomcur'] = $disciplina['nomcur'] ?? $dados['nomcur'] ?? null;
+        $dados['codcur'] = $disciplina['codcur'] ?? $dados['codcur'] ?? null;
+        $dados['codhab'] = $disciplina['codhab'] ?? $dados['codhab'] ?? null;
+
+        return $dados;
+    }
+
+    private function buscarDisciplinaNoReplicado(?string $coddis): ?array
+    {
+        if (! $coddis) {
+            return null;
+        }
+
+        
+        $disciplinas = Graduacao::obterDisciplinas([$coddis]) ?? [];
+      
+
+        foreach ($disciplinas as $disciplina) {
+            if (($disciplina['coddis'] ?? null) === $coddis) {
+                return $disciplina;
+            }
+        }
+
+        return $disciplinas[0] ?? null;
     }
 }
