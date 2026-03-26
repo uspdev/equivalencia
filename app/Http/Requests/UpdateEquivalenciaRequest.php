@@ -38,10 +38,6 @@ class UpdateEquivalenciaRequest extends FormRequest
                     ->whereNull('equivalencias_id')
                     ->ignore($equivalenciaId),
             ],
-
-            'verdis' => 'sometimes|nullable|integer|min:0|max:127',
-            'codcur' => 'sometimes|nullable|integer|min:0',
-            'codhab' => 'sometimes|nullable|integer|min:0|max:32767',
         ];
     }
 }

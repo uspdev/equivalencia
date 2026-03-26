@@ -30,9 +30,6 @@ class StoreEquivalenciaRequest extends FormRequest
                 Rule::unique('equivalencias')->whereNull('equivalencias_id'),
             ],
 
-            'verdis' => 'nullable|integer|min:0|max:127',
-            'codcur' => 'nullable|integer|min:0',
-            'codhab' => 'nullable|integer|min:0|max:32767',
         ];
     }
 }
