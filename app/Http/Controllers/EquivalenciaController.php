@@ -231,7 +231,11 @@ class EquivalenciaController extends Controller
         }
 
         
-        $disciplinas = Graduacao::obterDisciplinas([$coddis]) ?? [];
+        try {
+            $disciplinas = Graduacao::obterDisciplinas([$coddis]) ?? [];
+        } catch (\Throwable $e) {
+            return null;
+        }
       
 
         foreach ($disciplinas as $disciplina) {
