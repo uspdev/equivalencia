@@ -2,8 +2,8 @@
 
 @section('content')
 <div class="container mt-3">
-    <div class="mb-3">
-        <h2 class="mb-3">Disciplinas Requeridas</h2>
+    <div class="mb-3 d-flex align-items-center justify-content-left">
+        <h2 class="mb-3 mr-3">Disciplinas Requeridas</h2>
         <a href="{{ route('equivalencias.create') }}" class="btn btn-primary">Nova disciplina requerida</a>
     </div>
     <div class="card">

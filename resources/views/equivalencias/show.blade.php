@@ -2,8 +2,10 @@
 
 @section('content')
 <div class="container mt-3">
-    <div class="mb-3">
-        <h2 class="mb-0">Disciplina Requerida: {{ $disciplina->coddis }}</h2>
+    <div class="mb-3 d-flex">
+        <h2><a href="{{ route('equivalencias.index') }}">Disciplinas USP</a></h2>
+        <h2> / </h2>
+        <h2 class="mb-0">{{ $disciplina->coddis }}</h2>   
     </div>
 
     <div class="card mb-4">
@@ -29,7 +31,7 @@
                             <td>{{ $disciplina->codcur ?: '-' }}</td>
                             <td>{{ $disciplina->codhab ?: '-' }}</td>
                             <td>
-                                <div class="d-flex mt-3">
+                                <div class="d-flex align-items-center">
                                     <a href="{{ route('equivalencias.edit', $disciplina) }}" class="btn btn-primary btn-sm mr-2">Editar</a>
                                     <form action="{{ route('equivalencias.destroy', $disciplina) }}" method="POST" class="d-inline">
                                         @csrf
