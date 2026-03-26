@@ -44,9 +44,6 @@
             </div>
         </div>
     </div>
-    <div>
-      
-    </div>
 
     <div class="card mb-4">
         <div class="card-header">Adicionar equivalência</div>
@@ -68,7 +65,8 @@
                                 <th>Código</th>
                                 <th>Nome</th>
                                 <th>IES</th>
-                                <th>Tipo</th>
+                                <th>Créditos</th>
+                                <th>Carga horária</th>
                                 <th style="width: 40px"></th>
                             </tr>
                         </thead>
@@ -79,7 +77,8 @@
                                     <td>{{ $equivalencia->coddis }}</td>
                                     <td>{{ $equivalencia->nome_disciplina ?: '-' }}</td>
                                     <td>{{ $equivalencia->ies ?: '-' }}</td>
-                                    <td>{{ $equivalencia->tipo ?: '-' }}</td>
+                                    <td>{{ $equivalencia->creditos ?: '-' }}</td>
+                                    <td>{{ $equivalencia->carga_horaria ?: '-' }}</td>
                                     <td>
                                         <div class="d-flex">
                                             <form action="{{ route('equivalencias.destroy-equivalencia', [$disciplina, $equivalencia]) }}" method="POST" class="d-inline">
