@@ -19,7 +19,7 @@ use App\Http\Controllers\WorkflowController;
 Route::get('/', [WorkflowController::class, 'home'])->name('workflows.index');
 
 Route::middleware(['auth'])->group(function () {
-    Route::resource('equivalencias', EquivalenciaController::class);
+    Route::resource('equivalencias', EquivalenciaController::class)->except(['create', 'edit']);
     Route::post('/equivalencias/{equivalencia}/equivalencias', [EquivalenciaController::class, 'addEquivalencia'])
         ->name('equivalencias.add-equivalencia');
     Route::delete('/equivalencias/{equivalencia}/equivalencias/{equivalenciaFilha}', [EquivalenciaController::class, 'destroyEquivalencia'])

@@ -56,7 +56,7 @@ $menu = [
         'can' => 'user',
     ],
     [
-        'text' => 'Equivalências diretas',
+        'text' => 'Equivalências automáticas',
         'url' => 'equivalencias',
         'can' => 'user',
     ],

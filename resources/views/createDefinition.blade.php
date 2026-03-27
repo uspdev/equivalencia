@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-  <div class="container mt-5">
+  <div class="mt-5">
     <a href="{{ route('workflows.list-definitions') }}" class="link-primary"><i class="fas fa-arrow-left"></i> Voltar aos Workflows</a>
     <h1 class="mb-4">Criar nova workflow definition</h1>
 

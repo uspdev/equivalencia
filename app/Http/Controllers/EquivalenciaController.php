@@ -18,28 +18,19 @@ class EquivalenciaController extends Controller
     {
         $disciplinas = Equivalencia::query()
             ->usp()
-            ->withCount('equivalentes')
+            ->with(['equivalentes' => function ($query) {
+                $query->orderBy('coddis');
+            }])
             ->orderBy('coddis')
             ->paginate(15);
 
         return view('equivalencias.index', [
             'disciplinas' => $disciplinas,
-        ]);
-    }
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        $campos = ['coddis'];
-
-        return view('equivalencias.create', [
-            'formHtml' => $this->buildFormHtml(
+            'formHtmlCreate' => $this->buildFormHtml(
                 'eq_usp_create',
                 route('equivalencias.store'),
                 'POST',
-                $this->oldInputForFields($campos)
+                $this->oldInputForFields(['coddis'])
             ),
         ]);
     }
@@ -58,7 +49,7 @@ class EquivalenciaController extends Controller
 
         return redirect()
             ->route('equivalencias.show', $equivalencia)
-            ->with('success', 'Disciplina USP criada com sucesso.');
+            ->with('alert-success', 'Disciplina USP criada com sucesso.');
     }
 
     /**
@@ -75,6 +66,18 @@ class EquivalenciaController extends Controller
         return view('equivalencias.show', [
             'disciplina' => $equivalencia,
             'equivalencias' => $equivalencia->equivalentes,
+            'formHtmlEdit' => $this->addHiddenModalField(
+                $this->buildFormHtml(
+                    'eq_usp_edit',
+                    route('equivalencias.update', $equivalencia),
+                    'PUT',
+                    $this->oldInputForFields(
+                        ['coddis'],
+                        ['coddis' => $equivalencia->coddis]
+                    )
+                ),
+                'equivalencia-edit'
+            ),
             'formHtmlEquivalencia' => $this->buildFormHtml(
                 'eq_child_add',
                 route('equivalencias.add-equivalencia', $equivalencia),
@@ -86,28 +89,6 @@ class EquivalenciaController extends Controller
                     'creditos',
                     'carga_horaria',
                 ])
-            ),
-        ]);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Equivalencia $equivalencia)
-    {
-        abort_unless($equivalencia->isUsp(), 404);
-
-        $dadosPadrao = [
-            'coddis' => $equivalencia->coddis,
-        ];
-
-        return view('equivalencias.edit', [
-            'disciplina' => $equivalencia,
-            'formHtml' => $this->buildFormHtml(
-                'eq_usp_edit',
-                route('equivalencias.update', $equivalencia),
-                'PUT',
-                $this->oldInputForFields(array_keys($dadosPadrao), $dadosPadrao)
             ),
         ]);
     }
@@ -128,7 +109,7 @@ class EquivalenciaController extends Controller
 
         return redirect()
             ->route('equivalencias.show', $equivalencia)
-            ->with('success', 'Disciplina USP atualizada com sucesso.');
+            ->with('alert-success', 'Disciplina USP atualizada com sucesso.');
     }
 
     /**
@@ -142,7 +123,7 @@ class EquivalenciaController extends Controller
 
         return redirect()
             ->route('equivalencias.index')
-            ->with('success', 'Disciplina USP removida com sucesso.');
+            ->with('alert-success', 'Disciplina USP removida com sucesso.');
     }
 
     public function addEquivalencia(StoreEquivalenciaFilhaRequest $request, Equivalencia $equivalencia)
@@ -157,7 +138,7 @@ class EquivalenciaController extends Controller
 
         return redirect()
             ->route('equivalencias.show', $equivalencia)
-            ->with('success', 'Equivalência adicionada com sucesso.');
+            ->with('alert-success', 'Equivalência adicionada com sucesso.');
     }
 
     public function destroyEquivalencia(Equivalencia $equivalencia, Equivalencia $equivalenciaFilha)
@@ -169,7 +150,7 @@ class EquivalenciaController extends Controller
 
         return redirect()
             ->route('equivalencias.show', $equivalencia)
-            ->with('success', 'Equivalência removida com sucesso.');
+            ->with('alert-success', 'Equivalência removida com sucesso.');
     }
 
     // Cria um formulário HTML para as views, utilizando a classe Form do pacote Uspdev/Forms.
@@ -224,19 +205,22 @@ class EquivalenciaController extends Controller
         return $dados;
     }
 
+    private function addHiddenModalField(string $formHtml, string $value): string
+    {
+        return str_replace('</form>', '<input type="hidden" name="_modal" value="'.$value.'"></form>', $formHtml);
+    }
+
     private function buscarDisciplinaNoReplicado(?string $coddis): ?array
     {
         if (! $coddis) {
             return null;
         }
 
-        
         try {
             $disciplinas = Graduacao::obterDisciplinas([$coddis]) ?? [];
         } catch (\Throwable $e) {
             return null;
         }
-      
 
         foreach ($disciplinas as $disciplina) {
             if (($disciplina['coddis'] ?? null) === $coddis) {

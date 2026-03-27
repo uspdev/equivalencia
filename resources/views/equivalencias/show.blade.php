@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container mt-3">
+<div class="mt-3">
     <div class="mb-3 d-flex">
-        <h2><a href="{{ route('equivalencias.index') }}">Disciplinas USP</a></h2>
-        <h2> / </h2>
-        <h2 class="mb-0">{{ $disciplina->coddis }}</h2>   
+        <a href="{{ route('equivalencias.index') }}" style="font-size: 2em;" class="mr-2">Equivalências Automáticas</a>
+        <div class="d-flex align-items-center"><i class="fas fa-chevron-right" style="font-size: 1.2em;"></i></div>
+        <h2 class="ml-2 mt-2">{{ $disciplina->coddis }}</h2>   
     </div>
 
     <div class="card mb-4">
@@ -32,7 +32,7 @@
                             <td>{{ $disciplina->codhab ?: '-' }}</td>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <a href="{{ route('equivalencias.edit', $disciplina) }}" class="btn btn-primary btn-sm mr-2">Editar</a>
+                                    @include('equivalencias.partials.modal-edit')
                                     <form action="{{ route('equivalencias.destroy', $disciplina) }}" method="POST" class="d-inline">
                                         @csrf
                                         @method('DELETE')
@@ -48,9 +48,9 @@
     </div>
 
     <div class="card mb-4">
-        <div class="card-header">Adicionar disciplina cursada</div>
-        <div class="card-body">
-            {!! $formHtmlEquivalencia !!}
+        <div class="card-header d-flex justify-content-start align-items-center">
+            <span class="mr-3">Adicionar disciplina cursada</span>
+            @include('equivalencias.partials.modal-equivalencia')
         </div>
     </div>
 

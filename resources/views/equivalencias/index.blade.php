@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container mt-3">
+<div class="mt-3">
     <div class="mb-3 d-flex align-items-center justify-content-left">
-        <h2 class="mb-3 mr-3">Disciplinas Requeridas</h2>
-        <a href="{{ route('equivalencias.create') }}" class="btn btn-primary">Nova disciplina requerida</a>
+        <h2 class="mb-3 mr-3">Equivalências Automáticas</h2>
+        @include('equivalencias.partials.modal-create')
     </div>
     <div class="card">
         <div class="card-body">
@@ -31,7 +31,7 @@
                                     <td>{{ $disciplina->verdis ?: '-' }}</td>
                                     <td>{{ $disciplina->codcur ?: '-' }}</td>
                                     <td>{{ $disciplina->codhab ?: '-' }}</td>
-                                    <td>{{ $disciplina->equivalentes_count }}</td>
+                                    <td>{{ $disciplina->equivalentes->pluck('coddis')->filter()->implode(', ') ?: '-' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
