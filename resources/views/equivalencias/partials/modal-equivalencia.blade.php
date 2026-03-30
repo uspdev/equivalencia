@@ -1,5 +1,5 @@
 <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modalAdicionarEquivalencia">
-    Nova equivalência
+    Adicionar
 </button>
 
 <div class="modal fade" id="modalAdicionarEquivalencia" tabindex="-1" aria-labelledby="modalAdicionarEquivalenciaLabel" aria-hidden="true">

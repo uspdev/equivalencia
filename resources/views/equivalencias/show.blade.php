@@ -47,15 +47,13 @@
         </div>
     </div>
 
-    <div class="card mb-4">
-        <div class="card-header d-flex justify-content-start align-items-center">
-            <span class="mr-3">Adicionar disciplina cursada</span>
-            @include('equivalencias.partials.modal-equivalencia')
-        </div>
-    </div>
-
     <div class="card">
-        <div class="card-header">Disciplinas cursadas equivalentes cadastradas</div>
+        <div class="card-header d-flex">
+            Disciplinas cursadas equivalentes cadastradas   
+            <div class="ml-2">
+                @include('equivalencias.partials.modal-equivalencia')
+            </div>
+        </div>
         <div class="card-body p-0">
             @if ($equivalencias->isEmpty())
                 <p class="p-3 mb-0">Nenhuma disciplina cursada equivalente cadastrada para esta disciplina.</p>
