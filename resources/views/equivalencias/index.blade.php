@@ -31,7 +31,13 @@
                                     <td>{{ $disciplina->verdis ?: '-' }}</td>
                                     <td>{{ $disciplina->codcur ?: '-' }}</td>
                                     <td>{{ $disciplina->codhab ?: '-' }}</td>
-                                    <td>{{ $disciplina->equivalentes->pluck('coddis')->filter()->implode(', ') ?: '-' }}</td>
+                                    <td>
+                                        @forelse ($disciplina->equivalentes as $equivalencia)
+                                            <div>{{ $equivalencia->coddis ?: '-' }} - {{ $equivalencia->nome_disciplina ?: '-' }}</div>
+                                        @empty
+                                            -
+                                        @endforelse
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
