@@ -34,7 +34,14 @@ return new class extends Migration
             $table->decimal('nota', 5, 2)->nullable();
 
 
-            $table->char('tipo', 1)->default('r'); // cursada ou requerida (c ou r)
+            $table->char('tipo', 1)->default('r'); // cursada ou requerida (c ou r ou a (automatica)) default a
+            // svgrad -> add disciplina usp (a) e add disciplina externa (c)
+            // aluno -> entra com cursada (c) e requerida (r) que ele quer equivalente
+            
+            // Campo para vincular um pedido de equivalência a um aluno
+            // seguindo a lógica aluno -> entra com cursada (c) e requerida (r) que ele quer equivalente 
+            $table->integer('codpes')->nullable();
+
 
             // RELACIONAMENTO
             $table->foreignId('equivalencias_id')
@@ -42,7 +49,6 @@ return new class extends Migration
                 ->constrained('equivalencias')
                 ->cascadeOnDelete();
 
-            $table->string('pdf_path')->nullable();
 
             $table->timestamps();
         });
