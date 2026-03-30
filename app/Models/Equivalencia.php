@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Equivalencia extends Model
 {
+    public const TIPO_AUTOMATICA = 'a';
+
     public const TIPO_CURSADA = 'c';
 
     public const TIPO_REQUERIDA = 'r';
@@ -52,7 +54,7 @@ class Equivalencia extends Model
     public function disciplinaUsp()
     {
         return $this->belongsTo(Equivalencia::class, 'equivalencias_id')
-            ->where('tipo', self::TIPO_REQUERIDA);
+            ->whereIn('tipo', [self::TIPO_AUTOMATICA, self::TIPO_REQUERIDA]);
     }
 
     public function parent()
@@ -72,7 +74,7 @@ class Equivalencia extends Model
     {
         return $query
             ->whereNull('equivalencias_id')
-            ->where('tipo', self::TIPO_REQUERIDA);
+            ->whereIn('tipo', [self::TIPO_AUTOMATICA, self::TIPO_REQUERIDA]);
     }
 
     public function scopeEquivalencia(Builder $query): Builder
@@ -84,7 +86,8 @@ class Equivalencia extends Model
 
     public function isUsp(): bool
     {
-        return $this->equivalencias_id === null && $this->tipo === self::TIPO_REQUERIDA;
+        return $this->equivalencias_id === null
+            && in_array($this->tipo, [self::TIPO_AUTOMATICA, self::TIPO_REQUERIDA], true);
     }
 
     public function isEquivalencia(): bool

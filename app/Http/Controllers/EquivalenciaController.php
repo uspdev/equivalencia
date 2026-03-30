@@ -42,7 +42,7 @@ class EquivalenciaController extends Controller
     {
         $dados = $request->validated();
         $dados['equivalencias_id'] = null;
-        $dados['tipo'] = Equivalencia::TIPO_REQUERIDA;
+        $dados['tipo'] = Equivalencia::TIPO_AUTOMATICA;
         $dados = $this->preencherDadosDisciplinaUsp($dados);
 
         $equivalencia = Equivalencia::create($dados);
@@ -101,7 +101,7 @@ class EquivalenciaController extends Controller
         abort_unless($equivalencia->isUsp(), 404);
 
         $dados = $request->validated();
-        $dados['tipo'] = Equivalencia::TIPO_REQUERIDA;
+        $dados['tipo'] = Equivalencia::TIPO_AUTOMATICA;
 
         $dados = $this->preencherDadosDisciplinaUsp($dados, $equivalencia->coddis);
 
