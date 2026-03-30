@@ -31,9 +31,6 @@ class UpdateEquivalenciaRequest extends FormRequest
         return [
             'coddis' => [
                 'sometimes',
-                'required',
-                'string',
-                'max:7',
                 Rule::unique('equivalencias')
                     ->whereNull('equivalencias_id')
                     ->ignore($equivalenciaId),

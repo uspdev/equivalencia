@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreEquivalenciaFilhaRequest;
 use App\Http\Requests\StoreEquivalenciaRequest;
 use App\Http\Requests\UpdateEquivalenciaRequest;
 use App\Models\Equivalencia;
+use Symfony\Component\HttpFoundation\Request;
 use Uspdev\Forms\Form;
 use Uspdev\Replicado\Graduacao;
 
@@ -126,15 +126,14 @@ class EquivalenciaController extends Controller
             ->with('alert-success', 'Disciplina USP removida com sucesso.');
     }
 
-    public function addEquivalencia(StoreEquivalenciaFilhaRequest $request, Equivalencia $equivalencia)
+    public function addEquivalencia(Request $request, Equivalencia $equivalencia)
     {
         abort_unless($equivalencia->isUsp(), 404);
 
-        $dados = $request->validated();
-        $dados['equivalencias_id'] = $equivalencia->id;
-        $dados['tipo'] = Equivalencia::TIPO_CURSADA;
+        $request['equivalencias_id'] = $equivalencia->id;
+        $request['tipo'] = Equivalencia::TIPO_CURSADA;
 
-        Equivalencia::create($dados);
+        Equivalencia::create($request->all());
 
         return redirect()
             ->route('equivalencias.show', $equivalencia)

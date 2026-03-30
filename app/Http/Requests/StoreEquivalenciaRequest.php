@@ -24,9 +24,6 @@ class StoreEquivalenciaRequest extends FormRequest
     {
         return [
             'coddis' => [
-                'required',
-                'string',
-                'max:7',
                 Rule::unique('equivalencias')->whereNull('equivalencias_id'),
             ],
 
