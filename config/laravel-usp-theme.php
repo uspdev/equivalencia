@@ -55,6 +55,11 @@ $menu = [
         'url' => 'atendimentos',
         'can' => 'user',
     ],
+    [
+        'text' => 'Equivalências automáticas',
+        'url' => 'equivalencias',
+        'can' => 'user',
+    ],
 ];
 
 $right_menu = [
