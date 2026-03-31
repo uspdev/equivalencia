@@ -48,10 +48,15 @@ class Equivalencia extends Model
         'nota' => 'decimal:2',
     ];
 
+    public function arquivos()
+    {
+        return $this->hasMany(Arquivo::class);
+    }
+
     // Relacionamento para auto-relacionamento (disciplinas equivalentes)
     // Uma disciplina pode ter uma disciplina equivalente (parent)
     // e pode ser equivalente a várias outras disciplinas (children)
-    public function disciplinaUsp()
+    public function disciplinaRequerida()
     {
         return $this->belongsTo(Equivalencia::class, 'equivalencias_id')
             ->whereIn('tipo', [self::TIPO_AUTOMATICA, self::TIPO_REQUERIDA]);
@@ -59,7 +64,7 @@ class Equivalencia extends Model
 
     public function parent()
     {
-        return $this->disciplinaUsp();
+        return $this->disciplinaRequerida();
     }
 
     // Uma disciplina pode ser equivalente a várias outras disciplinas (children)

@@ -40,8 +40,17 @@ return new class extends Migration
             
             // Campo para vincular um pedido de equivalência a um aluno
             // seguindo a lógica aluno -> entra com cursada (c) e requerida (r) que ele quer equivalente 
-            $table->integer('codpes')->nullable();
+            $table->foreignId('criado_por_id')
+                ->nullable()
+                ->constrained('users')
+                ->cascadeOnDelete();
+            
+            $table->foreignId('alterado_por_id')
+                ->nullable()
+                ->constrained('users')
+                ->cascadeOnDelete();
 
+            
 
             // RELACIONAMENTO
             $table->foreignId('equivalencias_id')
