@@ -19,10 +19,21 @@ use App\Http\Controllers\WorkflowController;
 Route::get('/', [WorkflowController::class, 'home'])->name('workflows.index');
 
 Route::middleware(['auth'])->group(function () {
-    Route::resource('equivalencias', EquivalenciaController::class)->except(['create', 'edit']);
-    Route::post('/equivalencias/{equivalencia}/equivalencias', [EquivalenciaController::class, 'addEquivalencia'])
+    Route::get('/equivalencias', [EquivalenciaController::class, 'cursos'])
+        ->name('equivalencias.index');
+    Route::get('/equivalencias/{codcur}/{codhab}', [EquivalenciaController::class, 'index'])
+        ->name('equivalencias.curso');
+    Route::post('/equivalencias/{codcur}/{codhab}', [EquivalenciaController::class, 'store'])
+        ->name('equivalencias.store');
+    Route::get('/equivalencias/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'show'])
+        ->name('equivalencias.show');
+    Route::put('/equivalencias/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'update'])
+        ->name('equivalencias.update');
+    Route::delete('/equivalencias/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'destroy'])
+        ->name('equivalencias.destroy');
+    Route::post('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias', [EquivalenciaController::class, 'addEquivalencia'])
         ->name('equivalencias.add-equivalencia');
-    Route::delete('/equivalencias/{equivalencia}/equivalencias/{equivalenciaFilha}', [EquivalenciaController::class, 'destroyEquivalencia'])
+    Route::delete('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [EquivalenciaController::class, 'destroyEquivalencia'])
         ->name('equivalencias.destroy-equivalencia');
 
     Route::get('/createdefinition', [WorkflowController::class, 'createDefinition'])->name('workflows.create-definition');
