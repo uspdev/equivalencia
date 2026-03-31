@@ -11,11 +11,22 @@ use Uspdev\Replicado\Graduacao;
 
 class EquivalenciaController extends Controller
 {
+    public function __construct()
+    {
+        // Adiciona o middleware para marcar a URL ativa no menu da aplicação, utilizando o pacote Uspdev/Theme.
+        $this->middleware(function ($request, $next) {
+            \UspTheme::activeUrl('equivalencias');
+
+            return $next($request);
+        });
+    }
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
+
         $disciplinas = Equivalencia::query()
             ->usp()
             ->with(['equivalentes' => function ($query) {
