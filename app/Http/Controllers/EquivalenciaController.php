@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateEquivalenciaRequest;
 use App\Models\Equivalencia;
 use App\Replicado\Graduacao;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Uspdev\Forms\Form;
 
 class EquivalenciaController extends Controller
@@ -125,6 +126,24 @@ class EquivalenciaController extends Controller
                     'carga_horaria',
                 ])
             ),
+            'formHtmlEquivalenciaEdit' => $equivalencia->equivalentes
+                ->mapWithKeys(function (Equivalencia $equivalenciaFilha) use ($codcur, $codhab, $equivalencia) {
+                    return [
+                        $equivalenciaFilha->id => $this->buildFormHtml(
+                            'eq_child_add',
+                            route('equivalencias.update-equivalencia', [$codcur, $codhab, $equivalencia, $equivalenciaFilha]),
+                            'PUT',
+                            [
+                                'coddis' => $equivalenciaFilha->coddis,
+                                'nome_disciplina' => $equivalenciaFilha->nome_disciplina,
+                                'ies' => $equivalenciaFilha->ies,
+                                'creditos' => $equivalenciaFilha->creditos,
+                                'carga_horaria' => $equivalenciaFilha->carga_horaria,
+                            ]
+                        ),
+                    ];
+                })
+                ->all(),
             'codcur' => $codcur,
             'codhab' => $codhab,
         ]);
@@ -187,6 +206,48 @@ class EquivalenciaController extends Controller
         return redirect()
             ->route('equivalencias.show', [$codcur, $codhab, $equivalencia])
             ->with('alert-success', 'Equivalência adicionada com sucesso.');
+    }
+
+    /**
+     * Atualiza uma disciplina equivalente (filha) de uma disciplina USP (pai).
+     */
+    public function updateEquivalencia(Request $request, int $codcur, int $codhab, Equivalencia $equivalencia, Equivalencia $equivalenciaFilha)
+    {
+        abort_unless($equivalencia->isUsp(), 404);
+        abort_unless($this->equivalenciaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
+        abort_unless($equivalenciaFilha->isEquivalencia(), 404);
+        abort_unless($equivalenciaFilha->equivalencias_id === $equivalencia->id, 404);
+
+        $dados = $request->validate([
+            'coddis' => [
+                'required',
+                'string',
+                'max:7',
+                Rule::unique('equivalencias', 'coddis')
+                    ->where(function ($query) use ($equivalencia, $codcur, $codhab) {
+                        return $query
+                            ->where('equivalencias_id', $equivalencia->id)
+                            ->where('codcur', $codcur)
+                            ->where('codhab', $codhab);
+                    })
+                    ->ignore($equivalenciaFilha->id),
+            ],
+            'nome_disciplina' => ['required', 'string', 'max:240'],
+            'ies' => ['required', 'string', 'max:255'],
+            'creditos' => ['required', 'integer', 'min:0', 'max:20'],
+            'carga_horaria' => ['required', 'integer', 'min:1', 'max:1200'],
+        ]);
+
+        $dados['equivalencias_id'] = $equivalencia->id;
+        $dados['tipo'] = Equivalencia::TIPO_CURSADA;
+        $dados['codcur'] = $codcur;
+        $dados['codhab'] = $codhab;
+
+        $equivalenciaFilha->update($dados);
+
+        return redirect()
+            ->route('equivalencias.show', [$codcur, $codhab, $equivalencia])
+            ->with('alert-success', 'Equivalência atualizada com sucesso.');
     }
 
     /**

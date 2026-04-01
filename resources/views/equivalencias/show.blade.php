@@ -79,6 +79,7 @@
                                     <td>{{ $equivalencia->carga_horaria ?: '-' }}</td>
                                     <td>
                                         <div class="d-flex">
+                                            @include('equivalencias.partials.modal-edit-equivalencia')
                                             <form action="{{ route('equivalencias.destroy-equivalencia', [$codcur, $codhab, $disciplina, $equivalencia]) }}" method="POST" class="d-inline">
                                                 @csrf
                                                 @method('DELETE')

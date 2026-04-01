@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EquivalenciaController;
 use App\Http\Controllers\WorkflowController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,7 +14,6 @@ use App\Http\Controllers\WorkflowController;
 | contains the "web" middleware group. Now create something great!
 |
 */
-
 
 Route::get('/', [WorkflowController::class, 'home'])->name('workflows.index');
 
@@ -33,6 +32,8 @@ Route::middleware(['auth'])->group(function () {
         ->name('equivalencias.destroy');
     Route::post('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias', [EquivalenciaController::class, 'addEquivalencia'])
         ->name('equivalencias.add-equivalencia');
+    Route::put('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [EquivalenciaController::class, 'updateEquivalencia'])
+        ->name('equivalencias.update-equivalencia');
     Route::delete('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [EquivalenciaController::class, 'destroyEquivalencia'])
         ->name('equivalencias.destroy-equivalencia');
 
