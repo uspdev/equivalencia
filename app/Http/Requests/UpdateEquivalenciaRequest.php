@@ -27,12 +27,16 @@ class UpdateEquivalenciaRequest extends FormRequest
         $equivalenciaId = $equivalencia instanceof Equivalencia
             ? $equivalencia->id
             : $equivalencia;
+        // Obter os parâmetros da rota
+        $codcur = (int) $this->route('codcur');
+        $codhab = (int) $this->route('codhab');
 
         return [
             'coddis' => [
-                'sometimes',
                 Rule::unique('equivalencias')
                     ->whereNull('equivalencias_id')
+                    ->where('codcur', $codcur)
+                    ->where('codhab', $codhab)
                     ->ignore($equivalenciaId),
             ],
         ];
