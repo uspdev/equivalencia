@@ -258,13 +258,14 @@ class EquivalenciaController extends Controller
 
         return $dados;
     }
-
+    // Verifica se a disciplina USP (equivalencia) pertence ao curso e habilitação especificados pelos códigos codcur e codhab.
     private function equivalenciaPertenceAoCurso(Equivalencia $equivalencia, int $codcur, int $codhab): bool
     {
         return (int) $equivalencia->codcur === $codcur
             && (int) $equivalencia->codhab === $codhab;
     }
 
+    // Busca os dados da disciplina no Replicado a partir do código da disciplina (coddis).
     private function buscarDisciplinaNoReplicado(?string $coddis): ?array
     {
         if (! $coddis) {
