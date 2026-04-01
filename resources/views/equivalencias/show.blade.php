@@ -60,8 +60,6 @@
                             <tr>
                                 <th>Disciplina equivalente</th>
                                 <th>IES</th>
-                                <th>Créditos</th>
-                                <th>Carga horária</th>
                                 <th style="width: 40px"></th>
                             </tr>
                         </thead>
@@ -71,8 +69,6 @@
                                 <tr>
                                     <td>({{ $equivalencia->coddis ?: '-' }}) {{ $equivalencia->nome_disciplina ?: '-' }}</td>
                                     <td>{{ $equivalencia->ies ?: '-' }}</td>
-                                    <td>{{ $equivalencia->creditos ?: '-' }}</td>
-                                    <td>{{ $equivalencia->carga_horaria ?: '-' }}</td>
                                     <td>
                                         <div class="d-flex">
                                             @include('equivalencias.partials.modal-edit-equivalencia')

@@ -133,8 +133,6 @@ class EquivalenciaController extends Controller
                     'coddis',
                     'nome_disciplina',
                     'ies',
-                    'creditos',
-                    'carga_horaria',
                 ])
             ),
             'formHtmlEquivalenciaEdit' => $equivalencia->equivalentes
@@ -148,8 +146,6 @@ class EquivalenciaController extends Controller
                                 'coddis' => $equivalenciaFilha->coddis,
                                 'nome_disciplina' => $equivalenciaFilha->nome_disciplina,
                                 'ies' => $equivalenciaFilha->ies,
-                                'creditos' => $equivalenciaFilha->creditos,
-                                'carga_horaria' => $equivalenciaFilha->carga_horaria,
                             ]
                         ),
                     ];
