@@ -5,7 +5,7 @@
     <div class="mb-3 d-flex align-items-center justify-content-left">
         <a href="{{ route('equivalencias.index') }}" style="font-size: 2em;" class="mr-2">Cursos</a>
         <div class="d-flex align-items-center pt-2"><i class="fas fa-chevron-right" style="font-size: 1.2em;"></i></div>
-        <h2 class="mb-3 ml-2 pt-3">Equivalências Automáticas ({{ $codcur }}/{{ $codhab }})</h2>
+        <h2 class="mb-3 ml-2 pt-3">{{ $nomeCurso ?? $disciplinas->first()->nomcur ?? 'Curso' }} ({{ $codcur }}/{{ $codhab }})</h2>
         <div class="mt-2 ml-2">@include('equivalencias.partials.modal-create')</div>
     </div>
     <div class="card">

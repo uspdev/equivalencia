@@ -3,7 +3,7 @@
 @section('content')
 <div class="mt-3">
     <div class="mb-3 d-flex align-items-center justify-content-left">
-        <h2 class="mb-0">Cursos e habilitações</h2>
+        <h2 class="mb-0">Cursos</h2>
     </div>
 
     <div class="card">

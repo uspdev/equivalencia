@@ -5,7 +5,7 @@
     <div class="mb-3 d-flex">
         <a href="{{ route('equivalencias.index') }}" style="font-size: 2em;" class="mr-2">Cursos</a>
         <div class="d-flex align-items-center"><i class="fas fa-chevron-right" style="font-size: 1.2em;"></i></div>
-        <a href="{{ route('equivalencias.curso', [$codcur, $codhab]) }}" style="font-size: 2em;" class="mr-2 ml-2">Equivalências Automáticas</a>
+        <a href="{{ route('equivalencias.curso', [$codcur, $codhab]) }}" style="font-size: 2em;" class="mr-2 ml-2">{{ $nomeCurso ?? $disciplinas->first()->nomcur ?? 'Curso' }} ({{ $codcur }}/{{ $codhab }})</a>
         <div class="d-flex align-items-center"><i class="fas fa-chevron-right" style="font-size: 1.2em;"></i></div>
         <h2 class="ml-2 mt-2">{{ $disciplina->coddis }}</h2>   
     </div>

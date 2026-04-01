@@ -7,7 +7,6 @@ use App\Http\Requests\UpdateEquivalenciaRequest;
 use App\Models\Equivalencia;
 use App\Replicado\Graduacao;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Uspdev\Forms\Form;
 
 class EquivalenciaController extends Controller
@@ -46,6 +45,11 @@ class EquivalenciaController extends Controller
     public function index(int $codcur, int $codhab)
     {
 
+        $curso = collect(Graduacao::listarCursosHabilitacoes())
+            ->first(fn ($item) => (int) $item['codcur'] === $codcur && (int) $item['codhab'] === $codhab);
+
+        abort_unless($curso, 404);
+
         $disciplinas = Equivalencia::query()
             ->usp()
             ->where('codcur', $codcur)
@@ -60,6 +64,7 @@ class EquivalenciaController extends Controller
             'disciplinas' => $disciplinas,
             'codcur' => $codcur,
             'codhab' => $codhab,
+            'nomeCurso' => $curso['nomcur'],
             'formHtmlCreate' => $this->buildFormHtml(
                 'eq_usp_create',
                 route('equivalencias.store', ['codcur' => $codcur, 'codhab' => $codhab]),
@@ -98,6 +103,11 @@ class EquivalenciaController extends Controller
         abort_unless($equivalencia->isUsp(), 404);
         abort_unless($this->equivalenciaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
 
+        $curso = collect(Graduacao::listarCursosHabilitacoes())
+            ->first(fn ($item) => (int) $item['codcur'] === $codcur && (int) $item['codhab'] === $codhab);
+
+        abort_unless($curso, 404);
+
         $equivalencia->load(['equivalentes' => function ($query) {
             $query->orderBy('coddis');
         }]);
@@ -105,6 +115,7 @@ class EquivalenciaController extends Controller
         return view('equivalencias.show', [
             'disciplina' => $equivalencia,
             'equivalencias' => $equivalencia->equivalentes,
+            'nomeCurso' => $curso['nomcur'],
             'formHtmlEdit' => $this->buildFormHtml(
                 'eq_usp_edit',
                 route('equivalencias.update', [$codcur, $codhab, $equivalencia]),
@@ -301,6 +312,7 @@ class EquivalenciaController extends Controller
 
         return $dados;
     }
+
     // Verifica se a disciplina USP (equivalencia) pertence ao curso e habilitação especificados pelos códigos codcur e codhab.
     private function equivalenciaPertenceAoCurso(Equivalencia $equivalencia, int $codcur, int $codhab): bool
     {
