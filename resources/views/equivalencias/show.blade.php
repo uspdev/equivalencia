@@ -17,16 +17,14 @@
                 <table class="table table-striped table-bordered mb-0">
                     <thead>
                         <tr>
-                            <th>Código</th>
-                            <th>Nome</th>
+                            <th>Disciplina requerida</th>
                             <th>Verdis</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
-                            <td>{{ $disciplina->coddis ?: '-' }}</td>
-                            <td>{{ $disciplina->nome_disciplina ?: '-' }}</td>
+                            <td>({{ $disciplina->coddis ?: '-' }}) {{ $disciplina->nome_disciplina ?: '-' }}</td>
                             <td>{{ $disciplina->verdis ?: '-' }}</td>
                             <td>
                                 <div class="d-flex align-items-center">
@@ -60,8 +58,7 @@
                     <table class="table table-striped table-bordered datatable-simples mb-0">
                         <thead>
                             <tr>
-                                <th>Código</th>
-                                <th>Nome</th>
+                                <th>Disciplina equivalente</th>
                                 <th>IES</th>
                                 <th>Créditos</th>
                                 <th>Carga horária</th>
@@ -72,8 +69,7 @@
                             @foreach ($equivalencias as $equivalencia)
                 
                                 <tr>
-                                    <td>{{ $equivalencia->coddis }}</td>
-                                    <td>{{ $equivalencia->nome_disciplina ?: '-' }}</td>
+                                    <td>({{ $equivalencia->coddis ?: '-' }}) {{ $equivalencia->nome_disciplina ?: '-' }}</td>
                                     <td>{{ $equivalencia->ies ?: '-' }}</td>
                                     <td>{{ $equivalencia->creditos ?: '-' }}</td>
                                     <td>{{ $equivalencia->carga_horaria ?: '-' }}</td>
