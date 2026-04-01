@@ -218,25 +218,7 @@ class EquivalenciaController extends Controller
         abort_unless($equivalenciaFilha->isEquivalencia(), 404);
         abort_unless($equivalenciaFilha->equivalencias_id === $equivalencia->id, 404);
 
-        $dados = $request->validate([
-            'coddis' => [
-                'required',
-                'string',
-                'max:7',
-                Rule::unique('equivalencias', 'coddis')
-                    ->where(function ($query) use ($equivalencia, $codcur, $codhab) {
-                        return $query
-                            ->where('equivalencias_id', $equivalencia->id)
-                            ->where('codcur', $codcur)
-                            ->where('codhab', $codhab);
-                    })
-                    ->ignore($equivalenciaFilha->id),
-            ],
-            'nome_disciplina' => ['required', 'string', 'max:240'],
-            'ies' => ['required', 'string', 'max:255'],
-            'creditos' => ['required', 'integer', 'min:0', 'max:20'],
-            'carga_horaria' => ['required', 'integer', 'min:1', 'max:1200'],
-        ]);
+        $dados = $request->all();
 
         $dados['equivalencias_id'] = $equivalencia->id;
         $dados['tipo'] = Equivalencia::TIPO_CURSADA;
