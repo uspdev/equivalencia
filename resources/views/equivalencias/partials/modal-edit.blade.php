@@ -28,13 +28,3 @@
     </div>
 </div>
 
-@section('javascripts_bottom')
-    @parent
-    <script>
-        $(function () {
-            @if (old('_modal') === 'equivalencia-edit' && $errors->any())
-                $('#modalEditarDisciplina').modal('show');
-            @endif
-        });
-    </script>
-@endsection
