@@ -30,10 +30,6 @@
                                 <td>{{ $disciplina->verdis ?: '-' }}</td>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <button type="button" class="btn btn-primary btn-sm mr-2" data-toggle="modal"
-                                            data-target="#modalEditarDisciplina">
-                                            Editar
-                                        </button>
                                         @include('equivalencias.partials.modal-edit')
                                         <form action="{{ route('equivalencias.destroy', [$codcur, $codhab, $disciplina]) }}"
                                             method="POST" class="d-inline">

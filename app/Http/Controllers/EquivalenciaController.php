@@ -46,7 +46,7 @@ class EquivalenciaController extends Controller
     {
 
         $curso = collect(Graduacao::listarCursosHabilitacoes())
-            ->first(fn($item) => (int) $item['codcur'] === $codcur && (int) $item['codhab'] === $codhab);
+            ->first(fn ($item) => (int) $item['codcur'] === $codcur && (int) $item['codhab'] === $codhab);
 
         abort_unless($curso, 404);
 
@@ -66,6 +66,43 @@ class EquivalenciaController extends Controller
             'POST',
             $this->oldInputForFields(['coddis'])
         );
+        $formHtmlEdit = $disciplinas->getCollection()
+            ->mapWithKeys(function (Equivalencia $disciplinaUsp) use ($codcur, $codhab) {
+                $formHtml = $this->buildFormHtml(
+                    'eq_usp_edit',
+                    route('equivalencias.update', [$codcur, $codhab, $disciplinaUsp]),
+                    'PUT',
+                    $this->oldInputForFields(
+                        ['coddis'],
+                        ['coddis' => $disciplinaUsp->coddis]
+                    )
+                );
+
+                return [
+                    $disciplinaUsp->id => $this->namespaceFormHtmlForIndex($formHtml, $disciplinaUsp->id),
+                ];
+            })
+            ->all();
+        $formHtmlEquivalencia = $disciplinas->getCollection()
+            ->mapWithKeys(function (Equivalencia $disciplinaUsp) use ($codcur, $codhab) {
+                return [
+                    $disciplinaUsp->id => $this->buildFormHtml(
+                        'eq_child_add',
+                        route('equivalencias.add-equivalencia', [
+                            $codcur,
+                            $codhab,
+                            $disciplinaUsp,
+                        ]),
+                        'POST',
+                        $this->oldInputForFields([
+                            'coddis',
+                            'nome_disciplina',
+                            'ies',
+                        ])
+                    ),
+                ];
+            })
+            ->all();
 
         return view('equivalencias.index', [
             'disciplinas' => $disciplinas,
@@ -73,6 +110,8 @@ class EquivalenciaController extends Controller
             'codhab' => $codhab,
             'nomeCurso' => $curso['nomcur'],
             'formHtmlCreate' => $formHtml,
+            'formHtmlEdit' => $formHtmlEdit,
+            'formHtmlEquivalencia' => $formHtmlEquivalencia,
         ]);
     }
 
@@ -106,7 +145,7 @@ class EquivalenciaController extends Controller
         abort_unless($this->equivalenciaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
 
         $curso = collect(Graduacao::listarCursosHabilitacoes())
-            ->first(fn($item) => (int) $item['codcur'] === $codcur && (int) $item['codhab'] === $codhab);
+            ->first(fn ($item) => (int) $item['codcur'] === $codcur && (int) $item['codhab'] === $codhab);
 
         abort_unless($curso, 404);
 
@@ -213,7 +252,7 @@ class EquivalenciaController extends Controller
         Equivalencia::create($request->all());
 
         return redirect()
-            ->route('equivalencias.show', [$codcur, $codhab, $equivalencia])
+            ->back()
             ->with('alert-success', 'Equivalência adicionada com sucesso.');
     }
 
@@ -273,6 +312,30 @@ class EquivalenciaController extends Controller
             : null;
 
         return $form->generateHtml($name, $formSubmission) ?? '';
+    }
+
+    // Em telas com lista de modais (index), evita IDs e seletores duplicados para o Select2.
+    private function namespaceFormHtmlForIndex(string $formHtml, int $disciplinaId): string
+    {
+        $suffix = (string) $disciplinaId;
+
+        return str_replace(
+            [
+                'id="generatedForm"',
+                'id="uspdev-forms-coddis"',
+                'for="uspdev-forms-coddis"',
+                "selector: '#uspdev-forms-coddis'",
+                'id="uspdev-forms-disciplina-usp"',
+            ],
+            [
+                'id="generatedForm-'.$suffix.'"',
+                'id="uspdev-forms-coddis-'.$suffix.'"',
+                'for="uspdev-forms-coddis-'.$suffix.'"',
+                "selector: '#uspdev-forms-coddis-".$suffix."'",
+                'id="uspdev-forms-disciplina-usp-'.$suffix.'"',
+            ],
+            $formHtml
+        );
     }
 
     // Recupera os valores antigos (old input) para os campos do formulário,
