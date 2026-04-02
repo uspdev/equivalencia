@@ -29,10 +29,11 @@
                   @include('equivalencias.partials.disciplina-requerida')
                 </td>
                 <td>
-                  {{-- colocar em blade separado este botão --}}
-                  <button class="btn btn-sm btn-outline-success" title="Adicionar disciplina cursada equivalente">
-                    <i class="fas fa-plus"></i>
-                  </button>
+                  @include('equivalencias.partials.modal-equivalencia', [
+                      'modalId' => "modalAdicionarEquivalencia{$disciplina->id}",
+                      'modalLabelId' => "modalAdicionarEquivalenciaLabel{$disciplina->id}",
+                      'formHtmlEquivalencia' => $formHtmlEquivalencia[$disciplina->id] ?? '',
+                  ])
                 </td>
                 <td>
                   @include('equivalencias.partials.disciplinas-equivalentes')
