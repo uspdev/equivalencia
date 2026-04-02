@@ -253,7 +253,7 @@ class EquivalenciaController extends Controller
         $equivalenciaFilha->delete();
 
         return redirect()
-            ->route('equivalencias.show', [$codcur, $codhab, $equivalencia])
+            ->back()
             ->with('alert-success', 'Equivalência removida com sucesso.');
     }
 
