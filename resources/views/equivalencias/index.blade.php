@@ -3,8 +3,10 @@
 @section('content')
 <div class="mt-3">
     <div class="mb-3 d-flex align-items-center justify-content-left">
-        <h2 class="mb-3 mr-3">Equivalências Automáticas</h2>
-        @include('equivalencias.partials.modal-create')
+        <a href="{{ route('equivalencias.index') }}" style="font-size: 2em;" class="mr-2">Cursos</a>
+        <div class="d-flex align-items-center pt-2"><i class="fas fa-chevron-right" style="font-size: 1.2em;"></i></div>
+        <h2 class="mb-3 ml-2 pt-3">{{ $nomeCurso ?? $disciplinas->first()->nomcur ?? 'Curso' }} ({{ $codcur }}/{{ $codhab }})</h2>
+        <div class="mt-2 ml-2">@include('equivalencias.partials.modal-create')</div>
     </div>
     <div class="card">
         <div class="card-body">
@@ -18,19 +20,15 @@
                                 <th>Código</th>
                                 <th>Nome</th>
                                 <th>Verdis</th>
-                                <th>Codcur</th>
-                                <th>Codhab</th>
                                 <th>Equivalências</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach ($disciplinas as $disciplina)
                                 <tr>
-                                    <td><a href="{{ route('equivalencias.show', $disciplina) }}">{{ $disciplina->coddis }}</a></td>
+                                    <td><a href="{{ route('equivalencias.show', [$codcur, $codhab, $disciplina]) }}">{{ $disciplina->coddis }}</a></td>
                                     <td>{{ $disciplina->nome_disciplina ?: '-' }}</td>
                                     <td>{{ $disciplina->verdis ?: '-' }}</td>
-                                    <td>{{ $disciplina->codcur ?: '-' }}</td>
-                                    <td>{{ $disciplina->codhab ?: '-' }}</td>
                                     <td>
                                         @forelse ($disciplina->equivalentes as $equivalencia)
                                             <div>{{ $equivalencia->coddis ?: '-' }} - {{ $equivalencia->nome_disciplina ?: '-' }}</div>

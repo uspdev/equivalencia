@@ -22,9 +22,16 @@ class StoreEquivalenciaRequest extends FormRequest
      */
     public function rules(): array
     {
+        // Obter os parâmetros da rota
+        $codcur = (int) $this->route('codcur');
+        $codhab = (int) $this->route('codhab');
+
         return [
             'coddis' => [
-                Rule::unique('equivalencias')->whereNull('equivalencias_id'),
+                Rule::unique('equivalencias')
+                    ->whereNull('equivalencias_id')
+                    ->where('codcur', $codcur)
+                    ->where('codhab', $codhab),
             ],
 
         ];
