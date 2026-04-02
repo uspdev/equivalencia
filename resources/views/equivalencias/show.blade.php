@@ -36,7 +36,8 @@
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-danger btn-sm"
-                                                onclick="return confirm('Remover disciplina e suas equivalências?')">Remover</button>
+                                                onclick="return confirm('Remover disciplina e suas equivalências?')"> <i
+                                                    class="fas fa-trash"></i></button>
                                         </form>
                                     </div>
                                 </td>

@@ -215,7 +215,7 @@ class EquivalenciaController extends Controller
         $equivalencia->update($dados);
 
         return redirect()
-            ->route('equivalencias.show', [$codcur, $codhab, $equivalencia])
+            ->back()
             ->with('alert-success', 'Disciplina USP atualizada com sucesso.');
     }
 
@@ -276,7 +276,7 @@ class EquivalenciaController extends Controller
         $equivalenciaFilha->update($dados);
 
         return redirect()
-            ->route('equivalencias.show', [$codcur, $codhab, $equivalencia])
+            ->back()
             ->with('alert-success', 'Equivalência atualizada com sucesso.');
     }
 
