@@ -3,7 +3,7 @@
 @section('content')
 
   <div class="card">
-    <div class="card-header">
+    <div class="card-header h4">
       <a href="{{ route('equivalencias.index') }}">Cursos</a>
       <i class="fas fa-angle-right mx-2"></i>
       {{ $nomeCurso }} ({{ $codcur }}/{{ $codhab }})
