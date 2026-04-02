@@ -1,3 +1,5 @@
+# No vscode é necessário instalar o plugin editor config
+
 root = true
 
 [*]
@@ -16,3 +18,7 @@ indent_size = 2
 
 [docker-compose.yml]
 indent_size = 4
+
+[*.blade.php]
+indent_style = space
+indent_size = 2
