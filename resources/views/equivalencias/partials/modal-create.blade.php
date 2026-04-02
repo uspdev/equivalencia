@@ -1,5 +1,6 @@
-<button type="button" class="btn btn-primary" data-toggle="modal" data-target="#modalNovaDisciplina">
-    Adicionar
+<button type="button" class="btn btn-sm btn-outline-primary ml-2" data-toggle="modal" data-target="#modalNovaDisciplina">
+    <i class="fas fa-plus"></i>
+    Novo aproveitamento automático
 </button>
 
 <div class="modal fade" id="modalNovaDisciplina" tabindex="-1" aria-labelledby="modalNovaDisciplinaLabel" aria-hidden="true">
