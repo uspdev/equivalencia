@@ -1,8 +1,8 @@
 @forelse ($disciplina->equivalentes as $e)
-  <div class="disciplina-equivalente">
+  <div class="disciplina-equivalente d-flex align-items-center">
     {{ $e->coddis ?: '-' }} - {{ $e->nome_disciplina ?: '-' }} ({{ $e->ies }})
-    @include('equivalencias.partials.remover-equivalente-btn')
-    @include('equivalencias.partials.modal-edit-equivalencia', ['equivalencia' => $e])
+    <div class="mr-2">@include('equivalencias.partials.remover-equivalente-btn')</div>
+    <div>@include('equivalencias.partials.modal-edit-equivalencia', ['equivalencia' => $e])</div>
   </div>
 @empty
   -
