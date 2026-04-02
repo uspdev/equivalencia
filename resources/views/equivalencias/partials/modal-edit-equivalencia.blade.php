@@ -1,5 +1,5 @@
-<button type="button" class="btn btn-sm btn-outline-primary mr-2" data-toggle="modal" data-target="#modalEditarEquivalencia{{ $equivalencia->id }}">
-    Editar
+<button type="button" class="btn btn-sm btn-outline-primary mr-2 btn-editar" data-toggle="modal" data-target="#modalEditarEquivalencia{{ $equivalencia->id }}">
+  <i class="fas fa-edit"></i>
 </button>
 
 <div class="modal fade" id="modalEditarEquivalencia{{ $equivalencia->id }}" tabindex="-1" aria-labelledby="modalEditarEquivalenciaLabel{{ $equivalencia->id }}" aria-hidden="true">

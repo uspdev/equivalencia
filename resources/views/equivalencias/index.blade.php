@@ -4,49 +4,34 @@
 
   <div class="card">
     <div class="card-header h4">
-      <a href="{{ route('equivalencias.index') }}">Cursos</a>
-      <i class="fas fa-angle-right mx-2"></i>
-      {{ $nomeCurso }} ({{ $codcur }}/{{ $codhab }})
-      @include('equivalencias.partials.modal-create')
+      Aproveitamentos automáticos
     </div>
-
     <div class="card-body">
-      @if ($disciplinas->isEmpty())
-        <p class="mb-0">Nenhuma disciplina requerida cadastrada.</p>
+      @if (empty($cursos))
+        <p class="mb-0">Nenhum curso/habilitação ativo encontrado.</p>
       @else
-        <table class="table table-striped table-bordered datatable-simples dt-state-save">
-          <thead>
-            <tr>
-              <th>Disciplina requerida (versão)</th>
-              <th></th>
-              <th>Disciplinas cursadas (IES)</th>
-            </tr>
-          </thead>
-          <tbody>
-            @foreach ($disciplinas as $disciplina)
+        <div class="table-responsive">
+          <table class="table table-striped table-bordered mb-0">
+            <thead>
               <tr>
-                <td>
-                  @include('equivalencias.partials.disciplina-requerida')
-                </td>
-                <td>
-                  {{-- colocar em blade separado este botão --}}
-                  <button class="btn btn-sm btn-outline-success" title="Adicionar disciplina cursada equivalente">
-                    <i class="fas fa-plus"></i>
-                  </button>
-                </td>
-                <td>
-                  @include('equivalencias.partials.disciplinas-equivalentes')
-                </td>
+                <th>Cursos</th>
               </tr>
-            @endforeach
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @foreach ($cursos as $curso)
+                <tr>
+                  <td>
+                   <p> <a href="{{ route('equivalencias.show', [$curso['codcur'], $curso['codhab']]) }}">
+                      {{ $curso['nomcur'] ?? '-' }} ({{ $curso['codcur'] ?? '-' }})
+                    </a>
+                    / {{ $curso['nomhab'] ?? '-' }} ({{ $curso['codhab'] ?? '-' }})</p>
+                  </td>
+                </tr>
+              @endforeach
+            </tbody>
+          </table>
+        </div>
       @endif
     </div>
-  </div>
-
-  <div class="mt-3">
-    {{-- não vamos usar paginação pois não serão muitas disciplinas requeridas --}}
-    {{ $disciplinas->links() }}
   </div>
 @endsection

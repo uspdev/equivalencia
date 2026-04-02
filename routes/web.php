@@ -18,14 +18,12 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [WorkflowController::class, 'home'])->name('workflows.index');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/equivalencias', [EquivalenciaController::class, 'cursos'])
+    Route::get('/equivalencias', [EquivalenciaController::class, 'index'])
         ->name('equivalencias.index');
-    Route::get('/equivalencias/{codcur}/{codhab}', [EquivalenciaController::class, 'index'])
-        ->name('equivalencias.curso');
+    Route::get('/equivalencias/{codcur}/{codhab}', [EquivalenciaController::class, 'show'])
+        ->name('equivalencias.show');
     Route::post('/equivalencias/{codcur}/{codhab}', [EquivalenciaController::class, 'store'])
         ->name('equivalencias.store');
-    Route::get('/equivalencias/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'show'])
-        ->name('equivalencias.show');
     Route::put('/equivalencias/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'update'])
         ->name('equivalencias.update');
     Route::delete('/equivalencias/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'destroy'])
