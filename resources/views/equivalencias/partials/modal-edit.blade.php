@@ -6,7 +6,7 @@
         : ($formHtmlEdit ?? '');
 @endphp
 
-<button type="button" class="btn btn-primary btn-sm mr-2" data-toggle="modal" data-target="#{{ $modalId }}">
+<button type="button" class="btn btn-outline-primary btn-sm mr-2" data-toggle="modal" data-target="#{{ $modalId }}">
   <i class="fas fa-edit"></i>
 </button>
 

@@ -1,8 +1,6 @@
 <div class="disciplina-requerida d-flex align-items-center">
   <div>
-    <a href="{{ route('equivalencias.show', [$codcur, $codhab, $disciplina]) }}">
-      {{ $disciplina->coddis }}
-    </a>
+    {{ $disciplina->coddis }}
     - {{ $disciplina->nome_disciplina ?: '-' }} ({{ $disciplina->verdis ?: '-' }})
   </div>
 

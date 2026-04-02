@@ -7,16 +7,3 @@
   </button>
 </form>
 
-@section('styles')
-  @parent
-  <style>
-    .disciplina-equivalente .btn-remover {
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-
-    .disciplina-equivalente:hover .btn-remover {
-      opacity: 1;
-    }
-  </style>
-@endsection

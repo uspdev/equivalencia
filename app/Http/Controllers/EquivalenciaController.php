@@ -26,11 +26,11 @@ class EquivalenciaController extends Controller
      * Cada curso/habilitação é um link que leva para a página de disciplinas
      * USP equivalentes cadastradas para aquele curso/habilitação.
      */
-    public function cursos()
+    public function index()
     {
         $cursos = Graduacao::listarCursosHabilitacoes();
 
-        return view('equivalencias.cursos', [
+        return view('equivalencias.index', [
             'cursos' => $cursos,
         ]);
     }
@@ -42,7 +42,7 @@ class EquivalenciaController extends Controller
      * e retorna para a view. A view é responsável por exibir as disciplinas USP
      * e os formulários para criar/editar as disciplinas USP e adicionar/remover equivalências.
      */
-    public function index(int $codcur, int $codhab)
+    public function show(int $codcur, int $codhab)
     {
 
         $curso = collect(Graduacao::listarCursosHabilitacoes())
@@ -103,8 +103,29 @@ class EquivalenciaController extends Controller
                 ];
             })
             ->all();
+        $formHtmlEquivalenciaEdit = $disciplinas->getCollection()
+            ->reduce(function (array $forms, Equivalencia $disciplinaUsp) use ($codcur, $codhab) {
+                $formsDaDisciplina = $disciplinaUsp->equivalentes
+                    ->mapWithKeys(function (Equivalencia $equivalenciaFilha) use ($codcur, $codhab, $disciplinaUsp) {
+                        return [
+                            $equivalenciaFilha->id => $this->buildFormHtml(
+                                'eq_child_add',
+                                route('equivalencias.update-equivalencia', [$codcur, $codhab, $disciplinaUsp, $equivalenciaFilha]),
+                                'PUT',
+                                [
+                                    'coddis' => old('coddis', $equivalenciaFilha->coddis),
+                                    'nome_disciplina' => old('nome_disciplina', $equivalenciaFilha->nome_disciplina),
+                                    'ies' => old('ies', $equivalenciaFilha->ies),
+                                ]
+                            ),
+                        ];
+                    })
+                    ->all();
 
-        return view('equivalencias.index', [
+                return $forms + $formsDaDisciplina;
+            }, []);
+
+        return view('equivalencias.show', [
             'disciplinas' => $disciplinas,
             'codcur' => $codcur,
             'codhab' => $codhab,
@@ -112,6 +133,7 @@ class EquivalenciaController extends Controller
             'formHtmlCreate' => $formHtml,
             'formHtmlEdit' => $formHtmlEdit,
             'formHtmlEquivalencia' => $formHtmlEquivalencia,
+            'formHtmlEquivalenciaEdit' => $formHtmlEquivalenciaEdit,
         ]);
     }
 
@@ -132,69 +154,8 @@ class EquivalenciaController extends Controller
         $equivalencia = Equivalencia::create($dados);
 
         return redirect()
-            ->route('equivalencias.show', [$codcur, $codhab, $equivalencia])
+            ->route('equivalencias.show', [$codcur, $codhab])
             ->with('alert-success', 'Disciplina USP criada com sucesso.');
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(int $codcur, int $codhab, Equivalencia $equivalencia)
-    {
-        abort_unless($equivalencia->isUsp(), 404);
-        abort_unless($this->equivalenciaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
-
-        $curso = collect(Graduacao::listarCursosHabilitacoes())
-            ->first(fn ($item) => (int) $item['codcur'] === $codcur && (int) $item['codhab'] === $codhab);
-
-        abort_unless($curso, 404);
-
-        $equivalencia->load(['equivalentes' => function ($query) {
-            $query->orderBy('coddis');
-        }]);
-
-        return view('equivalencias.show', [
-            'disciplina' => $equivalencia,
-            'equivalencias' => $equivalencia->equivalentes,
-            'nomeCurso' => $curso['nomcur'],
-            'formHtmlEdit' => $this->buildFormHtml(
-                'eq_usp_edit',
-                route('equivalencias.update', [$codcur, $codhab, $equivalencia]),
-                'PUT',
-                $this->oldInputForFields(
-                    ['coddis'],
-                    ['coddis' => $equivalencia->coddis]
-                )
-            ),
-            'formHtmlEquivalencia' => $this->buildFormHtml(
-                'eq_child_add',
-                route('equivalencias.add-equivalencia', [$codcur, $codhab, $equivalencia]),
-                'POST',
-                $this->oldInputForFields([
-                    'coddis',
-                    'nome_disciplina',
-                    'ies',
-                ])
-            ),
-            'formHtmlEquivalenciaEdit' => $equivalencia->equivalentes
-                ->mapWithKeys(function (Equivalencia $equivalenciaFilha) use ($codcur, $codhab, $equivalencia) {
-                    return [
-                        $equivalenciaFilha->id => $this->buildFormHtml(
-                            'eq_child_add',
-                            route('equivalencias.update-equivalencia', [$codcur, $codhab, $equivalencia, $equivalenciaFilha]),
-                            'PUT',
-                            [
-                                'coddis' => $equivalenciaFilha->coddis,
-                                'nome_disciplina' => $equivalenciaFilha->nome_disciplina,
-                                'ies' => $equivalenciaFilha->ies,
-                            ]
-                        ),
-                    ];
-                })
-                ->all(),
-            'codcur' => $codcur,
-            'codhab' => $codhab,
-        ]);
     }
 
     /**
@@ -231,7 +192,7 @@ class EquivalenciaController extends Controller
         $equivalencia->delete();
 
         return redirect()
-            ->route('equivalencias.curso', [$codcur, $codhab])
+            ->route('equivalencias.show', [$codcur, $codhab])
             ->with('alert-success', 'Disciplina USP removida com sucesso.');
     }
 
