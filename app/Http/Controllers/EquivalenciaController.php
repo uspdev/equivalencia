@@ -46,7 +46,7 @@ class EquivalenciaController extends Controller
     {
 
         $curso = collect(Graduacao::listarCursosHabilitacoes())
-            ->first(fn ($item) => (int) $item['codcur'] === $codcur && (int) $item['codhab'] === $codhab);
+            ->first(fn($item) => (int) $item['codcur'] === $codcur && (int) $item['codhab'] === $codhab);
 
         abort_unless($curso, 404);
 
@@ -60,17 +60,19 @@ class EquivalenciaController extends Controller
             ->orderBy('coddis')
             ->paginate(15);
 
+        $formHtml = $this->buildFormHtml(
+            'eq_usp_create',
+            route('equivalencias.store', ['codcur' => $codcur, 'codhab' => $codhab]),
+            'POST',
+            $this->oldInputForFields(['coddis'])
+        );
+
         return view('equivalencias.index', [
             'disciplinas' => $disciplinas,
             'codcur' => $codcur,
             'codhab' => $codhab,
             'nomeCurso' => $curso['nomcur'],
-            'formHtmlCreate' => $this->buildFormHtml(
-                'eq_usp_create',
-                route('equivalencias.store', ['codcur' => $codcur, 'codhab' => $codhab]),
-                'POST',
-                $this->oldInputForFields(['coddis'])
-            ),
+            'formHtmlCreate' => $formHtml,
         ]);
     }
 
@@ -104,7 +106,7 @@ class EquivalenciaController extends Controller
         abort_unless($this->equivalenciaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
 
         $curso = collect(Graduacao::listarCursosHabilitacoes())
-            ->first(fn ($item) => (int) $item['codcur'] === $codcur && (int) $item['codhab'] === $codhab);
+            ->first(fn($item) => (int) $item['codcur'] === $codcur && (int) $item['codhab'] === $codhab);
 
         abort_unless($curso, 404);
 
