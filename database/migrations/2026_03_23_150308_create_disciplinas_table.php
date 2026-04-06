@@ -21,7 +21,7 @@ return new class extends Migration
 
             // CAMPOS COMPARTILHADOS
             $table->string('coddis', 7);
-            $table->string('nome_disciplina', 240)->nullable();
+            $table->string('nomdis', 240)->nullable();
             $table->tinyInteger('creditos')->nullable()->default(0);
             $table->smallInteger('carga_horaria')->nullable();
             $table->string('nomcur', 100)->nullable();
@@ -37,20 +37,20 @@ return new class extends Migration
             $table->char('tipo', 1)->default('r'); // cursada ou requerida (c ou r ou a (automatica)) default a
             // svgrad -> add disciplina usp (a) e add disciplina externa (c)
             // aluno -> entra com cursada (c) e requerida (r) que ele quer equivalente
-            
+
             // Campo para vincular um pedido de equivalência a um aluno
-            // seguindo a lógica aluno -> entra com cursada (c) e requerida (r) que ele quer equivalente 
+            // seguindo a lógica aluno -> entra com cursada (c) e requerida (r) que ele quer equivalente
             $table->foreignId('criado_por_id')
                 ->nullable()
                 ->constrained('users')
                 ->cascadeOnDelete();
-            
+
             $table->foreignId('alterado_por_id')
                 ->nullable()
                 ->constrained('users')
                 ->cascadeOnDelete();
 
-            
+
 
             // RELACIONAMENTO
             $table->foreignId('equivalencias_id')
