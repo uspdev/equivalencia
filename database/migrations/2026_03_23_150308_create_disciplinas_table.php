@@ -22,18 +22,16 @@ return new class extends Migration
             $table->string('nomdis', 240)->nullable();
             $table->tinyInteger('creditos')->nullable()->default(0);
             $table->smallInteger('carga_horaria')->nullable();
-            $table->string('nomcur', 100)->nullable();
+
+            $table->string('ies')->nullable(); // Externa(nome) ou USP
+            $table->string('sglund')->nullable(); // Sigla da unidade usp ou null
 
             // DISCIPLINA EXTERNA
-            $table->string('ies')->nullable();
             $table->integer('ano')->nullable();
             $table->integer('semestre')->nullable();
             $table->decimal('frequencia', 5, 2)->nullable();
             $table->decimal('nota', 5, 2)->nullable();
 
-            $table->char('tipo', 1)->default('r'); // cursada ou requerida (c ou r ou a (automatica)) default a
-            // svgrad -> add disciplina usp (a) e add disciplina externa (c)
-            // aluno -> entra com cursada (c) e requerida (r) que ele quer equivalente
 
             // Campo para vincular um pedido de equivalência a um aluno
             // seguindo a lógica aluno -> entra com cursada (c) e requerida (r) que ele quer equivalente
