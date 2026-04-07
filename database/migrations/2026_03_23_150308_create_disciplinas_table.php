@@ -47,9 +47,6 @@ return new class extends Migration
                 ->constrained('users')
                 ->cascadeOnDelete();
 
-            // RELACIONAMENTO
-            $table->unsignedBigInteger('equivalencias_id')->nullable(); // só a coluna, sem constraint
-
             $table->timestamps();
         });
     }
