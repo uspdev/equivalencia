@@ -11,13 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('equivalencias', function (Blueprint $table) {
+        Schema::create('disciplinas', function (Blueprint $table) {
             $table->id();
 
             // CAMPOS USP
             $table->tinyInteger('verdis')->nullable();
-            $table->integer('codcur')->nullable();
-            $table->smallInteger('codhab')->nullable();
 
             // CAMPOS COMPARTILHADOS
             $table->string('coddis', 7);
@@ -32,7 +30,6 @@ return new class extends Migration
             $table->integer('semestre')->nullable();
             $table->decimal('frequencia', 5, 2)->nullable();
             $table->decimal('nota', 5, 2)->nullable();
-
 
             $table->char('tipo', 1)->default('r'); // cursada ou requerida (c ou r ou a (automatica)) default a
             // svgrad -> add disciplina usp (a) e add disciplina externa (c)
@@ -50,14 +47,8 @@ return new class extends Migration
                 ->constrained('users')
                 ->cascadeOnDelete();
 
-
-
             // RELACIONAMENTO
-            $table->foreignId('equivalencias_id')
-                ->nullable()
-                ->constrained('equivalencias')
-                ->cascadeOnDelete();
-
+            $table->unsignedBigInteger('equivalencias_id')->nullable(); // só a coluna, sem constraint
 
             $table->timestamps();
         });
@@ -68,6 +59,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('equivalencias');
+        Schema::dropIfExists('disciplinas');
     }
 };

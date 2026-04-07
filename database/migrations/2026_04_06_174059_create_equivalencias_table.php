@@ -29,6 +29,9 @@ return new class extends Migration
             // 'r' = solicitação do aluno
             $table->char('tipo', 1)->default('r');
 
+            $table->integer('codcur')->nullable();
+            $table->smallInteger('codhab')->nullable();
+
             $table->foreignId('criado_por_id')
                 ->nullable()
                 ->constrained('users')
