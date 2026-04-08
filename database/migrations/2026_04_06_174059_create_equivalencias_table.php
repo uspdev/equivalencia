@@ -15,7 +15,11 @@ return new class extends Migration
             $table->id();
 
             // Número de grupo
-            $table->unsignedBigInteger('equivalencia_id');
+            $table->unsignedBigInteger('grupo'); // auto incremento, mas não é chave primária
+            // pq pode ter registros com mesmo grupo (equivalências múltiplas, 2 disciplinas cursadas equivalem a 1 requerida)
+            // essa logica pode ser feita no Model
+
+            $table->string('estado')->nullable(); // deferida, negada, etc
 
             $table->foreignId('requerida_id')
                 ->constrained('disciplinas')
@@ -42,7 +46,12 @@ return new class extends Migration
                 ->constrained('users')
                 ->cascadeOnDelete();
 
-            $table->unique(['equivalencia_id', 'cursada_id']);
+            // Para evitar que tenhamos mais de uma equivalência com a mesma disciplina cursada no mesmo grupo.
+            // Esse unique não impede que tenhamos a mesma disciplina cursada em grupos diferentes,
+            // o que é permitido (ex: 2 equivalências diferentes, ambas com a mesma disciplina cursada, mas em grupos diferentes).
+            // Ele só impede que tenhamos 2 equivalências iguais (mesmo grupo, mesma disciplina cursada).
+            $table->unique(['grupo', 'cursada_id']);
+
             $table->timestamps();
         });
     }
