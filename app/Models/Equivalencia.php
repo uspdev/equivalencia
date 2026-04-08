@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Equivalencia extends Model
 {
-    // public const TIPO_AUTOMATICA = 'a';
+    public const TIPO_AUTOMATICA = 'a';
 
-    // public const TIPO_REQUERIDA = 'r';
+    public const TIPO_REQUERIDA = 'r';
 
     protected $table = 'equivalencias';
 
