@@ -8,13 +8,13 @@ use App\Models\Disciplina;
 use App\Models\Equivalencia;
 use App\Replicado\Graduacao;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Uspdev\Forms\Form;
 
 class EquivalenciaController extends Controller
 {
     public function __construct()
     {
-        // Adiciona o middleware para marcar a URL ativa no menu da aplicação, utilizando o pacote Uspdev/Theme.
         $this->middleware(function ($request, $next) {
             \UspTheme::activeUrl('equivalencias');
 
@@ -22,11 +22,6 @@ class EquivalenciaController extends Controller
         });
     }
 
-    /**
-     * Lista os cursos e habilitações disponíveis para cadastro de equivalências.
-     * Cada curso/habilitação é um link que leva para a página de disciplinas
-     * USP equivalentes cadastradas para aquele curso/habilitação.
-     */
     public function index()
     {
         $cursos = Graduacao::listarCursosHabilitacoes();
@@ -187,7 +182,7 @@ class EquivalenciaController extends Controller
             ->where('requerida_id', $equivalencia->id)
             ->get();
         // Vinculos que não são placeholders (ou seja, equivalências reais)
-        //devem ter suas disciplinas cursadas verificadas para possível
+        // devem ter suas disciplinas cursadas verificadas para possível
         // remoção caso fiquem órfãs após a exclusão dos vínculos.
         $cursadasParaLimpeza = $vinculos
             ->filter(fn (Equivalencia $item) => ! $item->isPlaceholderRequerida())
@@ -210,21 +205,26 @@ class EquivalenciaController extends Controller
             ->with('alert-success', 'Disciplina USP removida com sucesso.');
     }
 
-    /**
-     * Adiciona uma nova disciplina equivalente (filha) para uma disciplina USP (pai).
-     * Pega o codcur, codhab e a disciplina USP (pai) da rota
-     */
-    public function addEquivalencia(Request $request, int $codcur, int $codhab, Equivalencia $equivalencia)
+    public function addEquivalencia(Request $request, int $codcur, int $codhab, Disciplina $equivalencia)
     {
-        abort_unless($equivalencia->isUsp(), 404);
-        abort_unless($this->equivalenciaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
+        abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
 
-        $request['equivalencias_id'] = $equivalencia->id;
-        $request['tipo'] = Equivalencia::TIPO_CURSADA;
-        $request['codcur'] = $codcur;
-        $request['codhab'] = $codhab;
+        $conjuntos = $this->validarEPrepararConjuntosDeEquivalencia($request);
 
-        Equivalencia::create($request->all());
+        $grupo = Equivalencia::proximoGrupo();
+
+        foreach ($conjuntos as $dadosCursada) {
+            $cursada = Disciplina::criarCursadaPorFormulario($dadosCursada);
+
+            Equivalencia::criarVinculoCursada(
+                (int) $grupo,
+                $equivalencia->id,
+                $cursada->id,
+                $codcur,
+                $codhab,
+                Equivalencia::TIPO_AUTOMATICA
+            );
+        }
 
         return redirect()
             ->back()
@@ -286,16 +286,16 @@ class EquivalenciaController extends Controller
             ->with('alert-success', 'Equivalência atualizada com sucesso.');
     }
 
-    /**
-     * Remove uma disciplina equivalente (filha) de uma disciplina USP (pai).
-     */
-    public function destroyEquivalencia(int $codcur, int $codhab, Equivalencia $equivalencia, Equivalencia $equivalenciaFilha)
+    public function destroyEquivalencia(int $codcur, int $codhab, Disciplina $equivalencia, Equivalencia $equivalenciaFilha)
     {
-        abort_unless($equivalencia->isUsp(), 404);
-        abort_unless($this->equivalenciaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
-        abort_unless($equivalenciaFilha->equivalencias_id === $equivalencia->id, 404);
+        abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
+        abort_unless($equivalenciaFilha->pertenceARequeridaNoContexto($equivalencia->id, $codcur, $codhab), 404);
+        abort_unless(! $equivalenciaFilha->isPlaceholderRequerida(), 404);
 
+        $cursadaId = $equivalenciaFilha->cursada_id;
         $equivalenciaFilha->delete();
+
+        $this->removerDisciplinaSeOrfa((int) $cursadaId);
 
         return redirect()
             ->back()

@@ -25,7 +25,6 @@ class Disciplina extends Model
         'alterado_por_id',
     ];
 
-
     protected $casts = [
         'verdis' => 'integer',
         'creditos' => 'integer',
@@ -180,5 +179,4 @@ class Disciplina extends Model
 
         return $disciplinas[0] ?? null;
     }
-
 }

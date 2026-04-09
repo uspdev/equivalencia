@@ -93,6 +93,7 @@ class Equivalencia extends Model
         return $this->tipo === self::TIPO_REQUERIDA;
     }
 
+    // apontam para a mesma disciplina (não é equivalência real).
     public function isPlaceholderRequerida(): bool
     {
         return (int) $this->requerida_id === (int) $this->cursada_id;
