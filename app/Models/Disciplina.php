@@ -38,7 +38,6 @@ class Disciplina extends Model
 
     // ── Relacionamentos ─────────────────────────────────────────────
 
-
     // Equivalências onde esta disciplina é a requerida
     public function equivalenciasComoRequerida()
     {
@@ -111,15 +110,48 @@ class Disciplina extends Model
 
     public static function dadosDaCursadaPorFormulario(array $dados): array
     {
+        $coddis = isset($dados['coddis']) ? trim((string) $dados['coddis']) : null;
+        $disciplinaReplicado = $coddis ? static::buscarNoReplicado($coddis) : null;
+
+        if ($disciplinaReplicado) {
+            return [
+                'coddis' => $disciplinaReplicado['coddis'] ?? $coddis,
+                'nomdis' => $disciplinaReplicado['nomdis'] ?? null,
+                'ies' => 'USP',
+                'creditos' => $disciplinaReplicado['creaul'] ?? null,
+                'carga_horaria' => $disciplinaReplicado['numhor'] ?? null,
+                'verdis' => $disciplinaReplicado['verdis'] ?? null,
+                'sglund' => $disciplinaReplicado['sglund'] ?? null,
+                'ano' => $dados['ano'] ?? null,
+                'semestre' => $dados['semestre'] ?? null,
+                'frequencia' => $dados['frequencia'] ?? null,
+                'nota' => $dados['nota'] ?? null,
+            ];
+        }
+
         return [
-            'coddis' => $dados['coddis'] ?? null,
+            'coddis' => $coddis,
             'nomdis' => $dados['nome_disciplina'] ?? null,
             'ies' => $dados['ies'] ?? null,
+            'creditos' => $dados['creditos'] ?? null,
+            'carga_horaria' => $dados['carga_horaria'] ?? null,
+            'verdis' => $dados['verdis'] ?? null,
             'ano' => $dados['ano'] ?? null,
             'semestre' => $dados['semestre'] ?? null,
             'frequencia' => $dados['frequencia'] ?? null,
             'nota' => $dados['nota'] ?? null,
         ];
+    }
+
+    public static function disciplinaUspNoReplicado(?string $coddis): ?array
+    {
+        $codigo = $coddis ? trim($coddis) : '';
+
+        if ($codigo === '') {
+            return null;
+        }
+
+        return static::buscarNoReplicado($codigo);
     }
 
     public static function criarCursadaPorFormulario(array $dados): Disciplina
