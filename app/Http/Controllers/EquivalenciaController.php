@@ -277,6 +277,110 @@ class EquivalenciaController extends Controller
         return $form->generateHtml($name, $formSubmission) ?? '';
     }
 
+    // Prepara os valores padrão para o formulário de edição de uma equivalência,
+    // considerando os outros vínculos do mesmo grupo para preencher os campos adicionais.
+    private function defaultsParaFormularioEdicaoDeGrupo(Disciplina $disciplinaUsp, Equivalencia $equivalenciaFilha): array
+    {
+        $equivalentesDoMesmoGrupo = $disciplinaUsp->equivalentes
+            ->where('grupo', $equivalenciaFilha->grupo)
+            ->sortBy('id')
+            ->values();
+
+        $outrosDoGrupo = $equivalentesDoMesmoGrupo
+            ->reject(fn (Equivalencia $item) => $item->id === $equivalenciaFilha->id)
+            ->values();
+
+        $equivalencia2 = $outrosDoGrupo->get(0);
+        $equivalencia3 = $outrosDoGrupo->get(1);
+
+        return [
+            'coddis' => old('coddis', $equivalenciaFilha->coddis),
+            'nome_disciplina' => old('nome_disciplina', $equivalenciaFilha->nome_disciplina),
+            'ies' => old('ies', $equivalenciaFilha->ies),
+            'coddis2' => old('coddis2', $equivalencia2?->coddis),
+            'nome_disciplina2' => old('nome_disciplina2', $equivalencia2?->nome_disciplina),
+            'ies2' => old('ies2', $equivalencia2?->ies),
+            'coddis3' => old('coddis3', $equivalencia3?->coddis),
+            'nome_disciplina3' => old('nome_disciplina3', $equivalencia3?->nome_disciplina),
+            'ies3' => old('ies3', $equivalencia3?->ies),
+        ];
+    }
+
+    // Valida os dados do formulário de criação/edição de equivalências, p
+    // reparando os conjuntos de dados para cada equivalência a ser criada/atualizada.
+    // Não foi feito em um request separado porque as regras de validação
+    // são um pouco mais complexas do que o usual, envolvendo validações condicionais
+    // e interdependentes entre os campos, e o formato dos dados é específico para a estrutura do formulário de equivalências.
+    private function validarEPrepararConjuntosDeEquivalencia(Request $request): array
+    {
+        $dados = $request->validate([
+            'coddis' => ['nullable', 'string', 'max:7'],
+            'nome_disciplina' => ['nullable', 'string', 'max:240'],
+            'ies' => ['nullable', 'string', 'max:255'],
+            'coddis2' => ['nullable', 'string', 'max:7'],
+            'nome_disciplina2' => ['nullable', 'string', 'max:240'],
+            'ies2' => ['nullable', 'string', 'max:255'],
+            'coddis3' => ['nullable', 'string', 'max:7'],
+            'nome_disciplina3' => ['nullable', 'string', 'max:240'],
+            'ies3' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $conjuntos = [];
+        $erros = [];
+
+        foreach (['', '2', '3'] as $sufixo) {
+            $kCoddis = 'coddis'.$sufixo;
+            $kNome = 'nome_disciplina'.$sufixo;
+            $kIes = 'ies'.$sufixo;
+
+            $coddis = trim((string) ($dados[$kCoddis] ?? ''));
+            $nome = trim((string) ($dados[$kNome] ?? ''));
+            $ies = trim((string) ($dados[$kIes] ?? ''));
+
+            if ($coddis === '' && $nome === '' && $ies === '') {
+                continue;
+            }
+
+            if ($coddis === '') {
+                $erros[$kCoddis] = 'O campo código da equivalência é obrigatório para cada conjunto preenchido.';
+
+                continue;
+            }
+
+            $dadosCursada = [
+                'coddis' => $coddis,
+                'nome_disciplina' => $nome !== '' ? $nome : null,
+                'ies' => $ies !== '' ? $ies : null,
+            ];
+
+            $encontradaNoReplicado = Disciplina::disciplinaUspNoReplicado($coddis);
+
+            if (! $encontradaNoReplicado) {
+                if (empty($dadosCursada['nome_disciplina'])) {
+                    $erros[$kNome] = 'Nome da equivalência é obrigatório quando a disciplina não for USP.';
+                }
+
+                if (empty($dadosCursada['ies'])) {
+                    $erros[$kIes] = 'IES é obrigatória quando a disciplina não for USP.';
+                }
+            }
+
+            $conjuntos[] = $dadosCursada;
+        }
+
+        if ($erros) {
+            throw ValidationException::withMessages($erros);
+        }
+
+        if (count($conjuntos) === 0) {
+            throw ValidationException::withMessages([
+                'coddis' => 'Preencha ao menos um conjunto de equivalência.',
+            ]);
+        }
+
+        return $conjuntos;
+    }
+
     // Em telas com lista de modais (index), evita IDs e seletores duplicados para o Select2.
     private function namespaceFormHtmlForIndex(string $formHtml, int $disciplinaId): string
     {
@@ -314,55 +418,37 @@ class EquivalenciaController extends Controller
         return $values;
     }
 
-    // A partir do código da disciplina (coddis), busca os dados da disciplina no Replicado e preenche os campos correspondentes.
-    private function preencherDadosDisciplinaUsp(array $dados, ?string $coddisAtual = null): array
+    // Verifica se a disciplina requerida pertence ao curso e habilitação, ou seja,
+    // se existe alguma equivalência automática vinculando essa disciplina como requerida
+    // no contexto do curso e habilitação fornecidos.
+    private function requeridaPertenceAoCurso(Disciplina $requerida, int $codcur, int $codhab): bool
     {
-        $coddis = $dados['coddis'] ?? $coddisAtual;
+        return Equivalencia::query()
+            ->doContexto($codcur, $codhab)
+            ->where('requerida_id', $requerida->id)
+            ->exists();
+    }
 
-        $disciplina = $this->buscarDisciplinaNoReplicado($coddis);
+    // Remove uma disciplina se ela não tiver mais vínculos com outras disciplinas.
+    // Ultilizado para limpar disciplinas equivalentes após remoção de equivalências.
+    private function removerDisciplinaSeOrfa(int $disciplinaId): void
+    {
+        $disciplina = Disciplina::find($disciplinaId);
 
         if (! $disciplina) {
-            return $dados;
+            return;
         }
 
-        // Preenche os campos da disciplina USP com os dados do Replicado, caso estejam disponíveis.
-        $dados['nome_disciplina'] = $disciplina['nomdis'] ?? $dados['nome_disciplina'] ?? null;
-        $dados['verdis'] = $disciplina['verdis'] ?? $dados['verdis'] ?? null;
-        $dados['creditos'] = $disciplina['creaul'] ?? $dados['creditos'] ?? null;
-        $dados['carga_horaria'] = $disciplina['numhor'] ?? $dados['carga_horaria'] ?? null;
-        $dados['nomcur'] = $disciplina['nomcur'] ?? $dados['nomcur'] ?? null;
-        $dados['codcur'] = $dados['codcur'] ?? $disciplina['codcur'] ?? null;
-        $dados['codhab'] = $dados['codhab'] ?? $disciplina['codhab'] ?? null;
+        $temVinculoComoRequerida = Equivalencia::query()
+            ->where('requerida_id', $disciplina->id)
+            ->exists();
 
-        return $dados;
-    }
+        $temVinculoComoCursada = Equivalencia::query()
+            ->where('cursada_id', $disciplina->id)
+            ->exists();
 
-    // Verifica se a disciplina USP (equivalencia) pertence ao curso e habilitação especificados pelos códigos codcur e codhab.
-    private function equivalenciaPertenceAoCurso(Equivalencia $equivalencia, int $codcur, int $codhab): bool
-    {
-        return (int) $equivalencia->codcur === $codcur
-            && (int) $equivalencia->codhab === $codhab;
-    }
-
-    // Busca os dados da disciplina no Replicado a partir do código da disciplina (coddis).
-    private function buscarDisciplinaNoReplicado(?string $coddis): ?array
-    {
-        if (! $coddis) {
-            return null;
+        if (! $temVinculoComoRequerida && ! $temVinculoComoCursada) {
+            $disciplina->delete();
         }
-
-        try {
-            $disciplinas = Graduacao::obterDisciplinas([$coddis]) ?? [];
-        } catch (\Throwable $e) {
-            return null;
-        }
-
-        foreach ($disciplinas as $disciplina) {
-            if (($disciplina['coddis'] ?? null) === $coddis) {
-                return $disciplina;
-            }
-        }
-
-        return $disciplinas[0] ?? null;
     }
 }
