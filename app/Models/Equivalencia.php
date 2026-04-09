@@ -66,31 +66,11 @@ class Equivalencia extends Model
         return $query->where('tipo', self::TIPO_AUTOMATICA);
     }
 
-    public function scopeSolicitacoes(Builder $query): Builder
-    {
-        return $query->where('tipo', self::TIPO_REQUERIDA);
-    }
-
-    public function scopeDoGrupo(Builder $query, int $grupo): Builder
-    {
-        return $query->where('grupo', $grupo);
-    }
-
     public function scopeDoContexto(Builder $query, int $codcur, int $codhab): Builder
     {
         return $query
             ->where('codcur', $codcur)
             ->where('codhab', $codhab);
-    }
-
-    public function isAutomatica(): bool
-    {
-        return $this->tipo === self::TIPO_AUTOMATICA;
-    }
-
-    public function isSolicitacao(): bool
-    {
-        return $this->tipo === self::TIPO_REQUERIDA;
     }
 
     // apontam para a mesma disciplina (não é equivalência real).
