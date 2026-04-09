@@ -35,30 +35,31 @@ class EquivalenciaController extends Controller
         ]);
     }
 
-    /**
-     * Exibe a lista de disciplinas USP equivalentes para um curso/habilitação específico.
-     * Pega o codcur e codhab da rota,
-     * busca as disciplinas USP equivalentes cadastradas para esse curso/habilitação,
-     * e retorna para a view. A view é responsável por exibir as disciplinas USP
-     * e os formulários para criar/editar as disciplinas USP e adicionar/remover equivalências.
-     */
     public function show(int $codcur, int $codhab)
     {
-
         $curso = collect(Graduacao::listarCursosHabilitacoes())
             ->first(fn ($item) => (int) $item['codcur'] === $codcur && (int) $item['codhab'] === $codhab);
 
         abort_unless($curso, 404);
 
-        $disciplinas = Equivalencia::query()
-            ->usp()
-            ->where('codcur', $codcur)
-            ->where('codhab', $codhab)
-            ->with(['equivalentes' => function ($query) {
-                $query->orderBy('coddis');
+        $disciplinas = Disciplina::query()
+            ->whereHas('equivalenciasComoRequerida', function ($query) use ($codcur, $codhab) {
+                $query->automaticas()->doContexto($codcur, $codhab);
+            })
+            ->with(['equivalentes' => function ($query) use ($codcur, $codhab) {
+                $query->automaticas()->doContexto($codcur, $codhab)->with('cursada')->orderBy('id');
             }])
             ->orderBy('coddis')
             ->paginate(15);
+
+        $disciplinas->getCollection()->transform(function (Disciplina $disciplina) {
+            $disciplina->setRelation(
+                'equivalentes',
+                $disciplina->equivalentes->sortBy('coddis')->values()
+            );
+
+            return $disciplina;
+        });
 
         $formHtml = $this->buildFormHtml(
             'eq_usp_create',
@@ -66,8 +67,9 @@ class EquivalenciaController extends Controller
             'POST',
             $this->oldInputForFields(['coddis'])
         );
+
         $formHtmlEdit = $disciplinas->getCollection()
-            ->mapWithKeys(function (Equivalencia $disciplinaUsp) use ($codcur, $codhab) {
+            ->mapWithKeys(function (Disciplina $disciplinaUsp) use ($codcur, $codhab) {
                 $formHtml = $this->buildFormHtml(
                     'eq_usp_edit',
                     route('equivalencias.update', [$codcur, $codhab, $disciplinaUsp]),
@@ -83,28 +85,22 @@ class EquivalenciaController extends Controller
                 ];
             })
             ->all();
+
         $formHtmlEquivalencia = $disciplinas->getCollection()
-            ->mapWithKeys(function (Equivalencia $disciplinaUsp) use ($codcur, $codhab) {
+            ->mapWithKeys(function (Disciplina $disciplinaUsp) use ($codcur, $codhab) {
                 return [
                     $disciplinaUsp->id => $this->buildFormHtml(
                         'eq_child_add',
-                        route('equivalencias.add-equivalencia', [
-                            $codcur,
-                            $codhab,
-                            $disciplinaUsp,
-                        ]),
+                        route('equivalencias.add-equivalencia', [$codcur, $codhab, $disciplinaUsp]),
                         'POST',
-                        $this->oldInputForFields([
-                            'coddis',
-                            'nome_disciplina',
-                            'ies',
-                        ])
+                        $this->oldInputForFields(['coddis', 'nome_disciplina', 'ies'])
                     ),
                 ];
             })
             ->all();
+
         $formHtmlEquivalenciaEdit = $disciplinas->getCollection()
-            ->reduce(function (array $forms, Equivalencia $disciplinaUsp) use ($codcur, $codhab) {
+            ->reduce(function (array $forms, Disciplina $disciplinaUsp) use ($codcur, $codhab) {
                 $formsDaDisciplina = $disciplinaUsp->equivalentes
                     ->mapWithKeys(function (Equivalencia $equivalenciaFilha) use ($codcur, $codhab, $disciplinaUsp) {
                         return [
