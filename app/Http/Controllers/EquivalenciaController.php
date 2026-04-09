@@ -166,16 +166,32 @@ class EquivalenciaController extends Controller
             ->with('alert-success', 'Disciplina USP atualizada com sucesso.');
     }
 
-    /**
-     * Deleta a disciplina USP, o que também deleta as equivalências
-       filhas devido à relação de chave estrangeira com cascade on delete
-     */
-    public function destroy(int $codcur, int $codhab, Equivalencia $equivalencia)
+    public function destroy(int $codcur, int $codhab, Disciplina $equivalencia)
     {
-        abort_unless($equivalencia->isUsp(), 404);
-        abort_unless($this->equivalenciaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
+        abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
 
-        $equivalencia->delete();
+        $vinculos = Equivalencia::query()
+            ->doContexto($codcur, $codhab)
+            ->where('requerida_id', $equivalencia->id)
+            ->get();
+        // Vinculos que não são placeholders (ou seja, equivalências reais)
+        //devem ter suas disciplinas cursadas verificadas para possível
+        // remoção caso fiquem órfãs após a exclusão dos vínculos.
+        $cursadasParaLimpeza = $vinculos
+            ->filter(fn (Equivalencia $item) => ! $item->isPlaceholderRequerida())
+            ->pluck('cursada_id')
+            ->unique()
+            ->values();
+
+        Equivalencia::query()
+            ->whereIn('id', $vinculos->pluck('id'))
+            ->delete();
+
+        foreach ($cursadasParaLimpeza as $cursadaId) {
+            $this->removerDisciplinaSeOrfa((int) $cursadaId);
+        }
+
+        $this->removerDisciplinaSeOrfa($equivalencia->id);
 
         return redirect()
             ->route('equivalencias.show', [$codcur, $codhab])

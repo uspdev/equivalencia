@@ -133,6 +133,15 @@ class Equivalencia extends Model
         return static::primeiroVinculoDoGrupoDaRequerida($requeridaId, $codcur, $codhab)?->grupo;
     }
 
+    // Vínculos placeholder são equivalências automáticas em que a disciplina
+    // cursada é a mesma da requerida.
+    //
+    // Esses registros são criados automaticamente para garantir que toda
+    // disciplina requerida pertença a um grupo de equivalências, mesmo
+    // quando ainda não houver uma disciplina cursada vinculada.
+    //
+    // Isso facilita a manutenção e a inclusão futura de novas equivalências
+    // dentro do mesmo grupo.
     public static function criarPlaceholderDaRequerida(int $requeridaId, int $codcur, int $codhab): self
     {
         return static::create([
