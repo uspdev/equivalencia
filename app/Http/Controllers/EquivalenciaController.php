@@ -56,7 +56,13 @@ class EquivalenciaController extends Controller
         $disciplinas->getCollection()->transform(function (Disciplina $disciplina) {
             $disciplina->setRelation(
                 'equivalentes',
-                $disciplina->equivalentes->sortBy('coddis')->values()
+                // Ordena as equivalências primeiro pelo grupo
+                // (com padding para garantir ordenação numérica correta) e depois pelo código da disciplina cursada.
+                $disciplina->equivalentes
+                    ->sortBy(function (Equivalencia $item) {
+                        return sprintf('%010d-%s', (int) $item->grupo, (string) ($item->coddis ?? ''));
+                    })
+                    ->values()
             );
 
             return $disciplina;
@@ -94,7 +100,17 @@ class EquivalenciaController extends Controller
                         'eq_child_add',
                         route('equivalencias.add-equivalencia', [$codcur, $codhab, $disciplinaUsp]),
                         'POST',
-                        $this->oldInputForFields(['coddis', 'nome_disciplina', 'ies'])
+                        $this->oldInputForFields([
+                            'coddis',
+                            'nome_disciplina',
+                            'ies',
+                            'coddis2',
+                            'nome_disciplina2',
+                            'ies2',
+                            'coddis3',
+                            'nome_disciplina3',
+                            'ies3',
+                        ])
                     ),
                 ];
             })
@@ -109,11 +125,7 @@ class EquivalenciaController extends Controller
                                 'eq_child_add',
                                 route('equivalencias.update-equivalencia', [$codcur, $codhab, $disciplinaUsp, $equivalenciaFilha]),
                                 'PUT',
-                                [
-                                    'coddis' => old('coddis', $equivalenciaFilha->coddis),
-                                    'nome_disciplina' => old('nome_disciplina', $equivalenciaFilha->nome_disciplina),
-                                    'ies' => old('ies', $equivalenciaFilha->ies),
-                                ]
+                                $this->defaultsParaFormularioEdicaoDeGrupo($disciplinaUsp, $equivalenciaFilha)
                             ),
                         ];
                     })
