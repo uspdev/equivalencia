@@ -219,24 +219,55 @@ class EquivalenciaController extends Controller
             ->with('alert-success', 'Equivalência adicionada com sucesso.');
     }
 
-    /**
-     * Atualiza uma disciplina equivalente (filha) de uma disciplina USP (pai).
-     */
-    public function updateEquivalencia(Request $request, int $codcur, int $codhab, Equivalencia $equivalencia, Equivalencia $equivalenciaFilha)
+    public function updateEquivalencia(Request $request, int $codcur, int $codhab, Disciplina $equivalencia, Equivalencia $equivalenciaFilha)
     {
-        abort_unless($equivalencia->isUsp(), 404);
-        abort_unless($this->equivalenciaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
-        abort_unless($equivalenciaFilha->isEquivalencia(), 404);
-        abort_unless($equivalenciaFilha->equivalencias_id === $equivalencia->id, 404);
+        // Validações de segurança para garantir que a equivalência filha realmente pertence à disciplina requerida
+        // e ao contexto do curso e habilitação, e que não é uma placeholder.
+        abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
+        abort_unless($equivalenciaFilha->pertenceARequeridaNoContexto($equivalencia->id, $codcur, $codhab), 404);
+        abort_unless(! $equivalenciaFilha->isPlaceholderRequerida(), 404);
 
-        $dados = $request->all();
+        $conjuntos = $this->validarEPrepararConjuntosDeEquivalencia($request);
 
-        $dados['equivalencias_id'] = $equivalencia->id;
-        $dados['tipo'] = Equivalencia::TIPO_CURSADA;
-        $dados['codcur'] = $codcur;
-        $dados['codhab'] = $codhab;
+        $equivalenciasDoGrupo = Equivalencia::query()
+            ->doContexto($codcur, $codhab)
+            ->where('requerida_id', $equivalencia->id)
+            ->where('grupo', $equivalenciaFilha->grupo)
+            ->whereColumn('cursada_id', '!=', 'requerida_id')
+            ->with('cursada')
+            ->orderBy('id')
+            ->get();
 
-        $equivalenciaFilha->update($dados);
+        $equivalenciasOrdenadasParaEdicao = collect([$equivalenciaFilha])
+            ->merge(
+                $equivalenciasDoGrupo
+                    ->reject(fn (Equivalencia $item) => $item->id === $equivalenciaFilha->id)
+                    ->values()
+            )
+            ->values();
+
+        foreach ($conjuntos as $index => $dadosCursada) {
+            $vinculoExistente = $equivalenciasOrdenadasParaEdicao->get($index);
+
+            if ($vinculoExistente) {
+                $vinculoExistente->loadMissing('cursada');
+                abort_unless($vinculoExistente->cursada, 404);
+                $vinculoExistente->cursada->atualizarCursadaPorFormulario($dadosCursada);
+
+                continue;
+            }
+
+            $novaCursada = Disciplina::criarCursadaPorFormulario($dadosCursada);
+
+            Equivalencia::criarVinculoCursada(
+                (int) $equivalenciaFilha->grupo,
+                $equivalencia->id,
+                $novaCursada->id,
+                $codcur,
+                $codhab,
+                Equivalencia::TIPO_AUTOMATICA
+            );
+        }
 
         return redirect()
             ->back()
