@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreEquivalenciaRequest;
 use App\Http\Requests\UpdateEquivalenciaRequest;
+use App\Models\Disciplina;
 use App\Models\Equivalencia;
 use App\Replicado\Graduacao;
 use Illuminate\Http\Request;
@@ -133,43 +134,32 @@ class EquivalenciaController extends Controller
         ]);
     }
 
-    /**
-     * Armazena uma nova disciplina USP equivalente para um curso/habilitação específico.
-     * Pega o codcur e codhab da rota, valida os dados do formulário utilizando a StoreEquivalenciaRequest,
-     * preenche os dados da disciplina USP com as informações do Replicado
-     */
     public function store(StoreEquivalenciaRequest $request, int $codcur, int $codhab)
     {
         $dados = $request->validated();
-        $dados['equivalencias_id'] = null;
-        $dados['tipo'] = Equivalencia::TIPO_AUTOMATICA;
-        $dados['codcur'] = $codcur;
-        $dados['codhab'] = $codhab;
-        $dados = $this->preencherDadosDisciplinaUsp($dados);
 
-        $equivalencia = Equivalencia::create($dados);
+        $requerida = Disciplina::query()
+            ->where('coddis', $dados['coddis'])
+            ->where('ies', 'USP')
+            ->first();
+
+        $requerida = Disciplina::upsertRequeridaPorCoddis($dados['coddis'], $requerida);
+
+        if (! Equivalencia::grupoDaRequerida($requerida->id, $codcur, $codhab)) {
+            Equivalencia::criarPlaceholderDaRequerida($requerida->id, $codcur, $codhab);
+        }
 
         return redirect()
             ->route('equivalencias.show', [$codcur, $codhab])
             ->with('alert-success', 'Disciplina USP criada com sucesso.');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(UpdateEquivalenciaRequest $request, int $codcur, int $codhab, Equivalencia $equivalencia)
+    public function update(UpdateEquivalenciaRequest $request, int $codcur, int $codhab, Disciplina $equivalencia)
     {
-        abort_unless($equivalencia->isUsp(), 404);
-        abort_unless($this->equivalenciaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
+        abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
 
         $dados = $request->validated();
-        $dados['tipo'] = Equivalencia::TIPO_AUTOMATICA;
-        $dados['codcur'] = $codcur;
-        $dados['codhab'] = $codhab;
-
-        $dados = $this->preencherDadosDisciplinaUsp($dados, $equivalencia->coddis);
-
-        $equivalencia->update($dados);
+        Disciplina::upsertRequeridaPorCoddis($dados['coddis'], $equivalencia);
 
         return redirect()
             ->back()
