@@ -34,6 +34,8 @@ Route::middleware(['auth'])->group(function () {
         ->name('equivalencias.update-equivalencia');
     Route::delete('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [EquivalenciaController::class, 'destroyEquivalencia'])
         ->name('equivalencias.destroy-equivalencia');
+    Route::delete('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}/grupo', [EquivalenciaController::class, 'destroyEquivalenciaGrupo'])
+        ->name('equivalencias.destroy-equivalencia-grupo');
 
     Route::get('/createdefinition', [WorkflowController::class, 'createDefinition'])->name('workflows.create-definition');
     Route::post('/createdefinition', [WorkflowController::class, 'storeDefinition'])->name('workflows.store-definition');

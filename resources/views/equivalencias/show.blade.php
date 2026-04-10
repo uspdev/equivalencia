@@ -3,11 +3,16 @@
 @section('content')
 
   <div class="card">
-    <div class="card-header h4">
-      <a href="{{ route('equivalencias.index') }}">Cursos</a>
-      <i class="fas fa-angle-right mx-2"></i>
-      {{ $nomeCurso }} ({{ $codcur }}/{{ $codhab }})
-      @include('equivalencias.partials.modal-create')
+    <div class="card-header d-flex align-items-center">
+        <h4 class="mb-0">
+            <a href="{{ route('equivalencias.index') }}">Cursos</a>
+            <i class="fas fa-angle-right mx-2"></i>
+            {{ $nomeCurso }} ({{ $codcur }}/{{ $codhab }})
+        </h4>
+
+        <div class="pt-2">
+          @include('equivalencias.partials.modal-create')
+        </div>
     </div>
 
     <div class="card-body">
