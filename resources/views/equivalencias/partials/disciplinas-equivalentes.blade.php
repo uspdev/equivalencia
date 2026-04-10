@@ -7,36 +7,28 @@
     $equivalenciaRepresentante = $equivalenciasDoGrupo->first();
   @endphp
 
-  <div class="mb-2 d-flex align-items-center">
-    <span class="badge badge-pill badge-info mr-2">
-      Equivalência
-    </span>
+  <div class="disciplina-equivalente d-flex align-items-center flex-nowrap mb-2">
     @if ($equivalenciaRepresentante)
       @include('equivalencias.partials.modal-edit-equivalencia', ['equivalencia' => $equivalenciaRepresentante])
+      <form action="{{ route('equivalencias.destroy-equivalencia-grupo', [$codcur, $codhab, $disciplina, $equivalenciaRepresentante]) }}" method="POST" class="d-inline mr-2">
+        @csrf
+        @method('DELETE')
+        <button type="submit" class="btn btn-sm btn-outline-danger ml-2 btn-remover" title="Remover grupo de equivalências"
+          onclick="return confirm('Tem certeza que deseja remover todas as equivalências deste grupo?')">
+          <i class="fas fa-trash"></i>
+        </button>
+      </form>
     @endif
-  </div>
 
-  @foreach ($equivalenciasDoGrupo as $e)
-    <div class="disciplina-equivalente d-flex align-items-center">
-      <p>{{ $e->coddis ?: '-' }} - {{ $e->nome_disciplina ?: '-' }} ({{ $e->ies }})</p>
-      <div class="mr-2">@include('equivalencias.partials.remover-equivalente-btn')</div>
-    </div>
-  @endforeach
+    <p class="mb-0 text-truncate">
+      @foreach ($equivalenciasDoGrupo as $e)
+        <span>{{ $e->coddis ?: '-' }} - {{ $e->nome_disciplina ?: '-' }} ({{ $e->ies }})</span>
+        @if (! $loop->last)
+          <span class="mx-2">|</span>
+        @endif
+      @endforeach
+    </p>
+  </div>
 @empty
   -
 @endforelse
-@section('styles')
-  @parent
-  <style>
-    .disciplina-equivalente .btn-remover,
-    .disciplina-equivalente .btn-editar {
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-
-    .disciplina-equivalente:hover .btn-remover,
-    .disciplina-equivalente:hover .btn-editar {
-      opacity: 1;
-    }
-  </style>
-@endsection
