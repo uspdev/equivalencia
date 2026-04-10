@@ -9,7 +9,7 @@
 
   <div class="mb-2 d-flex align-items-center">
     <span class="badge badge-pill badge-info mr-2">
-      Equivalência {{ $grupo }}
+      Equivalência
     </span>
     @if ($equivalenciaRepresentante)
       @include('equivalencias.partials.modal-edit-equivalencia', ['equivalencia' => $equivalenciaRepresentante])
