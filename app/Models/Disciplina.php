@@ -120,7 +120,9 @@ class Disciplina extends Model
                 'creditos' => $disciplinaReplicado['creaul'] ?? null,
                 'carga_horaria' => $disciplinaReplicado['numhor'] ?? null,
                 'verdis' => $disciplinaReplicado['verdis'] ?? null,
-                'sglund' => $disciplinaReplicado['sglund'] ?? null,
+                // precisa ver como vai recuperar isso do replicado
+                // do modo que está, so funciona na importação de disciplinas pelo script
+                'sglund' =>  $dados['sglund'] ?? null,
                 'ano' => $dados['ano'] ?? null,
                 'semestre' => $dados['semestre'] ?? null,
                 'frequencia' => $dados['frequencia'] ?? null,
