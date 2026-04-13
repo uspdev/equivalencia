@@ -23,7 +23,6 @@
           <thead>
             <tr>
               <th>Disciplina requerida</th>
-              <th></th>
               <th>Disciplinas cursadas (IES)</th>
             </tr>
           </thead>
@@ -32,13 +31,6 @@
               <tr>
                 <td>
                   @include('equivalencias.partials.disciplina-requerida')
-                </td>
-                <td>
-                  @include('equivalencias.partials.modal-equivalencia', [
-                      'modalId' => "modalAdicionarEquivalencia{$disciplina->id}",
-                      'modalLabelId' => "modalAdicionarEquivalenciaLabel{$disciplina->id}",
-                      'formHtmlEquivalencia' => $formHtmlEquivalencia[$disciplina->id] ?? '',
-                  ])
                 </td>
                 <td>
                   @include('equivalencias.partials.disciplinas-equivalentes')
