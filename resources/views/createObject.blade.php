@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container mt-2">
+<div class="mt-2">
     <h2 class="mb-4">Novo requerimento</h2>
     <ul class="list-group">
         @foreach($workflowDefinitions as $workflowDefinition)

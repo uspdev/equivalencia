@@ -1,7 +1,7 @@
  @extends('layouts.app')
 
 @section('content')
- <div class="container mt-5">
+ <div class="mt-5">
         <h1>Workflows</h1>
 
         <form action="{{ route('workflows.create-definition') }}" method="POST" class="mb-3">

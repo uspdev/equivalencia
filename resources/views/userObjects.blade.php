@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-  <div class="container mt-2">
+  <div class="mt-2">
     <h2>Meus requerimentos</h2>
     <p>Estes são os seus requerimentos. Para criar um novo requerimento, clique em "Novo requerimento, no menu superior".<br>
     Para gerenciar um requerimento, clique em seu ID.</p>
