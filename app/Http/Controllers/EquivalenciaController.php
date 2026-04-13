@@ -302,6 +302,38 @@ class EquivalenciaController extends Controller
             ->with('alert-success', 'Equivalência removida com sucesso.');
     }
 
+    public function destroyEquivalenciaGrupo(int $codcur, int $codhab, Disciplina $equivalencia, Equivalencia $equivalenciaFilha)
+    {
+        abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
+        abort_unless($equivalenciaFilha->pertenceARequeridaNoContexto($equivalencia->id, $codcur, $codhab), 404);
+        abort_unless(! $equivalenciaFilha->isPlaceholderRequerida(), 404);
+
+        $vinculosDoGrupo = Equivalencia::query()
+            ->doContexto($codcur, $codhab)
+            ->where('requerida_id', $equivalencia->id)
+            ->where('grupo', $equivalenciaFilha->grupo)
+            ->get();
+
+        $cursadasParaLimpeza = $vinculosDoGrupo
+            ->pluck('cursada_id')
+            ->unique()
+            ->values();
+
+        Equivalencia::query()
+            ->whereIn('id', $vinculosDoGrupo->pluck('id'))
+            ->delete();
+
+        foreach ($cursadasParaLimpeza as $cursadaId) {
+            $this->removerDisciplinaSeOrfa((int) $cursadaId);
+        }
+
+        $this->removerDisciplinaSeOrfa($equivalencia->id);
+
+        return redirect()
+            ->back()
+            ->with('alert-success', 'Grupo de equivalências removido com sucesso.');
+    }
+
     /**
      * Cria o HTML do formulário utilizando o pacote Uspdev/Forms
      */

@@ -2,7 +2,7 @@
   <div>
     <p>
       {{ $disciplina->coddis }}
-    - {{ $disciplina->nome_disciplina ?: '-' }} ({{ $disciplina->verdis ?: '-' }})
+    - {{ $disciplina->nome_disciplina ?: '-' }}
     </p>
   </div>
 

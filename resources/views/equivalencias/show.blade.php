@@ -22,7 +22,7 @@
         <table class="table table-striped table-bordered datatable-simples dt-state-save">
           <thead>
             <tr>
-              <th>Disciplina requerida (versão)</th>
+              <th>Disciplina requerida</th>
               <th></th>
               <th>Disciplinas cursadas (IES)</th>
             </tr>

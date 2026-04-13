@@ -22,7 +22,15 @@
 
     <p class="mb-0 text-truncate">
       @foreach ($equivalenciasDoGrupo as $e)
-        <span>{{ $e->coddis ?: '-' }} - {{ $e->nome_disciplina ?: '-' }} ({{ $e->ies }})</span>
+        @php
+          $textoCompleto = ($e->coddis ?: '-') . ' - ' . ($e->nome_disciplina ?: '-') . ' (' . ($e->ies ?: '-') . ')';
+          $inicioVisivel = 16;
+          $fimVisivel = 28;
+          $textoExibido = mb_strlen($textoCompleto) > ($inicioVisivel + $fimVisivel + 3)
+            ? mb_substr($textoCompleto, 0, $inicioVisivel) . '...' . mb_substr($textoCompleto, -$fimVisivel)
+            : $textoCompleto;
+        @endphp
+        <span title="{{ $textoCompleto }}">{{ $textoExibido }}</span>
         @if (! $loop->last)
           <span class="mx-2">|</span>
         @endif
