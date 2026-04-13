@@ -4,7 +4,7 @@
 /storage/*.key
 /storage/database.sqlite
 /vendor
-/database/customData
+
 .env
 .env.backup
 .phpunit.result.cache
@@ -15,8 +15,6 @@ npm-debug.log
 yarn-error.log
 /.idea
 /.vscode
-/composer.json
-/composer.lock
 
 public/vendor
 
