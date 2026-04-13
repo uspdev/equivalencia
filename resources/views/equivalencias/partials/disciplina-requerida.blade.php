@@ -6,7 +6,7 @@
         </p>
     </div>
 
-    <div class="disciplina-requerida-acoes ml-3 d-inline-flex align-items-center">
+    <div class="disciplina-requerida-acoes js-edit-only ml-3 d-inline-flex align-items-center">
         <div> @include('equivalencias.partials.modal-equivalencia', [
             'modalId' => "modalAdicionarEquivalencia{$disciplina->id}",
             'modalLabelId' => "modalAdicionarEquivalenciaLabel{$disciplina->id}",
@@ -25,21 +25,3 @@
         </form>
     </div>
 </div>
-
-@section('styles')
-    @parent
-    <style>
-        .disciplina-requerida .disciplina-requerida-acoes {
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-
-        .disciplina-requerida:hover .disciplina-requerida-acoes {
-            opacity: 1;
-        }
-
-        body.modal-open .disciplina-requerida .disciplina-requerida-acoes {
-            opacity: 1;
-        }
-    </style>
-@endsection

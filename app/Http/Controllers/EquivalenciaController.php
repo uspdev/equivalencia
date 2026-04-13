@@ -46,9 +46,9 @@ class EquivalenciaController extends Controller
                 $query->automaticas()->doContexto($codcur, $codhab)->with('cursada')->orderBy('id');
             }])
             ->orderBy('coddis')
-            ->paginate(15);
+            ->get();
 
-        $disciplinas->getCollection()->transform(function (Disciplina $disciplina) {
+        $disciplinas = $disciplinas->transform(function (Disciplina $disciplina) {
             $disciplina->setRelation(
                 'equivalentes',
                 // Ordena as equivalências primeiro pelo grupo
@@ -70,7 +70,7 @@ class EquivalenciaController extends Controller
             $this->oldInputForFields(['coddis'])
         );
 
-        $formHtmlEdit = $disciplinas->getCollection()
+        $formHtmlEdit = $disciplinas
             ->mapWithKeys(function (Disciplina $disciplinaUsp) use ($codcur, $codhab) {
                 $formHtml = $this->buildFormHtml(
                     'eq_usp_edit',
@@ -88,7 +88,7 @@ class EquivalenciaController extends Controller
             })
             ->all();
 
-        $formHtmlEquivalencia = $disciplinas->getCollection()
+        $formHtmlEquivalencia = $disciplinas
             ->mapWithKeys(function (Disciplina $disciplinaUsp) use ($codcur, $codhab) {
                 return [
                     $disciplinaUsp->id => $this->buildFormHtml(
@@ -111,7 +111,7 @@ class EquivalenciaController extends Controller
             })
             ->all();
 
-        $formHtmlEquivalenciaEdit = $disciplinas->getCollection()
+        $formHtmlEquivalenciaEdit = $disciplinas
             ->reduce(function (array $forms, Disciplina $disciplinaUsp) use ($codcur, $codhab) {
                 $formsDaDisciplina = $disciplinaUsp->equivalentes
                     ->mapWithKeys(function (Equivalencia $equivalenciaFilha) use ($codcur, $codhab, $disciplinaUsp) {
