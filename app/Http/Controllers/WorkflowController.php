@@ -30,7 +30,7 @@ class WorkflowController extends Controller
     {
         $workflowDefinitions = Workflow::obterTodosWorkflowDefinitions();
 
-        return view('list', compact('workflowDefinitions'));
+        return view('uspdev-workflow::show.list-defs', ['workflowDefinitions' => $workflowDefinitions, 'activeTab' => 'index']);
     }
 
     public function showDefinition($definitionName)
