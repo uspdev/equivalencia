@@ -7,12 +7,18 @@ use App\Http\Requests\UpdateEquivalenciaRequest;
 use App\Models\Disciplina;
 use App\Models\Equivalencia;
 use App\Replicado\Graduacao;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 use Uspdev\Forms\Form;
 
 class EquivalenciaController extends Controller
 {
+    /**
+     * Construtor do controlador.
+     * Configura o middleware para ativar a URL no tema.
+     */
     public function __construct()
     {
         $this->middleware(function ($request, $next) {
@@ -22,6 +28,11 @@ class EquivalenciaController extends Controller
         });
     }
 
+    /**
+     * Exibe a página inicial com a lista de cursos e habilitações.
+     *
+     * @return View
+     */
     public function index()
     {
         $cursos = Graduacao::listarCursosHabilitacoes();
@@ -31,6 +42,14 @@ class EquivalenciaController extends Controller
         ]);
     }
 
+    /**
+     * Exibe as disciplinas USP e suas equivalências para um curso específico.
+     * Monta os formulários necessários para criação, edição e remoção de equivalências.
+     *
+     * @param  int  $codcur  Código do curso
+     * @param  int  $codhab  Código da habilitação
+     * @return View
+     */
     public function show(int $codcur, int $codhab)
     {
         $curso = collect(Graduacao::listarCursosHabilitacoes())
@@ -141,6 +160,15 @@ class EquivalenciaController extends Controller
         ]);
     }
 
+    /**
+     * Cria uma nova disciplina USP no sistema.
+     * Valida os dados, cria a disciplina se necessário e estabelece o placeholder de equivalência.
+     *
+     * @param  StoreEquivalenciaRequest  $request  Dados validados da requisição
+     * @param  int  $codcur  Código do curso
+     * @param  int  $codhab  Código da habilitação
+     * @return RedirectResponse
+     */
     public function store(StoreEquivalenciaRequest $request, int $codcur, int $codhab)
     {
         $dados = $request->validated();
@@ -161,6 +189,16 @@ class EquivalenciaController extends Controller
             ->with('alert-success', 'Disciplina USP criada com sucesso.');
     }
 
+    /**
+     * Atualiza uma disciplina USP existente.
+     * Valida se a disciplina pertence ao curso antes de atualizar.
+     *
+     * @param  UpdateEquivalenciaRequest  $request  Dados validados da requisição
+     * @param  int  $codcur  Código do curso
+     * @param  int  $codhab  Código da habilitação
+     * @param  Disciplina  $equivalencia  A disciplina USP a ser atualizada
+     * @return RedirectResponse
+     */
     public function update(UpdateEquivalenciaRequest $request, int $codcur, int $codhab, Disciplina $equivalencia)
     {
         abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
@@ -173,6 +211,15 @@ class EquivalenciaController extends Controller
             ->with('alert-success', 'Disciplina USP atualizada com sucesso.');
     }
 
+    /**
+     * Remove uma disciplina USP e todas as suas equivalências.
+     * Realiza limpeza de disciplinas órfãs após a remoção.
+     *
+     * @param  int  $codcur  Código do curso
+     * @param  int  $codhab  Código da habilitação
+     * @param  Disciplina  $equivalencia  A disciplina USP a ser removida
+     * @return RedirectResponse
+     */
     public function destroy(int $codcur, int $codhab, Disciplina $equivalencia)
     {
         abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
@@ -205,6 +252,16 @@ class EquivalenciaController extends Controller
             ->with('alert-success', 'Disciplina USP removida com sucesso.');
     }
 
+    /**
+     * Adiciona novas equivalências (disciplinas cursadas) para uma disciplina USP específica.
+     * Valida os dados, cria as disciplinas cursadas e estabelece os vínculos.
+     *
+     * @param  Request  $request  Dados da requisição
+     * @param  int  $codcur  Código do curso
+     * @param  int  $codhab  Código da habilitação
+     * @param  Disciplina  $equivalencia  A disciplina USP que receberá as equivalências
+     * @return RedirectResponse
+     */
     public function addEquivalencia(Request $request, int $codcur, int $codhab, Disciplina $equivalencia)
     {
         abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
@@ -231,6 +288,17 @@ class EquivalenciaController extends Controller
             ->with('alert-success', 'Equivalência adicionada com sucesso.');
     }
 
+    /**
+     * Atualiza um grupo de equivalências para uma disciplina USP.
+     * Permite editar as disciplinas equivalentes de um grupo mantendo ou criando novos vínculos.
+     *
+     * @param  Request  $request  Dados da requisição
+     * @param  int  $codcur  Código do curso
+     * @param  int  $codhab  Código da habilitação
+     * @param  Disciplina  $equivalencia  A disciplina USP proprietária do grupo
+     * @param  Equivalencia  $equivalenciaFilha  Uma equivalência do grupo a ser atualizado
+     * @return RedirectResponse
+     */
     public function updateEquivalencia(Request $request, int $codcur, int $codhab, Disciplina $equivalencia, Equivalencia $equivalenciaFilha)
     {
         // Validações de segurança para garantir que a equivalência filha realmente pertence à disciplina requerida
@@ -286,6 +354,16 @@ class EquivalenciaController extends Controller
             ->with('alert-success', 'Equivalência atualizada com sucesso.');
     }
 
+    /**
+     * Remove uma única equivalência de um grupo.
+     * Realiza limpeza da disciplina cursada se ficar órfã após a remoção.
+     *
+     * @param  int  $codcur  Código do curso
+     * @param  int  $codhab  Código da habilitação
+     * @param  Disciplina  $equivalencia  A disciplina USP proprietária
+     * @param  Equivalencia  $equivalenciaFilha  A equivalência a ser removida
+     * @return RedirectResponse
+     */
     public function destroyEquivalencia(int $codcur, int $codhab, Disciplina $equivalencia, Equivalencia $equivalenciaFilha)
     {
         abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
@@ -302,6 +380,16 @@ class EquivalenciaController extends Controller
             ->with('alert-success', 'Equivalência removida com sucesso.');
     }
 
+    /**
+     * Remove um grupo inteiro de equivalências para uma disciplina USP.
+     * Remove todos os vínculos do grupo e realiza limpeza de disciplinas órfãs.
+     *
+     * @param  int  $codcur  Código do curso
+     * @param  int  $codhab  Código da habilitação
+     * @param  Disciplina  $equivalencia  A disciplina USP proprietária do grupo
+     * @param  Equivalencia  $equivalenciaFilha  Uma equivalência do grupo a ser removido
+     * @return RedirectResponse
+     */
     public function destroyEquivalenciaGrupo(int $codcur, int $codhab, Disciplina $equivalencia, Equivalencia $equivalenciaFilha)
     {
         abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
@@ -335,7 +423,14 @@ class EquivalenciaController extends Controller
     }
 
     /**
-     * Cria o HTML do formulário utilizando o pacote Uspdev/Forms
+     * Cria o HTML do formulário utilizando o pacote Uspdev/Forms.
+     * Gera o HTML a partir da configuração fornecida.
+     *
+     * @param  string  $name  Nome do formulário
+     * @param  string  $action  URL de ação do formulário
+     * @param  string  $method  Método HTTP (POST, PUT, etc)
+     * @param  array  $values  Valores padrão para os campos
+     * @return string HTML do formulário gerado
      */
     private function buildFormHtml(string $name, string $action, string $method, array $values): string
     {
@@ -352,8 +447,14 @@ class EquivalenciaController extends Controller
         return $form->generateHtml($name, $formSubmission) ?? '';
     }
 
-    // Prepara os valores padrão para o formulário de edição de uma equivalência,
-    // considerando os outros vínculos do mesmo grupo para preencher os campos adicionais.
+    /**
+     * Prepara os valores padrão para o formulário de edição de uma equivalência.
+     * Organiza os vínculos do mesmo grupo para preencher os campos adicionais (coddis2, coddis3, etc).
+     *
+     * @param  Disciplina  $disciplinaUsp  A disciplina USP
+     * @param  Equivalencia  $equivalenciaFilha  A equivalência sendo editada
+     * @return array Array com os valores padrão para o formulário
+     */
     private function defaultsParaFormularioEdicaoDeGrupo(Disciplina $disciplinaUsp, Equivalencia $equivalenciaFilha): array
     {
         $equivalentesDoMesmoGrupo = $disciplinaUsp->equivalentes
@@ -381,11 +482,16 @@ class EquivalenciaController extends Controller
         ];
     }
 
-    // Valida os dados do formulário de criação/edição de equivalências, p
-    // reparando os conjuntos de dados para cada equivalência a ser criada/atualizada.
-    // Não foi feito em um request separado porque as regras de validação
-    // são um pouco mais complexas do que o usual, envolvendo validações condicionais
-    // e interdependentes entre os campos, e o formato dos dados é específico para a estrutura do formulário de equivalências.
+    /**
+     * Valida e prepara os conjuntos de dados para criação/edição de equivalências.
+     * Inclui validações condicionais e interdependentes entre os campos.
+     * Não utiliza um Request separado devido à complexidade das regras de validação.
+     *
+     * @param  Request  $request  Dados da requisição
+     * @return array Array com os conjuntos de equivalências validados
+     *
+     * @throws ValidationException
+     */
     private function validarEPrepararConjuntosDeEquivalencia(Request $request): array
     {
         $dados = $request->validate([
@@ -456,7 +562,14 @@ class EquivalenciaController extends Controller
         return $conjuntos;
     }
 
-    // Em telas com lista de modais (index), evita IDs e seletores duplicados para o Select2.
+    /**
+     * Adiciona namespace aos IDs do formulário para evitar duplicatas em listas de modais.
+     * Essencial para manter o funcionamento correto do Select2 em múltiplos formulários.
+     *
+     * @param  string  $formHtml  HTML do formulário
+     * @param  int  $disciplinaId  ID da disciplina para criar um namespace único
+     * @return string HTML do formulário com IDs namespaceados
+     */
     private function namespaceFormHtmlForIndex(string $formHtml, int $disciplinaId): string
     {
         $suffix = (string) $disciplinaId;
@@ -480,8 +593,14 @@ class EquivalenciaController extends Controller
         );
     }
 
-    // Recupera os valores antigos (old input) para os campos do formulário,
-    // utilizando os valores padrão fornecidos caso não haja old input.
+    /**
+     * Recupera os valores antigos (old input) para os campos do formulário.
+     * Utiliza valores padrão caso não haja old input disponível.
+     *
+     * @param  array  $fields  Lista de nomes de campos
+     * @param  array  $defaults  Valores padrão para os campos (opcional)
+     * @return array Array com os valores old ou padrão
+     */
     private function oldInputForFields(array $fields, array $defaults = []): array
     {
         $values = [];
@@ -493,9 +612,15 @@ class EquivalenciaController extends Controller
         return $values;
     }
 
-    // Verifica se a disciplina requerida pertence ao curso e habilitação, ou seja,
-    // se existe alguma equivalência automática vinculando essa disciplina como requerida
-    // no contexto do curso e habilitação fornecidos.
+    /**
+     * Verifica se uma disciplina requerida pertence a um curso específico.
+     * Valida se existe equivalência automática vinculando a disciplina no contexto do curso.
+     *
+     * @param  Disciplina  $requerida  A disciplina requerida a verificar
+     * @param  int  $codcur  Código do curso
+     * @param  int  $codhab  Código da habilitação
+     * @return bool True se a disciplina pertence ao curso, false caso contrário
+     */
     private function requeridaPertenceAoCurso(Disciplina $requerida, int $codcur, int $codhab): bool
     {
         return Equivalencia::query()
@@ -504,8 +629,12 @@ class EquivalenciaController extends Controller
             ->exists();
     }
 
-    // Remove uma disciplina se ela não tiver mais vínculos com outras disciplinas.
-    // Ultilizado para limpar disciplinas equivalentes após remoção de equivalências.
+    /**
+     * Remove uma disciplina se ela não tiver mais vínculos de equivalência.
+     * Utilizado para limpeza de disciplinas órfãs após remoção de equivalências.
+     *
+     * @param  int  $disciplinaId  ID da disciplina a verificar e remover
+     */
     private function removerDisciplinaSeOrfa(int $disciplinaId): void
     {
         $disciplina = Disciplina::find($disciplinaId);
