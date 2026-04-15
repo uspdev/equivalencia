@@ -126,11 +126,31 @@ class EquivalenciaController extends Controller
             'codcur' => $codcur,
             'codhab' => $codhab,
             'nomeCurso' => $curso['nomcur'],
-            'editModeEnabled' => (bool) session()->get($this->editModeSessionKey($codcur, $codhab), false),
+            'editModeEnabled' => (bool) session()->get($this->editModeSessionKey(), false),
             'formHtmlCreate' => $formHtmlCreate,
             'formHtmlEdit' => $formHtmlEdit,
             'formHtmlEquivalenciaCreate' => $formHtmlEquivalenciaCreate,
             'formHtmlEquivalenciaEdit' => $formHtmlEquivalenciaEdit,
+        ]);
+    }
+
+    /**
+     * Persiste o estado global do modo de edicao da tela de equivalencias na sessao.
+     *
+     * @param  Request  $request  Dados da requisição
+     */
+    public function saveEditModeState(Request $request): JsonResponse
+    {
+        $this->authorize('svgrad');
+        $dados = $request->validate([
+            'enabled' => ['required', 'boolean'],
+        ]);
+
+        session()->put($this->editModeSessionKey(), (bool) $dados['enabled']);
+
+        return response()->json([
+            'saved' => true,
+            'enabled' => (bool) $dados['enabled'],
         ]);
     }
 
@@ -224,6 +244,14 @@ class EquivalenciaController extends Controller
         return redirect()
             ->route('equivalencias.show', [$codcur, $codhab])
             ->with('alert-success', 'Disciplina USP removida com sucesso.');
+    }
+
+    /**
+     * Retorna a chave de sessão para estado global do modo de edição.
+     */
+    private function editModeSessionKey(): string
+    {
+        return (string) config('equivalencia.edit_mode_session_key', 'equivalencias.edit_mode.global');
     }
 
     /**

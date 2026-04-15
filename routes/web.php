@@ -22,6 +22,8 @@ Route::middleware(['auth'])->group(function () {
         ->name('equivalencias.index');
     Route::get('/equivalencias/{codcur}/{codhab}', [EquivalenciaController::class, 'show'])
         ->name('equivalencias.show');
+    Route::post('/equivalencia/estado-edicao', [EquivalenciaController::class, 'saveEditModeState'])
+        ->name('equivalencias.save-edit-mode-state');
     Route::post('/equivalencias/{codcur}/{codhab}', [EquivalenciaController::class, 'store'])
         ->name('equivalencias.store');
     Route::put('/equivalencias/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'update'])
