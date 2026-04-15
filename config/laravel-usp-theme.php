@@ -58,7 +58,7 @@ $menu = [
     [
         'text' => 'Aproveitamentos automáticos',
         'url' => 'equivalencias',
-        'can' => 'user',
+        'can' => 'equivalencias',
     ],
 ];
 
