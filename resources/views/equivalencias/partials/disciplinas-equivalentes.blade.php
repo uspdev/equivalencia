@@ -17,14 +17,16 @@
                 @notLast('|')
             @endforeach
         </p>
-        @if ($equivalenciaRepresentante)
+        @can('svgrad')
+            @if ($equivalenciaRepresentante)
             <div class="js-edit-only d-inline-flex align-items-center">
                 @include('equivalencias.partials.modal-edit-equivalencia', [
                     'equivalencia' => $equivalenciaRepresentante,
                 ])
                 @include('equivalencias.partials.form-remove-equivalencia')
             </div>
-        @endif
+            @endif
+        @endcan
     </div>
 @empty
     -

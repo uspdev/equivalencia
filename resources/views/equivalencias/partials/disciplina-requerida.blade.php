@@ -6,22 +6,24 @@
         </p>
     </div>
 
-    <div class="disciplina-requerida-acoes js-edit-only ml-3 d-inline-flex align-items-center">
-        <div> @include('equivalencias.partials.modal-equivalencia', [
-            'modalId' => "modalAdicionarEquivalencia{$disciplina->id}",
-            'modalLabelId' => "modalAdicionarEquivalenciaLabel{$disciplina->id}",
-            'formHtmlEquivalencia' => $formHtmlEquivalenciaCreate[$disciplina->id] ?? '',
-        ])</div>
-        <div>@include('equivalencias.partials.modal-edit')</div>
+    @can('svgrad')
+        <div class="disciplina-requerida-acoes js-edit-only ml-3 d-inline-flex align-items-center">
+            <div> @include('equivalencias.partials.modal-equivalencia', [
+                'modalId' => "modalAdicionarEquivalencia{$disciplina->id}",
+                'modalLabelId' => "modalAdicionarEquivalenciaLabel{$disciplina->id}",
+                'formHtmlEquivalencia' => $formHtmlEquivalenciaCreate[$disciplina->id] ?? '',
+            ])</div>
+            <div>@include('equivalencias.partials.modal-edit')</div>
 
-        <form action="{{ route('equivalencias.destroy', [$codcur, $codhab, $disciplina]) }}" method="POST"
-            class="d-inline">
-            @csrf
-            @method('DELETE')
-            <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover disciplina requerida"
-                onclick="return confirm('Tem certeza que deseja remover esta disciplina e suas equivalências?')">
-                <i class="fas fa-trash"></i>
-            </button>
-        </form>
-    </div>
+            <form action="{{ route('equivalencias.destroy', [$codcur, $codhab, $disciplina]) }}" method="POST"
+                class="d-inline">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover disciplina requerida"
+                    onclick="return confirm('Tem certeza que deseja remover esta disciplina e suas equivalências?')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </form>
+        </div>
+    @endcan
 </div>

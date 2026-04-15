@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateEquivalenciaRequest;
 use App\Models\Disciplina;
 use App\Models\Equivalencia;
 use App\Replicado\Graduacao;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -21,6 +22,8 @@ class EquivalenciaController extends Controller
      */
     public function __construct()
     {
+        $this->middleware('can:equivalencias');
+
         $this->middleware(function ($request, $next) {
             \UspTheme::activeUrl('equivalencias');
 
@@ -53,80 +56,89 @@ class EquivalenciaController extends Controller
     public function show(int $codcur, int $codhab)
     {
         $curso = Graduacao::obterCursoHabilitacao($codcur, $codhab);
+        $canManageEquivalencias = auth()->user()?->can('svgrad') ?? false;
 
         abort_unless($curso, 404);
 
         $disciplinas = Disciplina::listarDisciplinasComEquivalencias($codcur, $codhab);
 
-        $formHtmlCreate = $this->buildFormHtml(
-            'eq_usp_create',
-            route('equivalencias.store', ['codcur' => $codcur, 'codhab' => $codhab]),
-            'POST',
-            $this->oldInputForFields(['coddis'])
-        );
+        $formHtmlCreate = '';
+        $formHtmlEdit = [];
+        $formHtmlEquivalenciaCreate = [];
+        $formHtmlEquivalenciaEdit = [];
 
-        $formHtmlEdit = $disciplinas
-            ->mapWithKeys(function (Disciplina $disciplinaUsp) use ($codcur, $codhab) {
-                $formHtml = $this->buildFormHtml(
-                    'eq_usp_edit',
-                    route('equivalencias.update', [$codcur, $codhab, $disciplinaUsp]),
-                    'PUT',
-                    $this->oldInputForFields(['coddis'], ['coddis' => $disciplinaUsp->coddis])
-                );
+        if ($canManageEquivalencias) {
+            $formHtmlCreate = $this->buildFormHtml(
+                'eq_usp_create',
+                route('equivalencias.store', ['codcur' => $codcur, 'codhab' => $codhab]),
+                'POST',
+                $this->oldInputForFields(['coddis'])
+            );
 
-                return [
-                    $disciplinaUsp->id => $this->namespaceFormHtmlForIndex($formHtml, $disciplinaUsp->id),
-                ];
-            })
-            ->all();
+            $formHtmlEdit = $disciplinas
+                ->mapWithKeys(function (Disciplina $disciplinaUsp) use ($codcur, $codhab) {
+                    $formHtml = $this->buildFormHtml(
+                        'eq_usp_edit',
+                        route('equivalencias.update', [$codcur, $codhab, $disciplinaUsp]),
+                        'PUT',
+                        $this->oldInputForFields(['coddis'], ['coddis' => $disciplinaUsp->coddis])
+                    );
 
-        $formHtmlEquivalenciaCreate = $disciplinas
-            ->mapWithKeys(function (Disciplina $disciplinaUsp) use ($codcur, $codhab) {
-                return [
-                    $disciplinaUsp->id => $this->buildFormHtml(
-                        'eq_child_add',
-                        route('equivalencias.add-equivalencia', [$codcur, $codhab, $disciplinaUsp]),
-                        'POST',
-                        $this->oldInputForFields([
-                            'coddis',
-                            'nome_disciplina',
-                            'ies',
-                            'coddis2',
-                            'nome_disciplina2',
-                            'ies2',
-                            'coddis3',
-                            'nome_disciplina3',
-                            'ies3',
-                        ])
-                    ),
-                ];
-            })
-            ->all();
+                    return [
+                        $disciplinaUsp->id => $this->namespaceFormHtmlForIndex($formHtml, $disciplinaUsp->id),
+                    ];
+                })
+                ->all();
 
-        $formHtmlEquivalenciaEdit = $disciplinas
-            ->reduce(function (array $forms, Disciplina $disciplinaUsp) use ($codcur, $codhab) {
-                $formsDaDisciplina = $disciplinaUsp->equivalentes
-                    ->mapWithKeys(function (Equivalencia $equivalenciaFilha) use ($codcur, $codhab, $disciplinaUsp) {
-                        return [
-                            $equivalenciaFilha->id => $this->buildFormHtml(
-                                'eq_child_add',
-                                route('equivalencias.update-equivalencia', [$codcur, $codhab, $disciplinaUsp, $equivalenciaFilha]),
-                                'PUT',
-                                $this->defaultsParaFormularioEdicaoDeGrupo($disciplinaUsp, $equivalenciaFilha)
-                            ),
-                        ];
-                    })
-                    ->all();
+            $formHtmlEquivalenciaCreate = $disciplinas
+                ->mapWithKeys(function (Disciplina $disciplinaUsp) use ($codcur, $codhab) {
+                    return [
+                        $disciplinaUsp->id => $this->buildFormHtml(
+                            'eq_child_add',
+                            route('equivalencias.add-equivalencia', [$codcur, $codhab, $disciplinaUsp]),
+                            'POST',
+                            $this->oldInputForFields([
+                                'coddis',
+                                'nome_disciplina',
+                                'ies',
+                                'coddis2',
+                                'nome_disciplina2',
+                                'ies2',
+                                'coddis3',
+                                'nome_disciplina3',
+                                'ies3',
+                            ])
+                        ),
+                    ];
+                })
+                ->all();
 
-                return $forms + $formsDaDisciplina;
-            }, []);
+            $formHtmlEquivalenciaEdit = $disciplinas
+                ->reduce(function (array $forms, Disciplina $disciplinaUsp) use ($codcur, $codhab) {
+                    $formsDaDisciplina = $disciplinaUsp->equivalentes
+                        ->mapWithKeys(function (Equivalencia $equivalenciaFilha) use ($codcur, $codhab, $disciplinaUsp) {
+                            return [
+                                $equivalenciaFilha->id => $this->buildFormHtml(
+                                    'eq_child_add',
+                                    route('equivalencias.update-equivalencia', [$codcur, $codhab, $disciplinaUsp, $equivalenciaFilha]),
+                                    'PUT',
+                                    $this->defaultsParaFormularioEdicaoDeGrupo($disciplinaUsp, $equivalenciaFilha)
+                                ),
+                            ];
+                        })
+                        ->all();
+
+                    return $forms + $formsDaDisciplina;
+                }, []);
+        }
 
         return view('equivalencias.show', [
             'disciplinas' => $disciplinas,
             'codcur' => $codcur,
             'codhab' => $codhab,
             'nomeCurso' => $curso['nomcur'],
-            'editModeEnabled' => (bool) session()->get($this->editModeSessionKey(), false),
+            'editModeEnabled' => $canManageEquivalencias ? (bool) session()->get($this->editModeSessionKey(), false) : false,
+            'canManageEquivalencias' => $canManageEquivalencias,
             'formHtmlCreate' => $formHtmlCreate,
             'formHtmlEdit' => $formHtmlEdit,
             'formHtmlEquivalenciaCreate' => $formHtmlEquivalenciaCreate,
@@ -247,11 +259,15 @@ class EquivalenciaController extends Controller
     }
 
     /**
-     * Retorna a chave de sessão para estado global do modo de edição.
+     * Retorna a chave de sessão para estado do modo de edição por usuário.
+     * Inclui o ID do usuário autenticado para isolamento entre funcionários.
      */
     private function editModeSessionKey(): string
     {
-        return (string) config('equivalencia.edit_mode_session_key', 'equivalencias.edit_mode.global');
+        $userId = auth()->id();
+        $baseKey = config('equivalencia.edit_mode_session_key', 'equivalencias.edit_mode');
+
+        return (string) "{$baseKey}.user.{$userId}";
     }
 
     /**

@@ -11,7 +11,7 @@
             </h4>
 
             <div class="pt-2">
-                @includeWhen(Gate::check('svgrad'), 'equivalencias.partials.toggle-edit-button-and-modal')
+                @includeWhen($canManageEquivalencias, 'equivalencias.partials.toggle-edit-button-and-modal')
             </div>
         </div>
 
@@ -87,7 +87,8 @@
             var $card = $table.closest('.card');
             var wrapperSelector = '#' + $table.attr('id') + '_wrapper';
             var saveStateUrl = @json(route('equivalencias.save-edit-mode-state'));
-            var editModeEnabled = @json((bool) $editModeEnabled);
+            var canManageEquivalencias = @json((bool) $canManageEquivalencias);
+            var editModeEnabled = canManageEquivalencias ? @json((bool) $editModeEnabled) : false;
 
 
             var persistEditModeState = function(enabled, $toggle) {
@@ -122,6 +123,12 @@
             applyEditModeState(editModeEnabled);
 
             var attachEditToggle = function() {
+                if (!canManageEquivalencias) {
+                    applyEditModeState(false);
+
+                    return;
+                }
+
                 var $toggle = $('.equivalencias-toggle-edit');
 
                 if (!$toggle.length) {
