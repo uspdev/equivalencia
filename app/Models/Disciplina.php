@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Replicado\Graduacao;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
 class Disciplina extends Model
@@ -70,6 +71,38 @@ class Disciplina extends Model
     public function getNomeDisciplinaAttribute(): ?string
     {
         return $this->nomdis;
+    }
+
+    /**
+     * Lista disciplinas requeridas com equivalências automáticas no contexto informado.
+     *
+     * @param  int  $codcur  Código do curso
+     * @param  int  $codhab  Código da habilitação
+     */
+    public static function listarDisciplinasComEquivalencias(int $codcur, int $codhab): Collection
+    {
+        $disciplinas = static::query()
+            ->whereHas('equivalenciasComoRequerida', function ($query) use ($codcur, $codhab) {
+                $query->automaticas()->doContexto($codcur, $codhab);
+            })
+            ->with(['equivalentes' => function ($query) use ($codcur, $codhab) {
+                $query->automaticas()->doContexto($codcur, $codhab)->with('cursada')->orderBy('id');
+            }])
+            ->orderBy('coddis')
+            ->get();
+
+        return $disciplinas->transform(function (Disciplina $disciplina) {
+            $disciplina->setRelation(
+                'equivalentes',
+                $disciplina->equivalentes
+                    ->sortBy(function (Equivalencia $item) {
+                        return sprintf('%010d-%s', (int) $item->grupo, (string) ($item->coddis ?? ''));
+                    })
+                    ->values()
+            );
+
+            return $disciplina;
+        });
     }
 
     public static function dadosDaRequeridaPorCoddis(string $coddis): array

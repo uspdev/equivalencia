@@ -10,7 +10,7 @@
         <div> @include('equivalencias.partials.modal-equivalencia', [
             'modalId' => "modalAdicionarEquivalencia{$disciplina->id}",
             'modalLabelId' => "modalAdicionarEquivalenciaLabel{$disciplina->id}",
-            'formHtmlEquivalencia' => $formHtmlEquivalencia[$disciplina->id] ?? '',
+            'formHtmlEquivalencia' => $formHtmlEquivalenciaCreate[$disciplina->id] ?? '',
         ])</div>
         <div>@include('equivalencias.partials.modal-edit')</div>
 

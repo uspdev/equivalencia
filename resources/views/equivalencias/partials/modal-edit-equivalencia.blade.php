@@ -1,4 +1,4 @@
-<button type="button" class="btn btn-sm btn-outline-primary ml-2 btn-editar" data-toggle="modal" data-target="#modalEditarEquivalencia{{ $equivalencia->id }}">
+<button type="button" class="btn btn-sm btn-outline-primary ml-2 btn-editar py-0" data-toggle="modal" data-target="#modalEditarEquivalencia{{ $equivalencia->id }}">
   <i class="fas fa-edit"></i>
 </button>
 

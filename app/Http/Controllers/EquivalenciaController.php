@@ -52,37 +52,13 @@ class EquivalenciaController extends Controller
      */
     public function show(int $codcur, int $codhab)
     {
-        $curso = collect(Graduacao::listarCursosHabilitacoes())
-            ->first(fn ($item) => (int) $item['codcur'] === $codcur && (int) $item['codhab'] === $codhab);
+        $curso = Graduacao::obterCursoHabilitacao($codcur, $codhab);
 
         abort_unless($curso, 404);
 
-        $disciplinas = Disciplina::query()
-            ->whereHas('equivalenciasComoRequerida', function ($query) use ($codcur, $codhab) {
-                $query->automaticas()->doContexto($codcur, $codhab);
-            })
-            ->with(['equivalentes' => function ($query) use ($codcur, $codhab) {
-                $query->automaticas()->doContexto($codcur, $codhab)->with('cursada')->orderBy('id');
-            }])
-            ->orderBy('coddis')
-            ->get();
+        $disciplinas = Disciplina::listarDisciplinasComEquivalencias($codcur, $codhab);
 
-        $disciplinas = $disciplinas->transform(function (Disciplina $disciplina) {
-            $disciplina->setRelation(
-                'equivalentes',
-                // Ordena as equivalências primeiro pelo grupo
-                // (com padding para garantir ordenação numérica correta) e depois pelo código da disciplina cursada.
-                $disciplina->equivalentes
-                    ->sortBy(function (Equivalencia $item) {
-                        return sprintf('%010d-%s', (int) $item->grupo, (string) ($item->coddis ?? ''));
-                    })
-                    ->values()
-            );
-
-            return $disciplina;
-        });
-
-        $formHtml = $this->buildFormHtml(
+        $formHtmlCreate = $this->buildFormHtml(
             'eq_usp_create',
             route('equivalencias.store', ['codcur' => $codcur, 'codhab' => $codhab]),
             'POST',
@@ -95,10 +71,7 @@ class EquivalenciaController extends Controller
                     'eq_usp_edit',
                     route('equivalencias.update', [$codcur, $codhab, $disciplinaUsp]),
                     'PUT',
-                    $this->oldInputForFields(
-                        ['coddis'],
-                        ['coddis' => $disciplinaUsp->coddis]
-                    )
+                    $this->oldInputForFields(['coddis'], ['coddis' => $disciplinaUsp->coddis])
                 );
 
                 return [
@@ -107,7 +80,7 @@ class EquivalenciaController extends Controller
             })
             ->all();
 
-        $formHtmlEquivalencia = $disciplinas
+        $formHtmlEquivalenciaCreate = $disciplinas
             ->mapWithKeys(function (Disciplina $disciplinaUsp) use ($codcur, $codhab) {
                 return [
                     $disciplinaUsp->id => $this->buildFormHtml(
@@ -153,9 +126,10 @@ class EquivalenciaController extends Controller
             'codcur' => $codcur,
             'codhab' => $codhab,
             'nomeCurso' => $curso['nomcur'],
-            'formHtmlCreate' => $formHtml,
+            'editModeEnabled' => (bool) session()->get($this->editModeSessionKey($codcur, $codhab), false),
+            'formHtmlCreate' => $formHtmlCreate,
             'formHtmlEdit' => $formHtmlEdit,
-            'formHtmlEquivalencia' => $formHtmlEquivalencia,
+            'formHtmlEquivalenciaCreate' => $formHtmlEquivalenciaCreate,
             'formHtmlEquivalenciaEdit' => $formHtmlEquivalenciaEdit,
         ]);
     }
