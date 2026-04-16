@@ -27,5 +27,16 @@ class AppServiceProvider extends ServiceProvider
         Blade::directive('notLast', function ($expression) {
             return "<?php if (isset(\$loop) && !\$loop->last) { echo {$expression}; } ?>";
         });
+
+        Blade::directive('limitarTexto', function ($expression) {
+            return "<?php
+                        \$texto = {$expression};
+
+                        echo mb_strlen(\$texto) > 45
+                            ? preg_replace('/^(.{16}).+(.{28})$/su', '$1...$2', \$texto)
+                            : \$texto;
+                    ?>";
+        });
+
     }
 }

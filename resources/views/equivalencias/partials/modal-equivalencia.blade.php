@@ -5,7 +5,7 @@
 @endphp
 
 <button type="button" data-toggle="modal" data-target="#{{ $modalId }}"
-  class="btn btn-sm btn-outline-success ml-4 mr-4" title="Adicionar disciplina cursada equivalente">
+  class="btn btn-sm btn-outline-success mr-2" title="Adicionar disciplina cursada equivalente">
   <i class="fas fa-plus"></i>
 </button>
 

@@ -1,24 +1,33 @@
-@forelse ($disciplina->equivalentes as $e)
-  <div class="disciplina-equivalente d-flex align-items-center">
-    <p>{{ $e->coddis ?: '-' }} - {{ $e->nome_disciplina ?: '-' }} ({{ $e->ies }})</p>
-    <div class="mr-2">@include('equivalencias.partials.remover-equivalente-btn')</div>
-    <div>@include('equivalencias.partials.modal-edit-equivalencia', ['equivalencia' => $e])</div>
-  </div>
-@empty
-  -
-@endforelse
-@section('styles')
-  @parent
-  <style>
-    .disciplina-equivalente .btn-remover,
-    .disciplina-equivalente .btn-editar {
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
+@php
+    $equivalenciasPorGrupo = $disciplina->equivalentes->groupBy('grupo');
+@endphp
+@forelse ($equivalenciasPorGrupo as $grupo => $equivalenciasDoGrupo)
+    @php
+        $equivalenciaRepresentante = $equivalenciasDoGrupo->first();
+    @endphp
 
-    .disciplina-equivalente:hover .btn-remover,
-    .disciplina-equivalente:hover .btn-editar {
-      opacity: 1;
-    }
-  </style>
-@endsection
+    <div class="disciplina-equivalente d-flex align-items-center flex-nowrap mb-2">
+        <p class="mb-0 text-truncate">
+            @foreach ($equivalenciasDoGrupo as $e)
+                <span title="{{ $e->cursada->nome_disciplina }}">
+                    {{ $e->cursada->coddis }} -
+                    @limitarTexto($e->cursada->nome_disciplina)
+                </span>
+
+                @notLast('|')
+            @endforeach
+        </p>
+        @can('svgrad')
+            @if ($equivalenciaRepresentante)
+            <div class="js-edit-only d-inline-flex align-items-center">
+                @include('equivalencias.partials.modal-edit-equivalencia', [
+                    'equivalencia' => $equivalenciaRepresentante,
+                ])
+                @include('equivalencias.partials.form-remove-equivalencia')
+            </div>
+            @endif
+        @endcan
+    </div>
+@empty
+    -
+@endforelse
