@@ -36,6 +36,7 @@
                     <button type="submit" class="btn btn-danger btn-sm"
                       onclick="return confirm('Tem certeza que deseja excluir esta definição?')">Excluir</button>
                   </form>
+                  <a href="{{ route('workflows.exportDefinition', $definition->name) }}"class="btn btn-info btn-sm mb-3 ml-4">Exportar workflow</a>
                 </td>
               </tr>
             @endforeach
