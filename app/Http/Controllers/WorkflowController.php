@@ -30,14 +30,14 @@ class WorkflowController extends Controller
     {
         $workflowDefinitions = Workflow::obterTodosWorkflowDefinitions();
 
-        return view('list', compact('workflowDefinitions'));
+        return view('uspdev-workflow::show.list-defs', ['workflowDefinitions' => $workflowDefinitions, 'activeTab' => 'index']);
     }
 
     public function showDefinition($definitionName)
     {
         $workflowDefinitionData = Workflow::obterDadosDaDefinicao($definitionName);
 
-        return view('showDefinition', compact('workflowDefinitionData'));
+        return view('uspdev-workflow::show.show-def', compact('workflowDefinitionData'));
     }
 
     public function setUser(Request $request)
