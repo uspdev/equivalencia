@@ -9,27 +9,19 @@ class Equivalencia extends Model
 {
     public const TIPO_AUTOMATICA = 'a';
 
-    public const TIPO_CURSADA = 'c';
-
     public const TIPO_REQUERIDA = 'r';
 
+    protected $table = 'equivalencias';
+
     protected $fillable = [
-        'verdis',
+        'grupo',
+        'requerida_id',
+        'cursada_id',
+        'tipo',
         'codcur',
         'codhab',
-        'coddis',
-        'nome_disciplina',
-        'creditos',
-        'carga_horaria',
-        'nomcur',
-        'ies',
-        'ano',
-        'semestre',
-        'frequencia',
-        'nota',
-        'tipo',
-        'equivalencias_id',
-        'pdf_path',
+        'criado_por_id',
+        'alterado_por_id',
     ];
 
     protected $attributes = [
@@ -37,71 +29,137 @@ class Equivalencia extends Model
     ];
 
     protected $casts = [
-        'verdis' => 'integer',
+        'grupo' => 'integer',
+        'requerida_id' => 'integer',
+        'cursada_id' => 'integer',
         'codcur' => 'integer',
         'codhab' => 'integer',
-        'creditos' => 'integer',
-        'carga_horaria' => 'integer',
-        'ano' => 'integer',
-        'semestre' => 'integer',
-        'frequencia' => 'decimal:2',
-        'nota' => 'decimal:2',
     ];
+
+    public function requerida()
+    {
+        return $this->belongsTo(Disciplina::class, 'requerida_id');
+    }
+
+    public function cursada()
+    {
+        return $this->belongsTo(Disciplina::class, 'cursada_id');
+    }
 
     public function arquivos()
     {
-        return $this->hasMany(Arquivo::class);
+        return $this->hasMany(Arquivo::class, 'equivalencia_id');
     }
 
-    // Relacionamento para auto-relacionamento (disciplinas equivalentes)
-    // Uma disciplina pode ter uma disciplina equivalente (parent)
-    // e pode ser equivalente a várias outras disciplinas (children)
-    public function disciplinaRequerida()
+    public function criadoPor()
     {
-        return $this->belongsTo(Equivalencia::class, 'equivalencias_id')
-            ->whereIn('tipo', [self::TIPO_AUTOMATICA, self::TIPO_REQUERIDA]);
+        return $this->belongsTo(User::class, 'criado_por_id');
     }
 
-    public function parent()
+    public function alteradoPor()
     {
-        return $this->disciplinaRequerida();
+        return $this->belongsTo(User::class, 'alterado_por_id');
     }
 
-    // Uma disciplina pode ser equivalente a várias outras disciplinas (children)
-    public function equivalentes()
+    public function scopeAutomaticas(Builder $query): Builder
     {
-        return $this->hasMany(Equivalencia::class, 'equivalencias_id')
-            ->where('tipo', self::TIPO_CURSADA);
+        return $query->where('tipo', self::TIPO_AUTOMATICA);
     }
 
-    // ======= Escopos para facilitar consultas =============
-    public function scopeUsp(Builder $query): Builder
+    public function scopeDoContexto(Builder $query, int $codcur, int $codhab): Builder
     {
         return $query
-            ->whereNull('equivalencias_id')
-            ->whereIn('tipo', [self::TIPO_AUTOMATICA, self::TIPO_REQUERIDA]);
+            ->where('codcur', $codcur)
+            ->where('codhab', $codhab);
     }
 
-    public function scopeEquivalencia(Builder $query): Builder
+    // apontam para a mesma disciplina (não é equivalência real).
+    public function isPlaceholderRequerida(): bool
     {
-        return $query
-            ->whereNotNull('equivalencias_id')
-            ->where('tipo', self::TIPO_CURSADA);
+        return (int) $this->requerida_id === (int) $this->cursada_id;
     }
 
-    public function isUsp(): bool
+    // Compatibilidade com as views atuais que leem campos da cursada no vínculo.
+    public function getCoddisAttribute(): ?string
     {
-        return $this->equivalencias_id === null
-            && in_array($this->tipo, [self::TIPO_AUTOMATICA, self::TIPO_REQUERIDA], true);
+        return $this->cursada?->coddis;
     }
 
-    public function isEquivalencia(): bool
+    public function getNomeDisciplinaAttribute(): ?string
     {
-        return $this->equivalencias_id !== null && $this->tipo === self::TIPO_CURSADA;
+        return $this->cursada?->nomdis;
     }
 
-    public function permiteEquivalenciaDireta(): bool
+    public function getIesAttribute(): ?string
     {
-        return $this->isUsp() && $this->equivalentes()->exists();
+        return $this->cursada?->ies;
+    }
+
+    public static function proximoGrupo(): int
+    {
+        return ((int) static::max('grupo')) + 1;
+    }
+
+    public static function primeiroVinculoDoGrupoDaRequerida(int $requeridaId, int $codcur, int $codhab): ?self
+    {
+        return static::query()
+            ->doContexto($codcur, $codhab)
+            ->where('requerida_id', $requeridaId)
+            ->orderBy('id')
+            ->first();
+    }
+
+    public static function grupoDaRequerida(int $requeridaId, int $codcur, int $codhab): ?int
+    {
+        return static::primeiroVinculoDoGrupoDaRequerida($requeridaId, $codcur, $codhab)?->grupo;
+    }
+
+    // Vínculos placeholder são equivalências automáticas em que a disciplina
+    // cursada é a mesma da requerida.
+    //
+    // Esses registros são criados automaticamente para garantir que toda
+    // disciplina requerida pertença a um grupo de equivalências, mesmo
+    // quando ainda não houver uma disciplina cursada vinculada.
+    //
+    // Isso facilita a manutenção e a inclusão futura de novas equivalências
+    // dentro do mesmo grupo.
+    public static function criarPlaceholderDaRequerida(int $requeridaId, int $codcur, int $codhab): self
+    {
+        return static::create([
+            'grupo' => static::proximoGrupo(),
+            'requerida_id' => $requeridaId,
+            'cursada_id' => $requeridaId,
+            'tipo' => static::TIPO_AUTOMATICA,
+            'codcur' => $codcur,
+            'codhab' => $codhab,
+        ]);
+    }
+
+    public static function criarVinculoCursada(
+        int $grupo,
+        int $requeridaId,
+        int $cursadaId,
+        int $codcur,
+        int $codhab,
+        string $tipo = self::TIPO_AUTOMATICA
+    ): self {
+        return static::create([
+            'grupo' => $grupo,
+            'requerida_id' => $requeridaId,
+            'cursada_id' => $cursadaId,
+            'tipo' => $tipo,
+            'codcur' => $codcur,
+            'codhab' => $codhab,
+        ]);
+    }
+
+    public function pertenceAoContexto(int $codcur, int $codhab): bool
+    {
+        return (int) $this->codcur === $codcur && (int) $this->codhab === $codhab;
+    }
+
+    public function pertenceARequeridaNoContexto(int $requeridaId, int $codcur, int $codhab): bool
+    {
+        return (int) $this->requerida_id === $requeridaId && $this->pertenceAoContexto($codcur, $codhab);
     }
 }

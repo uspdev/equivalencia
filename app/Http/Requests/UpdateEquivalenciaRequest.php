@@ -2,9 +2,8 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Equivalencia;
+use App\Models\Disciplina;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateEquivalenciaRequest extends FormRequest
 {
@@ -23,21 +22,28 @@ class UpdateEquivalenciaRequest extends FormRequest
      */
     public function rules(): array
     {
-        $equivalencia = $this->route('equivalencia');
-        $equivalenciaId = $equivalencia instanceof Equivalencia
-            ? $equivalencia->id
-            : $equivalencia;
-        // Obter os parâmetros da rota
+        $requerida = $this->route('equivalencia');
+        $requeridaId = $requerida instanceof Disciplina
+            ? $requerida->id
+            : (int) $requerida;
         $codcur = (int) $this->route('codcur');
         $codhab = (int) $this->route('codhab');
 
         return [
             'coddis' => [
-                Rule::unique('equivalencias')
-                    ->whereNull('equivalencias_id')
-                    ->where('codcur', $codcur)
-                    ->where('codhab', $codhab)
-                    ->ignore($equivalenciaId),
+                function (string $attribute, mixed $value, \Closure $fail) use ($codcur, $codhab, $requeridaId) {
+                    $jaExisteNoContexto = Disciplina::query()
+                        ->where('coddis', (string) $value)
+                        ->where('id', '!=', $requeridaId)
+                        ->whereHas('equivalenciasComoRequerida', function ($query) use ($codcur, $codhab) {
+                            $query->automaticas()->doContexto($codcur, $codhab);
+                        })
+                        ->exists();
+
+                    if ($jaExisteNoContexto) {
+                        $fail('A disciplina requerida informada já está cadastrada para este curso/habilitação.');
+                    }
+                },
             ],
         ];
     }

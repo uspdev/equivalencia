@@ -1,4 +1,4 @@
-<button type="button" class="btn btn-sm btn-outline-primary mr-2 btn-editar" data-toggle="modal" data-target="#modalEditarEquivalencia{{ $equivalencia->id }}">
+<button type="button" class="btn btn-sm btn-outline-primary ml-2 btn-editar py-0" data-toggle="modal" data-target="#modalEditarEquivalencia{{ $equivalencia->id }}">
   <i class="fas fa-edit"></i>
 </button>
 
@@ -12,16 +12,6 @@
                 </button>
             </div>
             <div class="modal-body">
-                @if ($errors->any())
-                    <div class="alert alert-danger">
-                        <ul class="mb-0">
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
-
                 {!! $formHtmlEquivalenciaEdit[$equivalencia->id] ?? '' !!}
             </div>
         </div>
