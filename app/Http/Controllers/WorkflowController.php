@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Uspdev\Workflow\Models\WorkflowDefinition;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Uspdev\Workflow\Workflow;

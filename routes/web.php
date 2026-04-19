@@ -1,7 +1,8 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\EquivalenciaController;
 use App\Http\Controllers\WorkflowController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -14,10 +15,26 @@ use App\Http\Controllers\WorkflowController;
 |
 */
 
-
 Route::get('/', [WorkflowController::class, 'home'])->name('workflows.index');
 
 Route::middleware(['auth'])->group(function () {
+    Route::get('/equivalencias', [EquivalenciaController::class, 'index'])
+        ->name('equivalencias.index');
+    Route::get('/equivalencias/{codcur}/{codhab}', [EquivalenciaController::class, 'show'])
+        ->name('equivalencias.show');
+    Route::post('/equivalencias/{codcur}/{codhab}', [EquivalenciaController::class, 'store'])
+        ->name('equivalencias.store');
+    Route::put('/equivalencias/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'update'])
+        ->name('equivalencias.update');
+    Route::delete('/equivalencias/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'destroy'])
+        ->name('equivalencias.destroy');
+    Route::post('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias', [EquivalenciaController::class, 'addEquivalencia'])
+        ->name('equivalencias.add-equivalencia');
+    Route::put('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [EquivalenciaController::class, 'updateEquivalencia'])
+        ->name('equivalencias.update-equivalencia');
+    Route::delete('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [EquivalenciaController::class, 'destroyEquivalencia'])
+        ->name('equivalencias.destroy-equivalencia');
+
     Route::get('/createdefinition', [WorkflowController::class, 'createDefinition'])->name('workflows.create-definition');
     Route::post('/createdefinition', [WorkflowController::class, 'storeDefinition'])->name('workflows.store-definition');
     Route::get('/listdefinitions', [WorkflowController::class, 'listDefinitions'])->name('workflows.list-definitions');
@@ -25,6 +42,7 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/definition/{definition}', [WorkflowController::class, 'destroyDefinition'])->name('workflows.destroyDefinition');
     Route::get('/editdefinition/{definition}', [WorkflowController::class, 'editDefinition'])->name('workflows.editDefinition');
     Route::post('/updatedefinition/', [WorkflowController::class, 'updateDefinition'])->name('workflows.updateDefinition');
+    Route::get('/exportdefinition/{definitionName}',[WorkflowController::class,'exportDefinition'])->name('workflows.exportDefinition');
 
     Route::get('/viewcreateobject', [WorkflowController::class, 'viewCreateObject'])->name('workflows.viewCreateObject');
     Route::get('/createobject/{definitionName}', [WorkflowController::class, 'createObject'])->name('workflows.createObject');

@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-  <div class="container mt-2">
+  <div class="mt-2">
     <h2>Atendimentos</h2>
     <p>Estes são os requerimentos que estão em um estado relacionado a você, indicado por seus atendimentos.<br>
     Para gerenciar um requerimento, clique em seu ID.</p>
