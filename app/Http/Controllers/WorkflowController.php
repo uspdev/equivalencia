@@ -38,7 +38,7 @@ class WorkflowController extends Controller
     {
         $workflowDefinitionData = Workflow::obterDadosDaDefinicao($definitionName);
 
-        return view('showDefinition', compact('workflowDefinitionData'));
+        return view('uspdev-workflow::show.show-def', compact('workflowDefinitionData'));
     }
 
     public function setUser(Request $request)
