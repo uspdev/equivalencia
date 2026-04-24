@@ -13,6 +13,8 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Uspdev\Forms\Form;
+use Uspdev\Forms\Models\FormDefinition;
+use function Termwind\render;
 
 class EquivalenciaController extends Controller
 {
@@ -672,5 +674,13 @@ class EquivalenciaController extends Controller
         if (! $temVinculoComoRequerida && ! $temVinculoComoCursada) {
             $disciplina->delete();
         }
+    }
+
+    public function novaReq()
+    {
+        $initial_def = FormDefinition::where('name',config('app.initial_form'))->firstOrFail();
+        $formHtml = app(Form::class)->generateHtml($initial_def->name);
+
+        return view('showInitialForm',['formHtml' => $formHtml]);
     }
 }

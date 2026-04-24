@@ -232,4 +232,5 @@ return [
 
     ],
 
+    'initial_form' => env('INITIAL_FORM','initial_form'),
 ];
