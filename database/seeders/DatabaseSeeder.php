@@ -17,6 +17,6 @@ class DatabaseSeeder extends Seeder
     public function run()
     {
         $this->call(FormDefinitionsTableSeeder::class);
-        $this->call(WorflowDefinitionsTableSeeder::class);
+        $this->call(WorkflowDefinitionsTableSeeder::class);
     }
 }
