@@ -11,7 +11,7 @@ class AproveitamentoController extends Controller
     // TODO - Fazer CRUD, index, show e etc.
     public function index()
     {
-        $formHtml = app(Form::class)->generateHtml('tr_inicio_conferencia');
+        $formHtml = app(Form::class)->generateHtml(config(app_path()));
         return view('createReq',['formHtml' => $formHtml]);
     }
 }
