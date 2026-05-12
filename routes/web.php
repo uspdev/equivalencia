@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\EquivalenciaController;
 use App\Http\Controllers\WorkflowController;
+use App\Http\Controllers\AproveitamentoController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -42,6 +43,7 @@ Route::middleware(['auth'])->group(function () {
 
     });
 
+    Route::get('/newreq', [AproveitamentoController::class, 'index']);
     Route::get('/createdefinition', [WorkflowController::class, 'createDefinition'])->name('workflows.create-definition');
     Route::post('/createdefinition', [WorkflowController::class, 'storeDefinition'])->name('workflows.store-definition');
     Route::get('/listdefinitions', [WorkflowController::class, 'listDefinitions'])->name('workflows.list-definitions');
