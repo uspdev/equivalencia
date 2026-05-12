@@ -42,7 +42,6 @@ Route::middleware(['auth'])->group(function () {
 
     });
 
-    Route::get('/equivalencia/newreq', [EquivalenciaController::class, 'novaReq'])->name('equivalencias.newreq');
     Route::get('/createdefinition', [WorkflowController::class, 'createDefinition'])->name('workflows.create-definition');
     Route::post('/createdefinition', [WorkflowController::class, 'storeDefinition'])->name('workflows.store-definition');
     Route::get('/listdefinitions', [WorkflowController::class, 'listDefinitions'])->name('workflows.list-definitions');
