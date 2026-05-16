@@ -41,9 +41,10 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}/grupo', [EquivalenciaController::class, 'destroyEquivalenciaGrupo'])
             ->name('equivalencias.destroy-equivalencia-grupo');
 
+        Route::get('/equivalencias/newreq', [AproveitamentoController::class, 'create'])->name('equivalencias.newreq-create');
+        Route::post('/equivalencias/newreq', [AproveitamentoController::class, 'store'])->name('equivalencias.newreq-store');
     });
 
-    Route::get('/newreq', [AproveitamentoController::class, 'index']);
     Route::get('/createdefinition', [WorkflowController::class, 'createDefinition'])->name('workflows.create-definition');
     Route::post('/createdefinition', [WorkflowController::class, 'storeDefinition'])->name('workflows.store-definition');
     Route::get('/listdefinitions', [WorkflowController::class, 'listDefinitions'])->name('workflows.list-definitions');
