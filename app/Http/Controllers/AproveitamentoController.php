@@ -17,8 +17,34 @@ class AproveitamentoController extends Controller
         return view('createReq',['formHtml' => $formHtml]);
     }
 
+    private static function validate_req(Request $request)
+    {
+        $rules = [
+            'coddis4' => 'required|string|max:20',
+            'disciplina4' => 'required|string|max:255',
+            'unidade_ies' => 'required|string|max:255',
+        ];
+
+        for ($i = 1; $i < 4; $i++) 
+        {
+            $rules["coddis{$i}"] = 'nullable|string|max:20';
+            $rules["disciplina{$i}"] = "required_with:coddis{$i}|string|max:255";
+            $rules["credit_dis{$i}"] = "required_with:coddis{$i}|integer|min:0";
+            $rules["cghr_dis{$i}"] = "required_with:coddis{$i}|integer|min:0";
+            $rules["ano_dis{$i}"] = "required_with:coddis{$i}|integer|min:1900|max:" . date('Y');
+            $rules["semestre_dis{$i}"] = "required_with:coddis{$i}|integer|in:1,2";
+            $rules["freq_dis{$i}"] = "required_with:coddis{$i}|numeric|min:0|max:100";
+            $rules["nota_dis{$i}"] = "required_with:coddis{$i}|numeric|min:0|max:10";
+        }
+
+        dd($rules);
+
+        $request->validate($rules);
+    }
+
     public function store(Request $request)
     {
+        static::validate_req($request);
 
         $user_id = Auth::user()->id;
         $request = $request->input();
@@ -36,9 +62,8 @@ class AproveitamentoController extends Controller
         for($i = 1; $i < 4; $i++)
         {
             $cur_dis = new Disciplina();
-            if(!is_null($request['coddis' . $i]))
+            if(!empty($request['coddis' . $i]))
             {
-
                 $cur_dis = Disciplina::create([
                     'coddis' => $request['coddis' . $i],
                     'nomdis' => $request['disciplina' . $i],
