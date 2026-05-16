@@ -19,48 +19,46 @@ class AproveitamentoController extends Controller
 
     public function store(Request $request)
     {
+
+        $user_id = Auth::user()->id;
         $request = $request->input();
 
-        $req_dis = new Disciplina();
-
-        $req_dis->coddis = $request['coddis4'];
-        $req_dis->nomdis = $request['disciplina4'];
-
-        $req_dis->ies = 'USP';
-    
-        $req_dis->criado_por_id = $req_dis->alterado_por_id = Auth::user()->id;
-
-        $req_dis->save();
-
         $eq_group = Equivalencia::proximoGrupo();
+        
+        $req_dis = Disciplina::create([
+            'coddis' => $request['coddis4'],
+            'nomdis' => $request['disciplina4'],
+            'ies' => 'USP',
+            'criado_por_id' => $user_id,
+            'alterado_por_id' => $user_id,
+        ]);
 
         for($i = 1; $i < 4; $i++)
         {
             $cur_dis = new Disciplina();
             if(!is_null($request['coddis' . $i]))
             {
-                $cur_dis->coddis = $request['coddis' . $i];
-                $cur_dis->nomdis = $request['disciplina' . $i];
-                $cur_dis->creditos = $request['credit_dis' . $i];
-                $cur_dis->carga_horaria = $request['cghr_dis' . $i];
-                $cur_dis->ies = $request['unidade_ies'];
-                $cur_dis->ano = $request['ano_dis' . $i];
-                $cur_dis->semestre = (int)$request['semestre_dis' . $i];
-                $cur_dis->frequencia = $request['freq_dis' . $i];
-                $cur_dis->nota = $request['nota_dis' . $i];
-                $cur_dis->criado_por_id = $cur_dis->alterado_por_id = Auth::user()->id;
 
-                $cur_dis->save();
+                $cur_dis = Disciplina::create([
+                    'coddis' => $request['coddis' . $i],
+                    'nomdis' => $request['disciplina' . $i],
+                    'creditos' => $request['credit_dis' . $i],
+                    'carga_horaria' => $request['cghr_dis' . $i],
+                    'ies' => $request['unidade_ies'],
+                    'ano' => $request['ano_dis' . $i],
+                    'semestre' => (int)$request['semestre_dis' . $i],
+                    'frequencia' => $request['freq_dis' . $i],
+                    'nota' => $request['nota_dis' . $i],
+                    'criado_por_id' => $cur_dis->alterado_por_id = $user_id,
+                ]);
 
-                $equivalencia = new Equivalencia();
-                $equivalencia->requerida_id = $req_dis->id;
-                $equivalencia->cursada_id = $cur_dis->id;
-
-                $equivalencia->criado_por_id = $equivalencia->alterado_por_id = Auth::user()->id;
-                $equivalencia->grupo = $eq_group;
-
-                
-                $equivalencia->save();        
+                Equivalencia::create([
+                    'grupo' => $eq_group,
+                    'requerida_id' => $req_dis->id,
+                    'cursada_id' => $cur_dis->id,
+                    'criado_por_id' => $user_id,
+                    'alterado_por_id'=>  $user_id,
+                ]);    
             }
         }
     }
