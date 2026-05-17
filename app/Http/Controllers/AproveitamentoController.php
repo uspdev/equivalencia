@@ -7,6 +7,7 @@ use App\Models\Equivalencia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Uspdev\Forms\Form;
+use Illuminate\Support\Facades\Validator;
 
 class AproveitamentoController extends Controller
 {
@@ -28,25 +29,38 @@ class AproveitamentoController extends Controller
         for ($i = 1; $i < 4; $i++) 
         {
             $rules["coddis{$i}"] = 'nullable|string|max:20';
-            $rules["disciplina{$i}"] = "required_with:coddis{$i}|string|max:255";
-            $rules["credit_dis{$i}"] = "required_with:coddis{$i}|integer|min:0";
-            $rules["cghr_dis{$i}"] = "required_with:coddis{$i}|integer|min:0";
-            $rules["ano_dis{$i}"] = "required_with:coddis{$i}|integer|min:1900|max:" . date('Y');
-            $rules["semestre_dis{$i}"] = "required_with:coddis{$i}|integer|in:1,2";
-            $rules["freq_dis{$i}"] = "required_with:coddis{$i}|numeric|min:0|max:100";
-            $rules["nota_dis{$i}"] = "required_with:coddis{$i}|numeric|min:0|max:10";
+            $rules["disciplina{$i}"] = "nullable|required_with:coddis{$i}|string|max:255";
+            $rules["credit_dis{$i}"] = "nullable|required_with:coddis{$i}|integer|min:0";
+            $rules["cghr_dis{$i}"] = "nullable|required_with:coddis{$i}|integer|min:0";
+            $rules["ano_dis{$i}"] = "nullable|required_with:coddis{$i}|integer|min:1900|max:" . date('Y');
+            $rules["semestre_dis{$i}"] = "nullable|required_with:coddis{$i}|integer|in:1,2";
+            $rules["freq_dis{$i}"] = "nullable|required_with:coddis{$i}|numeric|min:0|max:100";
+            $rules["nota_dis{$i}"] = "nullable|required_with:coddis{$i}|numeric|min:0|max:10";
         }
 
-        dd($rules);
+            $validator = Validator::make($request->all(), $rules);
 
-        $request->validate($rules);
+        return $validator;
     }
 
     public function store(Request $request)
     {
-        static::validate_req($request);
+        // dd($request);
+        for($i = 1; $i < 4; $i++)
+        {
+            if(!is_null($request->input('semestre_dis' . $i)))
+            {$request->merge(['semestre_dis' . $i => (int)$request->input('semestre_dis' . $i)]);}
+        }
+
+        $validator = static::validate_req($request);
+
+        if($validator->fails())
+        {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
 
         $user_id = Auth::user()->id;
+
         $request = $request->input();
 
         $eq_group = Equivalencia::proximoGrupo();
@@ -71,7 +85,7 @@ class AproveitamentoController extends Controller
                     'carga_horaria' => $request['cghr_dis' . $i],
                     'ies' => $request['unidade_ies'],
                     'ano' => $request['ano_dis' . $i],
-                    'semestre' => (int)$request['semestre_dis' . $i],
+                    'semestre' => $request['semestre_dis' . $i],
                     'frequencia' => $request['freq_dis' . $i],
                     'nota' => $request['nota_dis' . $i],
                     'criado_por_id' => $cur_dis->alterado_por_id = $user_id,
