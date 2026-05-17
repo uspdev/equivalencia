@@ -18,31 +18,31 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [WorkflowController::class, 'home'])->name('workflows.index');
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth'])->prefix('equivalencias')->group(function () {
     Route::middleware('can:equivalencias')->group(function () {
-        Route::get('/equivalencias', [EquivalenciaController::class, 'index'])
+        Route::get('/', [EquivalenciaController::class, 'index'])
             ->name('equivalencias.index');
-        Route::get('/equivalencias/{codcur}/{codhab}', [EquivalenciaController::class, 'show'])
+        Route::get('/{codcur}/{codhab}', [EquivalenciaController::class, 'show'])
             ->name('equivalencias.show');
         Route::post('/equivalencia/estado-edicao', [EquivalenciaController::class, 'saveEditModeState'])
             ->name('equivalencias.save-edit-mode-state');
-        Route::post('/equivalencias/{codcur}/{codhab}', [EquivalenciaController::class, 'store'])
+        Route::post('/{codcur}/{codhab}', [EquivalenciaController::class, 'store'])
             ->name('equivalencias.store');
-        Route::put('/equivalencias/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'update'])
+        Route::put('/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'update'])
             ->name('equivalencias.update');
-        Route::delete('/equivalencias/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'destroy'])
+        Route::delete('/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'destroy'])
             ->name('equivalencias.destroy');
-        Route::post('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias', [EquivalenciaController::class, 'addEquivalencia'])
+        Route::post('/{codcur}/{codhab}/{equivalencia}/equivalencias', [EquivalenciaController::class, 'addEquivalencia'])
             ->name('equivalencias.add-equivalencia');
-        Route::put('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [EquivalenciaController::class, 'updateEquivalencia'])
+        Route::put('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [EquivalenciaController::class, 'updateEquivalencia'])
             ->name('equivalencias.update-equivalencia');
-        Route::delete('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [EquivalenciaController::class, 'destroyEquivalencia'])
+        Route::delete('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [EquivalenciaController::class, 'destroyEquivalencia'])
             ->name('equivalencias.destroy-equivalencia');
-        Route::delete('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}/grupo', [EquivalenciaController::class, 'destroyEquivalenciaGrupo'])
+        Route::delete('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}/grupo', [EquivalenciaController::class, 'destroyEquivalenciaGrupo'])
             ->name('equivalencias.destroy-equivalencia-grupo');
 
-        Route::get('/equivalencias/newreq', [AproveitamentoController::class, 'create'])->name('equivalencias.newreq-create');
-        Route::post('/equivalencias/newreq', [AproveitamentoController::class, 'store'])->name('equivalencias.newreq-store');
+        Route::get('/newreq', [AproveitamentoController::class, 'create'])->name('equivalencias.newreq-create');
+        Route::post('/newreq', [AproveitamentoController::class, 'store'])->name('equivalencias.newreq-store');
     });
 
     Route::get('/createdefinition', [WorkflowController::class, 'createDefinition'])->name('workflows.create-definition');
