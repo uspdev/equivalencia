@@ -12,20 +12,34 @@ use Illuminate\Support\Facades\Validator;
 class AproveitamentoController extends Controller
 {
     // TODO - Fazer CRUD, index, show e etc.
+
+    /**
+     * Exibe o formulário para criação de uma requisição de equivalência,
+     * gerando o html dinâmicamente a partir da biblioteca de formulários.
+     * @return \Illuminate\Contracts\View\View
+     */
     public function create()
     {
         $formHtml = app(Form::class)->generateHtml(config('app.initial_form'));
         return view('createReq',['formHtml' => $formHtml]);
     }
 
+    /**
+     * Gera o validator para os dados de entrada da requisição de equivalencia, com as regras especifícas
+     * para este tipo de requisição
+     * @param Request $request
+     * @return \Illuminate\Validation\Validator
+     */
     private static function validate_req(Request $request)
     {
+        // Regras para a disciplina requerida
         $rules = [
             'coddis4' => 'required|string|max:20',
             'disciplina4' => 'required|string|max:255',
             'unidade_ies' => 'required|string|max:255',
         ];
 
+        // Regras para as disciplinas cursadas (disciplina 1 à 3)
         for ($i = 1; $i < 4; $i++) 
         {
             $rules["coddis{$i}"] = 'nullable|string|max:20';
@@ -38,33 +52,46 @@ class AproveitamentoController extends Controller
             $rules["nota_dis{$i}"] = "nullable|required_with:coddis{$i}|numeric|min:0|max:10";
         }
 
-            $validator = Validator::make($request->all(), $rules);
+        // Gera o validator baseado nas regras geradas acima
+        $validator = Validator::make($request->all(), $rules);
 
         return $validator;
     }
 
+    /**
+     * Função que persiste os dados de uma requisição de aproveitamento
+     * na tabela de disciplinas e também na tabela de equivalência
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function store(Request $request)
     {
-        // dd($request);
+        // Transforma os semestres da disciplina cursada do formato ordinal (1° ou 2°) para inteiro (1 ou 2)
         for($i = 1; $i < 4; $i++)
         {
             if(!is_null($request->input('semestre_dis' . $i)))
             {$request->merge(['semestre_dis' . $i => (int)$request->input('semestre_dis' . $i)]);}
         }
 
+        // Gera o validator
         $validator = static::validate_req($request);
 
+        // Caso alguma falha seja encontrada, retorna com os erros
         if($validator->fails())
         {
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
+        // ID do usuário que fez a requisição
         $user_id = Auth::user()->id;
 
+        // Dados de entrada
         $request = $request->input();
 
+        // Próximo grupo de equivalências do banco de dados
         $eq_group = Equivalencia::proximoGrupo();
         
+        // Salva a disciplina requerida no banco de dados de disciplinas e cria um objeto para referencia
         $req_dis = Disciplina::create([
             'coddis' => $request['coddis4'],
             'nomdis' => $request['disciplina4'],
@@ -73,11 +100,13 @@ class AproveitamentoController extends Controller
             'alterado_por_id' => $user_id,
         ]);
 
+        // Atua em todas as disciplinas cursadas (de 1 à 3)
         for($i = 1; $i < 4; $i++)
         {
-            $cur_dis = new Disciplina();
+            // Verifica se a disciplina foi preenchida (coddis{$i} preenchido)
             if(!empty($request['coddis' . $i]))
             {
+                // Salva a i-ésima disciplina no banco de dados de disciplinas e gera um objeto para referência
                 $cur_dis = Disciplina::create([
                     'coddis' => $request['coddis' . $i],
                     'nomdis' => $request['disciplina' . $i],
@@ -91,6 +120,8 @@ class AproveitamentoController extends Controller
                     'criado_por_id' => $cur_dis->alterado_por_id = $user_id,
                 ]);
 
+                // Salva a relação entre a i-ésima disciplina cursada e a disciplina requerida na tabela
+                // de equivalências.
                 Equivalencia::create([
                     'grupo' => $eq_group,
                     'requerida_id' => $req_dis->id,
@@ -100,5 +131,7 @@ class AproveitamentoController extends Controller
                 ]);    
             }
         }
+
+        // TODO - Retorno para a rota de 'show'.
     }
 }
