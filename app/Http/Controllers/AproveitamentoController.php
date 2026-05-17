@@ -6,6 +6,7 @@ use App\Models\Disciplina;
 use App\Models\Equivalencia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use PhpParser\Node\Expr\FuncCall;
 use Uspdev\Forms\Form;
 use Illuminate\Support\Facades\Validator;
 
@@ -21,7 +22,7 @@ class AproveitamentoController extends Controller
     public function create()
     {
         $formHtml = app(Form::class)->generateHtml(config('app.initial_form'));
-        return view('createReq',['formHtml' => $formHtml]);
+        return view('aproveitamentos.createReq',['formHtml' => $formHtml]);
     }
 
     /**
@@ -117,7 +118,8 @@ class AproveitamentoController extends Controller
                     'semestre' => $request['semestre_dis' . $i],
                     'frequencia' => $request['freq_dis' . $i],
                     'nota' => $request['nota_dis' . $i],
-                    'criado_por_id' => $cur_dis->alterado_por_id = $user_id,
+                    'criado_por_id' => $user_id,
+                    'alterado_por_id' => $user_id,
                 ]);
 
                 // Salva a relação entre a i-ésima disciplina cursada e a disciplina requerida na tabela
@@ -132,6 +134,62 @@ class AproveitamentoController extends Controller
             }
         }
 
-        // TODO - Retorno para a rota de 'show'.
+        // Redireciona para a rota de show do pedido de aproveitamento criado
+        return redirect()->route('equivalencias.req-show', ['group' => $eq_group]);
+    }
+
+    /**
+     * Função index, apresenta todas as requisições feitas pelo usuário
+     * @return \Illuminate\Contracts\View\View
+     */
+    public function index()
+    {
+        // Recupera o id do user
+        $user_id = Auth::user()->id;
+
+        // Busca na tabela de equivalências as requisições feitas pelo usuário
+        // Retorna em formato de array, ordenado pelo tempo de criação, de forma decrescente (mais novo -> mais velho)
+        $reqs = Equivalencia::where('criado_por_id', $user_id)->orderBy('created_at', 'desc')->get()->toArray();
+
+        $curr_group = 0;    // Variável auxiliar
+        $requisitions = []; //  Variável para exibição das requisições
+
+        // Percorre todas as requisições encontradas na busca anterior
+        foreach($reqs as $req)
+        {
+            // TODO - Verificar o que será necessário adicionar aqui para a exibição
+
+            // Recupera o nome da disciplina pelo id
+            $dis_name = Disciplina::where('id',$req['requerida_id'])->value('nomdis');
+
+            // Verifica se o grupo da requisição atual é o que está sendo utilizado, senão o atribui
+            if($curr_group != $req['grupo']){$curr_group = $req['grupo'];}
+
+            // Verifica se existe já um registro do grupo atual, se não, o cria
+            if(!isset($requisitions[$dis_name .'_gp' . $curr_group]))
+            {
+                $requisitions[$dis_name . '_gp'. $curr_group] = [
+                    'nomdis' => $dis_name,
+                    'estado' => $req['estado'],
+                    'grupo' => $req['grupo'],
+                ];
+            }
+            
+        }
+
+        // Retorna a view para exibição dos registros criados no loop acima
+        return view('aproveitamentos.index',['requisicoes' => $requisitions]);
+    }
+
+    // TODO - implementar a função show
+
+    /**
+     * Função para exibição de um pedido de aproveitamento - Placeholder
+     * @param int $group
+     * @return never
+     */
+    public function show(int $group)
+    {
+        dd('PLACEHOLDER_DA_SHOW');
     }
 }

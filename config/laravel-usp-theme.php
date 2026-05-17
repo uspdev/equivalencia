@@ -47,7 +47,7 @@ $menu = [
     ],
     [
         'text' => 'Meus requerimentos',
-        'url' => 'showuserobjects',
+        'url' => 'equivalencias/index',
         'can' => 'user',
     ],
     [

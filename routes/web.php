@@ -43,6 +43,8 @@ Route::middleware(['auth'])->prefix('equivalencias')->group(function () {
 
         Route::get('/newreq', [AproveitamentoController::class, 'create'])->name('equivalencias.newreq-create');
         Route::post('/newreq', [AproveitamentoController::class, 'store'])->name('equivalencias.newreq-store');
+        Route::get('/index',[AproveitamentoController::class, 'index'])->name('equivalencias.req-index');
+        Route::get('/req/show/{group}',[AproveitamentoController::class, 'show'])->name('equivalencias.req-show');
     });
 
     Route::get('/createdefinition', [WorkflowController::class, 'createDefinition'])->name('workflows.create-definition');
