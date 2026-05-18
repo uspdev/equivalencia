@@ -25,7 +25,9 @@
                                     {{ $reqinfo['nomdis'] }}
                                 </a>
                             </td>
-                            <td class="text-center">{{ $reqinfo['estado'] ?? 'PLACEHOLDERS_NULO' }}</td>
+                            <td class="text-center">
+                                <span class="badge badge-warning">{{ $reqinfo['estado'] ?? 'PLACEHOLDERS_NULO' }}</span>
+                            </td>
                             <td class="text-center">{{ $reqinfo['grupo'] }}</td>
                             <td class="text-center">PLACEHOLDER_AÇÕES</td>
                         </tr>

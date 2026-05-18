@@ -6,7 +6,6 @@ use App\Models\Disciplina;
 use App\Models\Equivalencia;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use PhpParser\Node\Expr\FuncCall;
 use Uspdev\Forms\Form;
 use Illuminate\Support\Facades\Validator;
 
@@ -31,7 +30,7 @@ class AproveitamentoController extends Controller
      * @param Request $request
      * @return \Illuminate\Validation\Validator
      */
-    private static function validate_req(Request $request)
+    private static function validate_req(Request $request): Validator
     {
         // Regras para a disciplina requerida
         $rules = [
@@ -93,6 +92,7 @@ class AproveitamentoController extends Controller
         $eq_group = Equivalencia::proximoGrupo();
         
         // Salva a disciplina requerida no banco de dados de disciplinas e cria um objeto para referencia
+        // TODO - Verificar se  disciplina já não existe no banco de dados (dado que essa é uma disciplina da USP), e fazer esse link ou criar o novo objeto
         $req_dis = Disciplina::create([
             'coddis' => $request['coddis4'],
             'nomdis' => $request['disciplina4'],
@@ -186,10 +186,36 @@ class AproveitamentoController extends Controller
     /**
      * Função para exibição de um pedido de aproveitamento - Placeholder
      * @param int $group
-     * @return never
      */
     public function show(int $group)
     {
-        dd('PLACEHOLDER_DA_SHOW');
+        $eqs = Equivalencia::where('grupo', $group)->get()->toArray();
+        $req_dis = Disciplina::where('id', $eqs[0]['requerida_id'])->firstOrFail();
+
+        $show_data = [];
+        $show_data['requerida'] = [
+            'coddis' => $req_dis->coddis,
+            'nomdis' => $req_dis->nomdis,
+            'sglund' => $req_dis->sglund,
+        ];
+
+        foreach($eqs as $eq)
+        {
+            $cur_dis = Disciplina::where('id', $eq['cursada_id'])->firstOrFail();
+
+            $show_data['cursadas'][] = [
+                'coddis' => $cur_dis->coddis,
+                'nomdis' => $cur_dis->nomdis,
+                // 'ementa' => TODO - Encontrar maneira de exibir a ementa
+                'semestre' => $cur_dis->semestre,
+                'ano' => $cur_dis->ano,
+                'freq' => $cur_dis->frequencia,
+                'nota' => $cur_dis->nota,
+                'creditos' => $cur_dis->creditos,
+                'carga_hr' => $cur_dis->carga_horaria
+            ];
+        }
+
+        return view('aproveitamentos.show', ['show_data' => $show_data]);
     }
 }
