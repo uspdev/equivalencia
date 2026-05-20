@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Uspdev\Forms\Form;
 use Illuminate\Support\Facades\Validator;
+use Uspdev\Forms\Models\FormSubmission;
 
 class AproveitamentoController extends Controller
 {
@@ -85,9 +86,9 @@ class AproveitamentoController extends Controller
         // ID do usuário que fez a requisição
         $user_id = $request->user()->id;
 
-        // Gera a submissão do formulário e a salve no banco de dados
+        // Gera a submissão do formulário e a salva no banco de dados
         $submission = (new Form(['editable' => true]))->handleSubmission($request);
-        
+
         // Dados de entrada
         $request = $request->input();
 
@@ -95,6 +96,7 @@ class AproveitamentoController extends Controller
         $eq_group = Equivalencia::proximoGrupo();
         
         // Salva a disciplina requerida no banco de dados de disciplinas e cria um objeto para referencia
+
         // TODO - Verificar se  disciplina já não existe no banco de dados (dado que essa é uma disciplina da USP), e fazer esse link ou criar o novo objeto
         $req_dis = Disciplina::create([
             'coddis' => $request['coddis4'],
@@ -138,7 +140,7 @@ class AproveitamentoController extends Controller
         }
 
         // Redireciona para a rota de show do pedido de aproveitamento criado
-        return redirect()->route('equivalencias.req-show', ['group' => $eq_group]);
+        return redirect()->route('equivalencias.req-show', ['group' => $eq_group])->with('alert-success','Requerimento para '. $req_dis->nomdis .' registrado com sucesso !');
     }
 
     /**
@@ -220,5 +222,34 @@ class AproveitamentoController extends Controller
         }
 
         return view('aproveitamentos.show', ['show_data' => $show_data]);
+    }
+
+    /**
+     * Remove um pedido de aproveitamento do banco de dados
+     * @param int $group
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function destroy(int $group)
+    {   
+        // Busca todos os registros de equivalencia do mesmo grupo (mesmo requerimento)
+        $eqs = Equivalencia::where('grupo', $group)->get();
+
+        // Recupera a disciplina requerida
+        $req_dis = Disciplina::where('id', $eqs[0]->requerida_id)->firstOrFail();
+
+        $req_name = $req_dis->nomdis;   // Guarda o nome da disciplina requerida
+        
+        // Percorre todos os registros de equivalencia do grupo
+        foreach($eqs as $eq)
+        {
+            // Remove o registro de cada disciplina cursada, e por consequência, o registro de equivalência
+            $cur_dis = Disciplina::find($eq->cursada_id);
+            if($cur_dis){$cur_dis->delete();}
+        }
+
+        // Remove a disciplina requerida
+        $req_dis->delete();
+
+        return redirect()->back()->with('alert-success','Requerimento de equivalência para '. $req_name . ' removido com sucesso.');
     }
 }
