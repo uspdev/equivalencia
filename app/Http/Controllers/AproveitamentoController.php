@@ -28,9 +28,9 @@ class AproveitamentoController extends Controller
      * Gera o validator para os dados de entrada da requisição de equivalencia, com as regras especifícas
      * para este tipo de requisição
      * @param Request $request
-     * @return \Illuminate\Validation\Validator
+     * @return mixed
      */
-    private static function validate_req(Request $request): Validator
+    private static function validate_req(Request $request)
     {
         // Regras para a disciplina requerida
         $rules = [
@@ -83,8 +83,11 @@ class AproveitamentoController extends Controller
         }
 
         // ID do usuário que fez a requisição
-        $user_id = Auth::user()->id;
+        $user_id = $request->user()->id;
 
+        // Gera a submissão do formulário e a salve no banco de dados
+        $submission = (new Form(['editable' => true]))->handleSubmission($request);
+        
         // Dados de entrada
         $request = $request->input();
 
