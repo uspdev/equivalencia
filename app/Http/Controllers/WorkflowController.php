@@ -383,15 +383,15 @@ class WorkflowController extends Controller
 
         // Uspdev/Forms valida campos de arquivo por chave simples (ex.: "arquivo"),
         // mas o HTML do campo file envia em file[arquivo]. Espelha para o formato esperado.
-        if ($request->hasFile('file')) {
-            foreach ((array) $request->file('file') as $fieldName => $uploadedFile) {
-                if ($uploadedFile) {
-                    $request->files->set($fieldName, $uploadedFile);
-                    $request->request->set($fieldName, $uploadedFile);
-                }
-            }
-        }
-
+        // if ($request->hasFile('file')) {
+        //     foreach ((array) $request->file('file') as $fieldName => $uploadedFile) {
+        //         if ($uploadedFile) {
+        //             $request->files->set($fieldName, $uploadedFile);
+        //             $request->request->set($fieldName, $uploadedFile);
+        //         }
+        //     }
+        // }
+        
         $request->merge(['id' => null]);
         $workflowObjectId = Workflow::enviarFormulario($request);
 

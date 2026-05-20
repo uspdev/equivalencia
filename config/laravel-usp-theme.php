@@ -42,7 +42,7 @@ $menu = [
     ],
     [
         'text' => 'Novo requerimento',
-        'url' => 'viewcreateobject',
+        'url' => 'equivalencias/newreq',
         'can' => 'user',
     ],
     [

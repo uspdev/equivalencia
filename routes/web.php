@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\EquivalenciaController;
 use App\Http\Controllers\WorkflowController;
+use App\Http\Controllers\AproveitamentoController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -39,6 +40,9 @@ Route::middleware(['auth'])->group(function () {
             ->name('equivalencias.destroy-equivalencia');
         Route::delete('/equivalencias/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}/grupo', [EquivalenciaController::class, 'destroyEquivalenciaGrupo'])
             ->name('equivalencias.destroy-equivalencia-grupo');
+
+        Route::get('/equivalencias/newreq', [AproveitamentoController::class, 'create'])->name('equivalencias.newreq-create');
+        Route::post('/equivalencias/newreq', [AproveitamentoController::class, 'store'])->name('equivalencias.newreq-store');
     });
 
     Route::get('/createdefinition', [WorkflowController::class, 'createDefinition'])->name('workflows.create-definition');
