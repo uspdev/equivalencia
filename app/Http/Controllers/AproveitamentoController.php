@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Arquivo;
 use App\Models\Disciplina;
 use App\Models\Equivalencia;
 use Illuminate\Http\Request;
@@ -88,6 +89,10 @@ class AproveitamentoController extends Controller
 
         // Gera a submissão do formulário e a salva no banco de dados
         $submission = (new Form(['editable' => true]))->handleSubmission($request);
+        // dd($submission);
+
+        // TODO - Ver o motivo da 'duplicação' do file e corrigir par não ter campo vazio
+        $sub_data = $submission->data;
 
         // Dados de entrada
         $request = $request->input();
@@ -96,8 +101,7 @@ class AproveitamentoController extends Controller
         $eq_group = Equivalencia::proximoGrupo();
         
         // Salva a disciplina requerida no banco de dados de disciplinas e cria um objeto para referencia
-
-        // TODO - Verificar se  disciplina já não existe no banco de dados (dado que essa é uma disciplina da USP), e fazer esse link ou criar o novo objeto
+    
         $req_dis = Disciplina::create([
             'coddis' => $request['coddis4'],
             'nomdis' => $request['disciplina4'],
@@ -129,13 +133,32 @@ class AproveitamentoController extends Controller
 
                 // Salva a relação entre a i-ésima disciplina cursada e a disciplina requerida na tabela
                 // de equivalências.
-                Equivalencia::create([
+                $eq = Equivalencia::create([
                     'grupo' => $eq_group,
                     'requerida_id' => $req_dis->id,
                     'cursada_id' => $cur_dis->id,
                     'criado_por_id' => $user_id,
                     'alterado_por_id'=>  $user_id,
-                ]);    
+                ]);
+
+                // Registra o histórico escolar do aluno no primeiro registro de equivalência na tabela de arquivos
+                if($i == 1)
+                {
+                    Arquivo::create([
+                        'equivalencia_id' => $eq->id,
+                        'tipo' => 'historico',
+                        'nome' => $sub_data['hist_esc']['original_name'],
+                        'path' => $sub_data['hist_esc']['stored_path']
+                    ]);
+                }
+
+                // Registra o arquivos da ementa disciplina cursada na tabela de arquivos
+                Arquivo::create([
+                    'equivalencia_id' => $eq->id,
+                    'tipo' => 'ementa',
+                    'nome' => $sub_data['file_dis' .$i]['original_name'],
+                    'path' => $sub_data['file_dis' .$i]['stored_path'],
+                ]);
             }
         }
 
