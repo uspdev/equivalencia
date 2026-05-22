@@ -20,6 +20,7 @@ class Equivalencia extends Model
         'tipo',
         'codcur',
         'codhab',
+        'submission_id',
         'criado_por_id',
         'alterado_por_id',
     ];
@@ -34,6 +35,7 @@ class Equivalencia extends Model
         'cursada_id' => 'integer',
         'codcur' => 'integer',
         'codhab' => 'integer',
+        'submission_id' => 'integer',
     ];
 
     public function requerida()

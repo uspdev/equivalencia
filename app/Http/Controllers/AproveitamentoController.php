@@ -9,7 +9,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Uspdev\Forms\Form;
 use Illuminate\Support\Facades\Validator;
+use Uspdev\Forms\Models\FormDefinition;
 use Uspdev\Forms\Models\FormSubmission;
+use Illuminate\Contracts\View\View;
 
 class AproveitamentoController extends Controller
 {
@@ -20,7 +22,7 @@ class AproveitamentoController extends Controller
      * gerando o html dinâmicamente a partir da biblioteca de formulários.
      * @return \Illuminate\Contracts\View\View
      */
-    public function create()
+    public function create(): View
     {
         $formHtml = app(Form::class)->generateHtml(config('app.initial_form'));
         return view('aproveitamentos.createReq',['formHtml' => $formHtml]);
@@ -139,6 +141,7 @@ class AproveitamentoController extends Controller
                     'cursada_id' => $cur_dis->id,
                     'criado_por_id' => $user_id,
                     'alterado_por_id'=>  $user_id,
+                    'submission_id' => $submission->id,
                 ]);
 
                 // Registra o histórico escolar do aluno no primeiro registro de equivalência na tabela de arquivos
@@ -170,7 +173,7 @@ class AproveitamentoController extends Controller
      * Função index, apresenta todas as requisições feitas pelo usuário
      * @return \Illuminate\Contracts\View\View
      */
-    public function index()
+    public function index(): View
     {
         // Recupera o id do user
         $user_id = Auth::user()->id;
@@ -215,11 +218,14 @@ class AproveitamentoController extends Controller
      * Função para exibição de um pedido de aproveitamento - Placeholder
      * @param int $group
      */
-    public function show(int $group)
+    public function show(int $group): View
     {
+
+        // Recupera os registros de equivalencia e a a disciplina requerida
         $eqs = Equivalencia::where('grupo', $group)->get()->toArray();
         $req_dis = Disciplina::where('id', $eqs[0]['requerida_id'])->firstOrFail();
 
+        // Array que armazena os dados a serem exibidos, divido em disciplina requerida e cursadas
         $show_data = [];
         $show_data['requerida'] = [
             'coddis' => $req_dis->coddis,
@@ -227,14 +233,23 @@ class AproveitamentoController extends Controller
             'sglund' => $req_dis->sglund,
         ];
 
+        // Percorre todos os registros de equivalência atrelados ao grupo
         foreach($eqs as $eq)
         {
+            // Recupera a disciplina cursada neste registro
             $cur_dis = Disciplina::where('id', $eq['cursada_id'])->firstOrFail();
 
+            // Recupera o arquivo atrelado àquele registro
+            $file = Arquivo::where('equivalencia_id',$eq['id'])->firstOrFail();
+
+            // Adiciona as informaçẽos da disciplina cursada ao array
             $show_data['cursadas'][] = [
                 'coddis' => $cur_dis->coddis,
                 'nomdis' => $cur_dis->nomdis,
-                // 'ementa' => TODO - Encontrar maneira de exibir a ementa
+                'ementa_file' => [
+                    'name' => $file->nome,
+                    'path' => $file->path
+                ],
                 'semestre' => $cur_dis->semestre,
                 'ano' => $cur_dis->ano,
                 'freq' => $cur_dis->frequencia,
@@ -275,4 +290,29 @@ class AproveitamentoController extends Controller
 
         return redirect()->back()->with('alert-success','Requerimento de equivalência para '. $req_name . ' removido com sucesso.');
     }
+
+    /**
+     * Summary of edit
+     * @param int $submission_id
+     * @return View
+     */
+    public function edit(int $submission_id): View
+    {
+        // Recupera a submissão e a definição de formulário atreladas à equivalência
+        $submission = FormSubmission::where('id', $submission_id)->firstOrFail();
+        $formDef = FormDefinition::where('id', $submission->form_definition_id)->firstOrFail();
+        
+        // Gera o html para a edição do formulário
+        $formHtml = app(Form::class)->generateHtml($formDef->name, $submission);
+
+        return view('aproveitamentos.edit',['formHtml' => $formHtml, 'submission' => $submission]);
+    }
+
+    // public function update(Request $request)
+    // {
+    //     $path = $request->path();
+    //     $eq_group = (int)explode('/',$path)[3];
+
+    //     dd($request->path());
+    // }
 }

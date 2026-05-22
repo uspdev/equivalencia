@@ -35,10 +35,17 @@
                     <div class="col">{{ $cursada['nota'] }}</div>
                     <div class="col">{{ $cursada['creditos'] }}</div>
                     <div class="col">{{ $cursada['carga_hr'] }}</div>
+                    {{-- <div class="col">
+                        <span title="Ementa">
+                            <a href="{{ route('form-submissions.download-file', ['formDefinition' => $submission->form_definition_id, 'formSubmission' => $submission->id,'fi       eldName' => $field['name']]) }}" target="_blank">
+                            {{ Illuminate\Support\Str::limit($filename, 30) }}
+                            </a>
+                        </span>
+                    </div> --}}
                 </div>
             </div>
             @if (!$loop->last)
-                <br>                
+                <br>
             @endif
         @endforeach
     </div>
