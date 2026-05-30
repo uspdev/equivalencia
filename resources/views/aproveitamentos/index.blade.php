@@ -31,6 +31,7 @@
                             <td class="text-center">{{ $reqinfo['grupo'] }}</td>
                             <td class="text-center">
                                 <a href="{{ route('equivalencias.req-destroy', ['group' => $reqinfo['grupo']]) }}" class="btn btn-sm btn-danger">Remover</a>
+                                <a href="{{ route('equivalencias.req-edit', ['group' => $reqinfo['grupo']]) }}" class="btn btn-sm btn-warning">Editar</a>
                             </td>
                         </tr>
                     @endforeach

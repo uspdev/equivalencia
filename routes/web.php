@@ -29,7 +29,7 @@ Route::middleware(['auth'])->prefix('equivalencias')->group(function () {
         Route::post('/{codcur}/{codhab}', [EquivalenciaController::class, 'store'])
             ->name('equivalencias.store');
         Route::put('/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'update'])
-            ->name('equivalencias.update');
+            ->name('equivalencias.update')->whereNumber('codcur')->whereNumber('codhab');
         Route::delete('/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'destroy'])
             ->name('equivalencias.destroy');
         Route::post('/{codcur}/{codhab}/{equivalencia}/equivalencias', [EquivalenciaController::class, 'addEquivalencia'])
@@ -47,7 +47,7 @@ Route::middleware(['auth'])->prefix('equivalencias')->group(function () {
         Route::get('/req/show/{group}',[AproveitamentoController::class, 'show'])->name('equivalencias.req-show');
         Route::get('/req/destroy/{group}',[AproveitamentoController::class, 'destroy'])->name('equivalencias.req-destroy');
         Route::get('/req/edit/{group}',[AproveitamentoController::class, 'edit'])->name('equivalencias.req-edit');
-        Route::post('/req/edit/{group}',[AproveitamentoController::class, 'update'])->name('equivalencias.req-update');
+        Route::put('/req/edit/{group}',[AproveitamentoController::class, 'update'])->name('equivalencias.req-update');
     });
 
     Route::get('/createdefinition', [WorkflowController::class, 'createDefinition'])->name('workflows.create-definition');
