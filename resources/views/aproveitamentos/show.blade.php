@@ -11,37 +11,50 @@
         </h3>
     </div>
     <div class="card-body card-body-sticky">
-        <div class="card card-header card-header-sticky">
-            <div class="row text-center h2 mb-0 mt-0">
-                <div class="text-info col"><strong>Código</strong></div>
-                <div class="text-warning col"><strong>Nome</strong></div>
-                <div class="text-secondary col"><strong>Semestre</strong></div>
-                <div class="text-danger col"><strong>Ano</strong></div>
-                <div class="col"><strong>Frequência</strong></div>
-                <div class="col"><strong>Nota</strong></div>
-                <div class="col"><strong>Créditos</strong></div>
-                <div class="col"><span class="text-nowrap"><strong>Carga horária</strong></span></div>
+        <div class="card card-header card-header-sticky mb-0">
+            <div style="overflow-x: auto;">
+                <table class="table mb-0 mt-0 text-center">
+                    <thead>
+                        <tr>
+                            <th class="text-info"><strong>Código</strong></th>
+                            <th class="text-warning"><strong>Nome</strong></th>
+                            <th class="text-secondary "><strong>Semestre</strong></th>
+                            <th class="text-danger "><strong>Ano</strong></th>
+                            <th class=""><strong>Frequência</strong></th>
+                            <th class=""><strong>Nota</strong></th>
+                            <th class=""><strong>Créditos</strong></th>
+                            <th class=""><span class="text-nowrap"><strong>Carga horária</strong></span></th>
+                            <th class=""><strong>IES</strong></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($show_data['cursadas'] as $cursada)
+                        <tr>
+                            <td class="text-info ">{{ $cursada['coddis'] }}</td>
+                            <td class="text-warning ">{{ $cursada['nomdis'] }}</td>
+                            <td class="text-secondary ">{{ $cursada['semestre'] }}°</td>
+                            <td class="text-danger ">{{ $cursada['ano'] }}</td>
+                            <td class="">{{ $cursada['freq'] }}%</td>
+                            <td class="">{{ $cursada['nota'] }}</td>
+                            <td class="">{{ $cursada['creditos'] }}</td>
+                            <td class="">{{ $cursada['carga_hr'] }}</td>
+                            <td class="">{{ $cursada['ies'] }}</td>
+                            {{-- <div class="col">
+                                <span title="Ementa">
+                                    <a href="{{ route('form-submissions.download-file', ['formDefinition' => $submission->form_definition_id, 'formSubmission' => $submission->id,'fi       eldName' => $field['name']]) }}" target="_blank">
+                                        {{ Illuminate\Support\Str::limit($filename, 30) }}
+                                    </a>
+                                </span>
+                            </div> --}}
+                        </tr>
+                        @if (!$loop->last)
+                            <br>
+                        @endif
+                    @endforeach
+                    </tbody>
+                </table>
             </div>
         </div>
-        <hr>
-        @foreach ($show_data['cursadas'] as $cursada)
-            <div class="card card-header">
-                <div class="row text-center h3 mb-0 mt-0 ml-0 mr-0">
-                    <div class="text-info col">{{ $cursada['coddis'] }}</div>
-                    <div class="text-warning col">{{ $cursada['nomdis'] }}</div>
-                    <div class="text-secondary col">{{ $cursada['semestre'] }}°</div>
-                    <div class="text-danger col">{{ $cursada['ano'] }}</div>
-                    <div class="col">{{ $cursada['freq'] }}%</div>
-                    <div class="col">{{ $cursada['nota'] }}</div>
-                    <div class="col">{{ $cursada['creditos'] }}</div>
-                    <div class="col">{{ $cursada['carga_hr'] }}</div>
-                </div>
-            </div>
-            @if (!$loop->last)
-                <br>                
-            @endif
-        @endforeach
     </div>
 </div>
-
 @endsection

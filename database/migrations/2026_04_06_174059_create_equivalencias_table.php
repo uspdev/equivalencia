@@ -46,11 +46,18 @@ return new class extends Migration
                 ->constrained('users')
                 ->cascadeOnDelete();
 
+            $table->foreignId('submission_id')
+            ->constrained('form_submissions')
+            ->cascadeOnDelete();
+
             // Para evitar que tenhamos mais de uma equivalência com a mesma disciplina cursada no mesmo grupo.
             // Esse unique não impede que tenhamos a mesma disciplina cursada em grupos diferentes,
             // o que é permitido (ex: 2 equivalências diferentes, ambas com a mesma disciplina cursada, mas em grupos diferentes).
             // Ele só impede que tenhamos 2 equivalências iguais (mesmo grupo, mesma disciplina cursada).
             $table->unique(['grupo', 'cursada_id']);
+
+            $table->unique(['cursada_id','submission_id']);
+
 
             $table->timestamps();
         });
