@@ -29,12 +29,8 @@
           <tbody>
             @foreach ($disciplinas as $disciplina)
               <tr>
-                <td>
-                  @include('equivalencias.partials.disciplina-requerida')
-                </td>
-                <td>
-                  @include('equivalencias.partials.disciplinas-equivalentes')
-                </td>
+                <td>@include('equivalencias.partials.disciplina-requerida')</td>
+                <td>@include('equivalencias.partials.disciplinas-equivalentes')</td>
               </tr>
             @endforeach
           </tbody>

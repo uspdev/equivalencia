@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Disciplina;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreEquivalenciaRequest extends FormRequest
@@ -17,8 +18,6 @@ class StoreEquivalenciaRequest extends FormRequest
 
     /**
      * Get the validation rules that apply to the request.
-     *
-     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -26,17 +25,10 @@ class StoreEquivalenciaRequest extends FormRequest
         $codhab = (int) $this->route('codhab');
 
         return [
+            // Valida se a disciplina já existe
             'coddis' => [
-                // Valida se a disciplina já existe
-                function (string $attribute, mixed $value, \Closure $fail) use ($codcur, $codhab) {
-                    $jaExisteNoContexto = Disciplina::query()
-                        ->where('coddis', (string) $value)
-                        ->whereHas('equivalenciasComoRequerida', function ($query) use ($codcur, $codhab) {
-                            $query->automaticas()->doContexto($codcur, $codhab);
-                        })
-                        ->exists();
-
-                    if ($jaExisteNoContexto) {
+                function (string $attribute, mixed $value, Closure $fail) use ($codcur, $codhab) {
+                    if (Disciplina::existeComoRequeridaNoContexto($value, $codcur, $codhab)) {
                         $fail('A disciplina requerida informada já está cadastrada para este curso/habilitação.');
                     }
                 },

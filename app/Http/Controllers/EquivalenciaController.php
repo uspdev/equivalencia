@@ -193,8 +193,8 @@ class EquivalenciaController extends Controller
         }
 
         return redirect()
-            ->route('equivalencias.show', [$codcur, $codhab])
-            ->with('alert-success', 'Disciplina USP criada com sucesso.');
+            ->route('equivalencias.show', [$codcur, $codhab, 'filter'=> $dados['coddis']])
+            ->with('alert-success', 'Equivalência automática criada com sucesso.');
     }
 
     /**
@@ -294,7 +294,7 @@ class EquivalenciaController extends Controller
             $cursada = Disciplina::criarCursadaPorFormulario($dadosCursada);
 
             Equivalencia::criarVinculoCursada(
-                (int) $grupo,
+                $grupo,
                 $equivalencia->id,
                 $cursada->id,
                 $codcur,

@@ -198,6 +198,25 @@ class Disciplina extends Model
         $this->update(static::dadosDaCursadaPorFormulario($dados));
     }
 
+    /**
+     * Verifica se já existe uma disciplina requerida com o mesmo código
+     * que tenha equivalência automática no contexto informado.
+     *
+     * Em uso no request
+     */
+    public static function existeComoRequeridaNoContexto(
+        string $coddis,
+        int $codcur,
+        int $codhab
+    ): bool {
+        return self::query()
+            ->where('coddis', $coddis)
+            ->whereHas('equivalenciasComoRequerida', function ($query) use ($codcur, $codhab) {
+                $query->automaticas()->doContexto($codcur, $codhab);
+            })
+            ->exists();
+    }
+
     private static function buscarNoReplicado(string $coddis): ?array
     {
         try {
