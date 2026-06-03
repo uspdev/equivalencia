@@ -5,6 +5,9 @@
   <div class="card-body">
     <strong style="font-size: 24px;">Nova Requisição - Aproveitamento de estudos</strong>
     <hr>
-    <div class="card-header border">{!! $formHtml !!}</div>
+    
+    <div class="card">
+      <div class="card-header card-header-sticky ">{!! $formHtml !!}</div>
+    </div>
   </div>
 @endsection
