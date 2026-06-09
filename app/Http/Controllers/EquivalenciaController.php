@@ -42,7 +42,7 @@ class EquivalenciaController extends Controller
     {
         $cursos = Graduacao::listarCursosHabilitacoes();
 
-        return view('equivalencias.index', [
+        return view('aproveitamentos_automaticos.index', [
             'cursos' => $cursos,
         ]);
     }
@@ -134,7 +134,7 @@ class EquivalenciaController extends Controller
                 }, []);
         }
 
-        return view('equivalencias.show', [
+        return view('aproveitamentos_automaticos.show', [
             'disciplinas' => $disciplinas,
             'codcur' => $codcur,
             'codhab' => $codhab,

@@ -20,10 +20,10 @@
         @can('svgrad')
             @if ($equivalenciaRepresentante)
             <div class="js-edit-only d-inline-flex align-items-center">
-                @include('equivalencias.partials.modal-edit-equivalencia', [
+                @include('aproveitamentos_automaticos.partials.modal-edit-equivalencia', [
                     'equivalencia' => $equivalenciaRepresentante,
                 ])
-                @include('equivalencias.partials.form-remove-equivalencia')
+                @include('aproveitamentos_automaticos.partials.form-remove-equivalencia')
             </div>
             @endif
         @endcan

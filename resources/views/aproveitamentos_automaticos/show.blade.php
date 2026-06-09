@@ -2,7 +2,7 @@
 
 @section('content')
 
-  <div class="card">
+  <div class="card aproveitamentos-automaticos-edit-scope">
     <div class="card-header d-flex align-items-center">
       <h4 class="mb-0">
         <a href="{{ route('equivalencias.index') }}">Cursos</a>
@@ -11,7 +11,7 @@
       </h4>
 
       <div class="pt-2">
-        @includeWhen($canManageEquivalencias, 'equivalencias.partials.toggle-edit-button-and-modal')
+        @includeWhen($canManageEquivalencias, 'aproveitamentos_automaticos.partials.toggle-edit-button-and-modal')
       </div>
     </div>
 
@@ -29,8 +29,8 @@
           <tbody>
             @foreach ($disciplinas as $disciplina)
               <tr>
-                <td>@include('equivalencias.partials.disciplina-requerida')</td>
-                <td>@include('equivalencias.partials.disciplinas-equivalentes')</td>
+                <td>@include('aproveitamentos_automaticos.partials.disciplina-requerida')</td>
+                <td>@include('aproveitamentos_automaticos.partials.disciplinas-equivalentes')</td>
               </tr>
             @endforeach
           </tbody>
@@ -74,18 +74,14 @@
   @parent
   <script>
     jQuery(function($) {
-      var $table = $('#equivalencias-table');
-
-      if (!$table.length) {
-        return;
-      }
-
-      var $card = $table.closest('.card');
-      var wrapperSelector = '#' + $table.attr('id') + '_wrapper';
+      var $scope = $('.aproveitamentos-automaticos-edit-scope');
       var saveStateUrl = @json(route('equivalencias.save-edit-mode-state'));
       var canManageEquivalencias = @json((bool) $canManageEquivalencias);
       var editModeEnabled = canManageEquivalencias ? @json((bool) $editModeEnabled) : false;
 
+      if (!$scope.length) {
+        return;
+      }
 
       var persistEditModeState = function(enabled, $toggle) {
         $.ajax({
@@ -107,7 +103,7 @@
       };
 
       var applyEditModeState = function(enabled, $toggle) {
-        $card.toggleClass('equivalencias-edit-enabled', enabled);
+        $scope.toggleClass('equivalencias-edit-enabled', enabled);
 
         if ($toggle && $toggle.length) {
           var $textSpan = $toggle.find('.js-edit-toggle-text');
@@ -133,8 +129,11 @@
 
         applyEditModeState(editModeEnabled, $toggle);
 
-        $toggle.on('click', function() {
-          editModeEnabled = !$card.hasClass('equivalencias-edit-enabled');
+        $(document).off('click.equivalenciasToggleEdit', '.equivalencias-toggle-edit')
+          .on('click.equivalenciasToggleEdit', '.equivalencias-toggle-edit', function(event) {
+          event.preventDefault();
+
+          editModeEnabled = !$scope.hasClass('equivalencias-edit-enabled');
           applyEditModeState(editModeEnabled, $toggle);
           persistEditModeState(editModeEnabled, $toggle);
         });

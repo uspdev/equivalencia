@@ -2,4 +2,4 @@
     <span class="js-edit-toggle-text">Habilitar edição</span>
 </button>
 
-@include('equivalencias.partials.modal-create')
+@include('aproveitamentos_automaticos.partials.modal-create')
