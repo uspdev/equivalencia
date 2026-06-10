@@ -16,7 +16,7 @@ use Uspdev\Forms\Form;
 use Uspdev\Forms\Models\FormDefinition;
 use function Termwind\render;
 
-class EquivalenciaController extends Controller
+class AproveitamentoAutomaticoController extends Controller
 {
     /**
      * Construtor do controlador.

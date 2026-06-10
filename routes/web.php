@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\EquivalenciaController;
+use App\Http\Controllers\AproveitamentoAutomaticoController;
 use App\Http\Controllers\WorkflowController;
 use App\Http\Controllers\AproveitamentoController;
 use Illuminate\Support\Facades\Route;
@@ -20,25 +20,25 @@ Route::get('/', [WorkflowController::class, 'home'])->name('workflows.index');
 
 Route::middleware(['auth'])->prefix('equivalencias')->group(function () {
     Route::middleware('can:equivalencias')->group(function () {
-        Route::get('/', [EquivalenciaController::class, 'index'])
+        Route::get('/', [AproveitamentoAutomaticoController::class, 'index'])
             ->name('equivalencias.index');
-        Route::get('/{codcur}/{codhab}', [EquivalenciaController::class, 'show'])
+        Route::get('/{codcur}/{codhab}', [AproveitamentoAutomaticoController::class, 'show'])
             ->name('equivalencias.show');
-        Route::post('/equivalencia/estado-edicao', [EquivalenciaController::class, 'saveEditModeState'])
+        Route::post('/equivalencia/estado-edicao', [AproveitamentoAutomaticoController::class, 'saveEditModeState'])
             ->name('equivalencias.save-edit-mode-state');
-        Route::post('/{codcur}/{codhab}', [EquivalenciaController::class, 'store'])
+        Route::post('/{codcur}/{codhab}', [AproveitamentoAutomaticoController::class, 'store'])
             ->name('equivalencias.store');
-        Route::put('/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'update'])
+        Route::put('/{codcur}/{codhab}/{equivalencia}', [AproveitamentoAutomaticoController::class, 'update'])
             ->name('equivalencias.update')->whereNumber('codcur')->whereNumber('codhab');
-        Route::delete('/{codcur}/{codhab}/{equivalencia}', [EquivalenciaController::class, 'destroy'])
+        Route::delete('/{codcur}/{codhab}/{equivalencia}', [AproveitamentoAutomaticoController::class, 'destroy'])
             ->name('equivalencias.destroy');
-        Route::post('/{codcur}/{codhab}/{equivalencia}/equivalencias', [EquivalenciaController::class, 'addEquivalencia'])
+        Route::post('/{codcur}/{codhab}/{equivalencia}/equivalencias', [AproveitamentoAutomaticoController::class, 'addEquivalencia'])
             ->name('equivalencias.add-equivalencia');
-        Route::put('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [EquivalenciaController::class, 'updateEquivalencia'])
+        Route::put('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [AproveitamentoAutomaticoController::class, 'updateEquivalencia'])
             ->name('equivalencias.update-equivalencia');
-        Route::delete('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [EquivalenciaController::class, 'destroyEquivalencia'])
+        Route::delete('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [AproveitamentoAutomaticoController::class, 'destroyEquivalencia'])
             ->name('equivalencias.destroy-equivalencia');
-        Route::delete('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}/grupo', [EquivalenciaController::class, 'destroyEquivalenciaGrupo'])
+        Route::delete('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}/grupo', [AproveitamentoAutomaticoController::class, 'destroyEquivalenciaGrupo'])
             ->name('equivalencias.destroy-equivalencia-grupo');
 
         Route::get('/newreq', [AproveitamentoController::class, 'create'])->name('equivalencias.newreq-create');
