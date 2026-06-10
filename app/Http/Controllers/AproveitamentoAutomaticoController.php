@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SaveEditModeStateRequest;
+use App\Http\Requests\SaveEquivalenciaFilhaRequest;
 use App\Http\Requests\StoreEquivalenciaRequest;
 use App\Http\Requests\UpdateEquivalenciaRequest;
 use App\Models\Disciplina;
@@ -9,12 +11,9 @@ use App\Models\Aproveitamento;
 use App\Replicado\Graduacao;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Uspdev\Forms\Form;
 use Uspdev\Forms\Models\FormDefinition;
-use function Termwind\render;
 
 class AproveitamentoAutomaticoController extends Controller
 {
@@ -124,7 +123,7 @@ class AproveitamentoAutomaticoController extends Controller
                                     'eq_child_add',
                                     route('equivalencias.update-equivalencia', [$codcur, $codhab, $disciplinaUsp, $equivalenciaFilha]),
                                     'PUT',
-                                    $this->defaultsParaFormularioEdicaoDeGrupo($disciplinaUsp, $equivalenciaFilha)
+                                    $disciplinaUsp->defaultsParaFormularioEdicaoDeGrupo($equivalenciaFilha)
                                 ),
                             ];
                         })
@@ -151,14 +150,11 @@ class AproveitamentoAutomaticoController extends Controller
     /**
      * Persiste o estado global do modo de edicao da tela de equivalencias na sessao.
      *
-     * @param  Request  $request  Dados da requisição
+     * @param  SaveEditModeStateRequest  $request  Dados da requisição
      */
-    public function saveEditModeState(Request $request): JsonResponse
+    public function saveEditModeState(SaveEditModeStateRequest $request): JsonResponse
     {
-        $this->authorize('svgrad');
-        $dados = $request->validate([
-            'enabled' => ['required', 'boolean'],
-        ]);
+        $dados = $request->validated();
 
         session()->put($this->editModeSessionKey(), (bool) $dados['enabled']);
 
@@ -186,11 +182,7 @@ class AproveitamentoAutomaticoController extends Controller
             ->where('ies', 'USP')
             ->first();
 
-        $requerida = Disciplina::upsertRequeridaPorCoddis($dados['coddis'], $requerida);
-
-        if (! Aproveitamento::grupoDaRequerida($requerida->id, $codcur, $codhab)) {
-            Aproveitamento::criarPlaceholderDaRequerida($requerida->id, $codcur, $codhab);
-        }
+        Disciplina::garantirRequeridaAutomaticaNoContexto($dados['coddis'], $codcur, $codhab, $requerida);
 
         return redirect()
             ->route('equivalencias.show', [$codcur, $codhab, 'filter'=> $dados['coddis']])
@@ -209,7 +201,7 @@ class AproveitamentoAutomaticoController extends Controller
      */
     public function update(UpdateEquivalenciaRequest $request, int $codcur, int $codhab, Disciplina $equivalencia)
     {
-        abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
+        abort_unless($equivalencia->pertenceComoRequeridaAoContexto($codcur, $codhab), 404);
 
         $dados = $request->validated();
         Disciplina::upsertRequeridaPorCoddis($dados['coddis'], $equivalencia);
@@ -230,30 +222,9 @@ class AproveitamentoAutomaticoController extends Controller
      */
     public function destroy(int $codcur, int $codhab, Disciplina $equivalencia)
     {
-        abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
+        abort_unless($equivalencia->pertenceComoRequeridaAoContexto($codcur, $codhab), 404);
 
-        $vinculos = Aproveitamento::query()
-            ->doContexto($codcur, $codhab)
-            ->where('requerida_id', $equivalencia->id)
-            ->get();
-        // Vinculos que não são placeholders (ou seja, equivalências reais)
-        // devem ter suas disciplinas cursadas verificadas para possível
-        // remoção caso fiquem órfãs após a exclusão dos vínculos.
-        $cursadasParaLimpeza = $vinculos
-            ->filter(fn (Aproveitamento $item) => ! $item->isPlaceholderRequerida())
-            ->pluck('cursada_id')
-            ->unique()
-            ->values();
-
-        Aproveitamento::query()
-            ->whereIn('id', $vinculos->pluck('id'))
-            ->delete();
-
-        foreach ($cursadasParaLimpeza as $cursadaId) {
-            $this->removerDisciplinaSeOrfa((int) $cursadaId);
-        }
-
-        $this->removerDisciplinaSeOrfa($equivalencia->id);
+        Aproveitamento::removerVinculosDaRequeridaNoContexto($equivalencia, $codcur, $codhab);
 
         return redirect()
             ->route('equivalencias.show', [$codcur, $codhab])
@@ -276,32 +247,22 @@ class AproveitamentoAutomaticoController extends Controller
      * Adiciona novas equivalências (disciplinas cursadas) para uma disciplina USP específica.
      * Valida os dados, cria as disciplinas cursadas e estabelece os vínculos.
      *
-     * @param  Request  $request  Dados da requisição
+     * @param  SaveEquivalenciaFilhaRequest  $request  Dados da requisição
      * @param  int  $codcur  Código do curso
      * @param  int  $codhab  Código da habilitação
      * @param  Disciplina  $equivalencia  A disciplina USP que receberá as equivalências
      * @return RedirectResponse
      */
-    public function addEquivalencia(Request $request, int $codcur, int $codhab, Disciplina $equivalencia)
+    public function addEquivalencia(SaveEquivalenciaFilhaRequest $request, int $codcur, int $codhab, Disciplina $equivalencia)
     {
-        abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
+        abort_unless($equivalencia->pertenceComoRequeridaAoContexto($codcur, $codhab), 404);
 
-        $conjuntos = $this->validarEPrepararConjuntosDeEquivalencia($request);
-
-        $grupo = Aproveitamento::proximoGrupo();
-
-        foreach ($conjuntos as $dadosCursada) {
-            $cursada = Disciplina::criarCursadaPorFormulario($dadosCursada);
-
-            Aproveitamento::criarVinculoCursada(
-                $grupo,
-                $equivalencia->id,
-                $cursada->id,
-                $codcur,
-                $codhab,
-                Aproveitamento::TIPO_AUTOMATICA
-            );
-        }
+        Aproveitamento::criarGrupoDeCursadas(
+            $equivalencia,
+            $codcur,
+            $codhab,
+            $request->conjuntosDeEquivalencia()
+        );
 
         return redirect()
             ->back()
@@ -312,62 +273,24 @@ class AproveitamentoAutomaticoController extends Controller
      * Atualiza um grupo de equivalências para uma disciplina USP.
      * Permite editar as disciplinas equivalentes de um grupo mantendo ou criando novos vínculos.
      *
-     * @param  Request  $request  Dados da requisição
+     * @param  SaveEquivalenciaFilhaRequest  $request  Dados da requisição
      * @param  int  $codcur  Código do curso
      * @param  int  $codhab  Código da habilitação
      * @param  Disciplina  $equivalencia  A disciplina USP proprietária do grupo
      * @param  Aproveitamento  $equivalenciaFilha  Uma equivalência do grupo a ser atualizado
      * @return RedirectResponse
      */
-    public function updateEquivalencia(Request $request, int $codcur, int $codhab, Disciplina $equivalencia, Aproveitamento $equivalenciaFilha)
+    public function updateEquivalencia(SaveEquivalenciaFilhaRequest $request, int $codcur, int $codhab, Disciplina $equivalencia, Aproveitamento $equivalenciaFilha)
     {
-        // Validações de segurança para garantir que a equivalência filha realmente pertence à disciplina requerida
-        // e ao contexto do curso e habilitação, e que não é uma placeholder.
-        abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
-        abort_unless($equivalenciaFilha->pertenceARequeridaNoContexto($equivalencia->id, $codcur, $codhab), 404);
-        abort_unless(! $equivalenciaFilha->isPlaceholderRequerida(), 404);
+        $this->abortUnlessEquivalenciaFilhaValida($equivalencia, $equivalenciaFilha, $codcur, $codhab);
 
-        $conjuntos = $this->validarEPrepararConjuntosDeEquivalencia($request);
-
-        $equivalenciasDoGrupo = Aproveitamento::query()
-            ->doContexto($codcur, $codhab)
-            ->where('requerida_id', $equivalencia->id)
-            ->where('grupo', $equivalenciaFilha->grupo)
-            ->whereColumn('cursada_id', '!=', 'requerida_id')
-            ->with('cursada')
-            ->orderBy('id')
-            ->get();
-
-        $equivalenciasOrdenadasParaEdicao = collect([$equivalenciaFilha])
-            ->merge(
-                $equivalenciasDoGrupo
-                    ->reject(fn (Aproveitamento $item) => $item->id === $equivalenciaFilha->id)
-                    ->values()
-            )
-            ->values();
-
-        foreach ($conjuntos as $index => $dadosCursada) {
-            $vinculoExistente = $equivalenciasOrdenadasParaEdicao->get($index);
-
-            if ($vinculoExistente) {
-                $vinculoExistente->loadMissing('cursada');
-                abort_unless($vinculoExistente->cursada, 404);
-                $vinculoExistente->cursada->atualizarCursadaPorFormulario($dadosCursada);
-
-                continue;
-            }
-
-            $novaCursada = Disciplina::criarCursadaPorFormulario($dadosCursada);
-
-            Aproveitamento::criarVinculoCursada(
-                (int) $equivalenciaFilha->grupo,
-                $equivalencia->id,
-                $novaCursada->id,
-                $codcur,
-                $codhab,
-                Aproveitamento::TIPO_AUTOMATICA
-            );
-        }
+        Aproveitamento::atualizarGrupoDeCursadas(
+            $equivalencia,
+            $equivalenciaFilha,
+            $codcur,
+            $codhab,
+            $request->conjuntosDeEquivalencia()
+        );
 
         return redirect()
             ->back()
@@ -386,14 +309,9 @@ class AproveitamentoAutomaticoController extends Controller
      */
     public function destroyEquivalencia(int $codcur, int $codhab, Disciplina $equivalencia, Aproveitamento $equivalenciaFilha)
     {
-        abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
-        abort_unless($equivalenciaFilha->pertenceARequeridaNoContexto($equivalencia->id, $codcur, $codhab), 404);
-        abort_unless(! $equivalenciaFilha->isPlaceholderRequerida(), 404);
+        $this->abortUnlessEquivalenciaFilhaValida($equivalencia, $equivalenciaFilha, $codcur, $codhab);
 
-        $cursadaId = $equivalenciaFilha->cursada_id;
-        $equivalenciaFilha->delete();
-
-        $this->removerDisciplinaSeOrfa((int) $cursadaId);
+        $equivalenciaFilha->removerELimparCursada();
 
         return redirect()
             ->back()
@@ -412,30 +330,9 @@ class AproveitamentoAutomaticoController extends Controller
      */
     public function destroyEquivalenciaGrupo(int $codcur, int $codhab, Disciplina $equivalencia, Aproveitamento $equivalenciaFilha)
     {
-        abort_unless($this->requeridaPertenceAoCurso($equivalencia, $codcur, $codhab), 404);
-        abort_unless($equivalenciaFilha->pertenceARequeridaNoContexto($equivalencia->id, $codcur, $codhab), 404);
-        abort_unless(! $equivalenciaFilha->isPlaceholderRequerida(), 404);
+        $this->abortUnlessEquivalenciaFilhaValida($equivalencia, $equivalenciaFilha, $codcur, $codhab);
 
-        $vinculosDoGrupo = Aproveitamento::query()
-            ->doContexto($codcur, $codhab)
-            ->where('requerida_id', $equivalencia->id)
-            ->where('grupo', $equivalenciaFilha->grupo)
-            ->get();
-
-        $cursadasParaLimpeza = $vinculosDoGrupo
-            ->pluck('cursada_id')
-            ->unique()
-            ->values();
-
-        Aproveitamento::query()
-            ->whereIn('id', $vinculosDoGrupo->pluck('id'))
-            ->delete();
-
-        foreach ($cursadasParaLimpeza as $cursadaId) {
-            $this->removerDisciplinaSeOrfa((int) $cursadaId);
-        }
-
-        $this->removerDisciplinaSeOrfa($equivalencia->id);
+        Aproveitamento::removerGrupoELimparDisciplinas($equivalencia, $equivalenciaFilha, $codcur, $codhab);
 
         return redirect()
             ->back()
@@ -465,121 +362,6 @@ class AproveitamentoAutomaticoController extends Controller
             : null;
 
         return $form->generateHtml($name, $formSubmission) ?? '';
-    }
-
-    /**
-     * Prepara os valores padrão para o formulário de edição de uma equivalência.
-     * Organiza os vínculos do mesmo grupo para preencher os campos adicionais (coddis2, coddis3, etc).
-     *
-     * @param  Disciplina  $disciplinaUsp  A disciplina USP
-     * @param  Aproveitamento  $equivalenciaFilha  A equivalência sendo editada
-     * @return array Array com os valores padrão para o formulário
-     */
-    private function defaultsParaFormularioEdicaoDeGrupo(Disciplina $disciplinaUsp, Aproveitamento $equivalenciaFilha): array
-    {
-        $equivalentesDoMesmoGrupo = $disciplinaUsp->equivalentes
-            ->where('grupo', $equivalenciaFilha->grupo)
-            ->sortBy('id')
-            ->values();
-
-        $outrosDoGrupo = $equivalentesDoMesmoGrupo
-            ->reject(fn (Aproveitamento $item) => $item->id === $equivalenciaFilha->id)
-            ->values();
-
-        $equivalencia2 = $outrosDoGrupo->get(0);
-        $equivalencia3 = $outrosDoGrupo->get(1);
-
-        return [
-            'coddis' => old('coddis', $equivalenciaFilha->coddis),
-            'nome_disciplina' => old('nome_disciplina', $equivalenciaFilha->nome_disciplina),
-            'ies' => old('ies', $equivalenciaFilha->ies),
-            'coddis2' => old('coddis2', $equivalencia2?->coddis),
-            'nome_disciplina2' => old('nome_disciplina2', $equivalencia2?->nome_disciplina),
-            'ies2' => old('ies2', $equivalencia2?->ies),
-            'coddis3' => old('coddis3', $equivalencia3?->coddis),
-            'nome_disciplina3' => old('nome_disciplina3', $equivalencia3?->nome_disciplina),
-            'ies3' => old('ies3', $equivalencia3?->ies),
-        ];
-    }
-
-    /**
-     * Valida e prepara os conjuntos de dados para criação/edição de equivalências.
-     * Inclui validações condicionais e interdependentes entre os campos.
-     * Não utiliza um Request separado devido à complexidade das regras de validação.
-     *
-     * @param  Request  $request  Dados da requisição
-     * @return array Array com os conjuntos de equivalências validados
-     *
-     * @throws ValidationException
-     */
-    private function validarEPrepararConjuntosDeEquivalencia(Request $request): array
-    {
-        $dados = $request->validate([
-            'coddis' => ['nullable', 'string', 'max:7'],
-            'nome_disciplina' => ['nullable', 'string', 'max:240'],
-            'ies' => ['nullable', 'string', 'max:255'],
-            'coddis2' => ['nullable', 'string', 'max:7'],
-            'nome_disciplina2' => ['nullable', 'string', 'max:240'],
-            'ies2' => ['nullable', 'string', 'max:255'],
-            'coddis3' => ['nullable', 'string', 'max:7'],
-            'nome_disciplina3' => ['nullable', 'string', 'max:240'],
-            'ies3' => ['nullable', 'string', 'max:255'],
-        ]);
-
-        $conjuntos = [];
-        $erros = [];
-
-        foreach (['', '2', '3'] as $sufixo) {
-            $kCoddis = 'coddis'.$sufixo;
-            $kNome = 'nome_disciplina'.$sufixo;
-            $kIes = 'ies'.$sufixo;
-
-            $coddis = trim((string) ($dados[$kCoddis] ?? ''));
-            $nome = trim((string) ($dados[$kNome] ?? ''));
-            $ies = trim((string) ($dados[$kIes] ?? ''));
-
-            if ($coddis === '' && $nome === '' && $ies === '') {
-                continue;
-            }
-
-            if ($coddis === '') {
-                $erros[$kCoddis] = 'O campo código da equivalência é obrigatório para cada conjunto preenchido.';
-
-                continue;
-            }
-
-            $dadosCursada = [
-                'coddis' => $coddis,
-                'nome_disciplina' => $nome !== '' ? $nome : null,
-                'ies' => $ies !== '' ? $ies : null,
-            ];
-
-            $encontradaNoReplicado = Disciplina::disciplinaUspNoReplicado($coddis);
-
-            if (! $encontradaNoReplicado) {
-                if (empty($dadosCursada['nome_disciplina'])) {
-                    $erros[$kNome] = 'Nome da equivalência é obrigatório quando a disciplina não for USP.';
-                }
-
-                if (empty($dadosCursada['ies'])) {
-                    $erros[$kIes] = 'IES é obrigatória quando a disciplina não for USP.';
-                }
-            }
-
-            $conjuntos[] = $dadosCursada;
-        }
-
-        if ($erros) {
-            throw ValidationException::withMessages($erros);
-        }
-
-        if (count($conjuntos) === 0) {
-            throw ValidationException::withMessages([
-                'coddis' => 'Preencha ao menos um conjunto de equivalência.',
-            ]);
-        }
-
-        return $conjuntos;
     }
 
     /**
@@ -632,48 +414,14 @@ class AproveitamentoAutomaticoController extends Controller
         return $values;
     }
 
-    /**
-     * Verifica se uma disciplina requerida pertence a um curso específico.
-     * Valida se existe equivalência automática vinculando a disciplina no contexto do curso.
-     *
-     * @param  Disciplina  $requerida  A disciplina requerida a verificar
-     * @param  int  $codcur  Código do curso
-     * @param  int  $codhab  Código da habilitação
-     * @return bool True se a disciplina pertence ao curso, false caso contrário
-     */
-    private function requeridaPertenceAoCurso(Disciplina $requerida, int $codcur, int $codhab): bool
-    {
-        return Aproveitamento::query()
-            ->doContexto($codcur, $codhab)
-            ->where('requerida_id', $requerida->id)
-            ->exists();
-    }
-
-    /**
-     * Remove uma disciplina se ela não tiver mais vínculos de equivalência.
-     * Utilizado para limpeza de disciplinas órfãs após remoção de equivalências.
-     *
-     * @param  int  $disciplinaId  ID da disciplina a verificar e remover
-     */
-    private function removerDisciplinaSeOrfa(int $disciplinaId): void
-    {
-        $disciplina = Disciplina::find($disciplinaId);
-
-        if (! $disciplina) {
-            return;
-        }
-
-        $temVinculoComoRequerida = Aproveitamento::query()
-            ->where('requerida_id', $disciplina->id)
-            ->exists();
-
-        $temVinculoComoCursada = Aproveitamento::query()
-            ->where('cursada_id', $disciplina->id)
-            ->exists();
-
-        if (! $temVinculoComoRequerida && ! $temVinculoComoCursada) {
-            $disciplina->delete();
-        }
+    private function abortUnlessEquivalenciaFilhaValida(
+        Disciplina $equivalencia,
+        Aproveitamento $equivalenciaFilha,
+        int $codcur,
+        int $codhab
+    ): void {
+        abort_unless($equivalencia->pertenceComoRequeridaAoContexto($codcur, $codhab), 404);
+        abort_unless($equivalenciaFilha->isEquivalenciaRealDaRequeridaNoContexto($equivalencia->id, $codcur, $codhab), 404);
     }
 
     public function novaReq()

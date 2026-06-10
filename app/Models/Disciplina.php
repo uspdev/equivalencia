@@ -105,6 +105,9 @@ class Disciplina extends Model
         });
     }
 
+    /**
+     * Monta os dados de uma disciplina requerida consultando o Replicado quando possível.
+     */
     public static function dadosDaRequeridaPorCoddis(string $coddis): array
     {
         $dados = [
@@ -127,6 +130,9 @@ class Disciplina extends Model
         return $dados;
     }
 
+    /**
+     * Cria ou atualiza uma disciplina requerida pelo código da disciplina.
+     */
     public static function upsertRequeridaPorCoddis(string $coddis, ?Disciplina $disciplina = null): Disciplina
     {
         $dados = static::dadosDaRequeridaPorCoddis($coddis);
@@ -140,6 +146,27 @@ class Disciplina extends Model
         return static::create($dados);
     }
 
+    /**
+     * Garante que a disciplina requerida exista e tenha placeholder no contexto automático.
+     */
+    public static function garantirRequeridaAutomaticaNoContexto(
+        string $coddis,
+        int $codcur,
+        int $codhab,
+        ?Disciplina $disciplina = null
+    ): Disciplina {
+        $requerida = static::upsertRequeridaPorCoddis($coddis, $disciplina);
+
+        if (! Aproveitamento::grupoDaRequerida($requerida->id, $codcur, $codhab)) {
+            Aproveitamento::criarPlaceholderDaRequerida($requerida->id, $codcur, $codhab);
+        }
+
+        return $requerida;
+    }
+
+    /**
+     * Normaliza os dados da disciplina cursada enviados pelo formulário.
+     */
     public static function dadosDaCursadaPorFormulario(array $dados): array
     {
         $coddis = isset($dados['coddis']) ? trim((string) $dados['coddis']) : null;
@@ -177,6 +204,9 @@ class Disciplina extends Model
         ];
     }
 
+    /**
+     * Busca uma disciplina USP no Replicado pelo código informado.
+     */
     public static function disciplinaUspNoReplicado(?string $coddis): ?array
     {
         $codigo = $coddis ? trim($coddis) : '';
@@ -188,14 +218,147 @@ class Disciplina extends Model
         return static::buscarNoReplicado($codigo);
     }
 
+    /**
+     * Cria uma disciplina cursada a partir dos dados normalizados do formulário.
+     */
     public static function criarCursadaPorFormulario(array $dados): Disciplina
     {
         return static::create(static::dadosDaCursadaPorFormulario($dados));
     }
 
+    /**
+     * Atualiza esta disciplina cursada com dados normalizados do formulário.
+     */
     public function atualizarCursadaPorFormulario(array $dados): void
     {
         $this->update(static::dadosDaCursadaPorFormulario($dados));
+    }
+
+    /**
+     * Verifica se a disciplina está vinculada como requerida ao contexto informado.
+     */
+    public function pertenceComoRequeridaAoContexto(int $codcur, int $codhab): bool
+    {
+        return $this->equivalenciasComoRequerida()
+            ->doContexto($codcur, $codhab)
+            ->exists();
+    }
+
+    /**
+     * Remove a disciplina quando ela não possui mais vínculos como requerida ou cursada.
+     */
+    public function removerSeOrfa(): void
+    {
+        $temVinculoComoRequerida = $this->equivalenciasComoRequerida()->exists();
+        $temVinculoComoCursada = $this->equivalenciasComoCursada()->exists();
+
+        if (! $temVinculoComoRequerida && ! $temVinculoComoCursada) {
+            $this->delete();
+        }
+    }
+
+    /**
+     * Remove a disciplina pelo ID se ela estiver órfã.
+     */
+    public static function removerSeOrfaPorId(int $disciplinaId): void
+    {
+        static::find($disciplinaId)?->removerSeOrfa();
+    }
+
+    /**
+     * Monta os valores padrão da edição de um grupo de equivalências automáticas.
+     */
+    public function defaultsParaFormularioEdicaoDeGrupo(Aproveitamento $equivalenciaFilha): array
+    {
+        $equivalentesDoMesmoGrupo = $this->equivalentes
+            ->where('grupo', $equivalenciaFilha->grupo)
+            ->sortBy('id')
+            ->values();
+
+        $outrosDoGrupo = $equivalentesDoMesmoGrupo
+            ->reject(fn (Aproveitamento $item) => $item->id === $equivalenciaFilha->id)
+            ->values();
+
+        $equivalencia2 = $outrosDoGrupo->get(0);
+        $equivalencia3 = $outrosDoGrupo->get(1);
+
+        return [
+            'coddis' => old('coddis', $equivalenciaFilha->coddis),
+            'nome_disciplina' => old('nome_disciplina', $equivalenciaFilha->nome_disciplina),
+            'ies' => old('ies', $equivalenciaFilha->ies),
+            'coddis2' => old('coddis2', $equivalencia2?->coddis),
+            'nome_disciplina2' => old('nome_disciplina2', $equivalencia2?->nome_disciplina),
+            'ies2' => old('ies2', $equivalencia2?->ies),
+            'coddis3' => old('coddis3', $equivalencia3?->coddis),
+            'nome_disciplina3' => old('nome_disciplina3', $equivalencia3?->nome_disciplina),
+            'ies3' => old('ies3', $equivalencia3?->ies),
+        ];
+    }
+
+    /**
+     * Cria a disciplina requerida informada em um requerimento do usuário.
+     */
+    public static function criarRequeridaDeRequerimento(array $dados, int $userId): Disciplina
+    {
+        return static::create([
+            'coddis' => $dados['coddis4'],
+            'nomdis' => $dados['disciplina4'],
+            'ies' => 'USP',
+            'criado_por_id' => $userId,
+            'alterado_por_id' => $userId,
+        ]);
+    }
+
+    /**
+     * Atualiza a disciplina requerida informada em um requerimento do usuário.
+     */
+    public function atualizarRequeridaDeRequerimento(array $dados, int $userId): void
+    {
+        $this->update([
+            'coddis' => $dados['coddis4'],
+            'nomdis' => $dados['disciplina4'],
+            'ies' => 'USP',
+            'alterado_por_id' => $userId,
+        ]);
+    }
+
+    /**
+     * Cria uma disciplina cursada de um requerimento pelo índice do formulário.
+     */
+    public static function criarCursadaDeRequerimento(array $dados, int $numeroDisciplina, int $userId): Disciplina
+    {
+        return static::create(static::dadosCursadaDeRequerimento($dados, $numeroDisciplina, $userId));
+    }
+
+    /**
+     * Atualiza uma disciplina cursada de requerimento pelo índice do formulário.
+     */
+    public function atualizarCursadaDeRequerimento(array $dados, int $numeroDisciplina, int $userId): void
+    {
+        $dadosCursada = static::dadosCursadaDeRequerimento($dados, $numeroDisciplina, $userId);
+        unset($dadosCursada['criado_por_id']);
+
+        $this->update($dadosCursada);
+    }
+
+    /**
+     * Monta os atributos de uma disciplina cursada enviada em um requerimento.
+     */
+    private static function dadosCursadaDeRequerimento(array $dados, int $numeroDisciplina, int $userId): array
+    {
+        return [
+            'coddis' => $dados['coddis'.$numeroDisciplina],
+            'nomdis' => $dados['disciplina'.$numeroDisciplina],
+            'creditos' => $dados['credit_dis'.$numeroDisciplina],
+            'carga_horaria' => $dados['cghr_dis'.$numeroDisciplina],
+            'ies' => $dados['unidade_ies'],
+            'ano' => $dados['ano_dis'.$numeroDisciplina],
+            'semestre' => $dados['semestre_dis'.$numeroDisciplina],
+            'frequencia' => $dados['freq_dis'.$numeroDisciplina],
+            'nota' => $dados['nota_dis'.$numeroDisciplina],
+            'criado_por_id' => $userId,
+            'alterado_por_id' => $userId,
+        ];
     }
 
     /**
@@ -217,6 +380,9 @@ class Disciplina extends Model
             ->exists();
     }
 
+    /**
+     * Consulta o Replicado e retorna os dados da disciplina correspondente.
+     */
     private static function buscarNoReplicado(string $coddis): ?array
     {
         try {
