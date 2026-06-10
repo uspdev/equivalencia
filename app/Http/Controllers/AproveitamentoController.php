@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\EquivalenciaTipo;
 use App\Models\Arquivo;
 use App\Models\Disciplina;
-use App\Models\Equivalencia;
+use App\Models\Aproveitamento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Uspdev\Forms\Form;
 use Illuminate\Support\Facades\Validator;
-use Uspdev\Forms\Models\FormDefinition;
 use Uspdev\Forms\Models\FormSubmission;
 use Illuminate\Contracts\View\View;
 
@@ -65,7 +65,6 @@ class AproveitamentoController extends Controller
     /**
      * Função auxiliar para criar registros de equivalência no banco de dados
      * @param Request $request
-     * @param FormSubmission $submission
      * @return array{eq_group: int, modo: string, req_name: string|null}
      */
     private static function create_req(Request $request, FormSubmission $submission)
@@ -80,7 +79,7 @@ class AproveitamentoController extends Controller
         $input = $request->input();
 
         // Próximo grupo de equivalências do banco de dados
-        $eq_group = Equivalencia::proximoGrupo();
+        $eq_group = Aproveitamento::proximoGrupo();
         
         // Salva a disciplina requerida no banco de dados de disciplinas e cria um objeto para referencia
         $req_dis = Disciplina::create([
@@ -114,13 +113,13 @@ class AproveitamentoController extends Controller
 
                 // Salva a relação entre a i-ésima disciplina cursada e a disciplina requerida na tabela
                 // de equivalências.
-                $eq = Equivalencia::create([
+                $eq = Aproveitamento::create([
                     'grupo' => $eq_group,
                     'requerida_id' => $req_dis->id,
                     'cursada_id' => $cur_dis->id,
+                    'tipo' => EquivalenciaTipo::REQUERIDA,
                     'criado_por_id' => $user_id,
                     'alterado_por_id'=>  $user_id,
-                    'submission_id' => $submission->id,
                 ]);
 
                 // Registra o histórico escolar do aluno no primeiro registro de equivalência na tabela de arquivos
@@ -153,7 +152,7 @@ class AproveitamentoController extends Controller
      * @param FormSubmission $submission
      * @return array{eq_group: int|mixed, modo: string, req_name: string|null|null}
      */
-    private static function update_req(Request $request, FormSubmission $submission)
+    private static function update_req(Request $request, FormSubmission $submission, int $group)
     {
         // ID do usuário que fez a requisição
         $user_id = $request->user()->id;
@@ -161,9 +160,14 @@ class AproveitamentoController extends Controller
         // TODO - Ver o motivo da 'duplicação' do file e corrigir par não ter campo vazio
         $sub_data = $submission->data;
 
-        // Recupera o grupo de equivalências atrelado à submissão
-        $eqs = Equivalencia::where('submission_id', $request->id)->get();
-        if(empty($eqs)){return [];}
+        // Recupera o grupo de equivalências do aluno autenticado.
+        $eqs = Aproveitamento::query()
+            ->where('grupo', $group)
+            ->where('criado_por_id', $user_id)
+            ->orderBy('id')
+            ->get();
+
+        if($eqs->isEmpty()){return [];}
         
         // Dados de entrada
         $input = $request->input();
@@ -210,10 +214,13 @@ class AproveitamentoController extends Controller
                 }
                 else{ $field = 'file_dis' . ($i + 1); }
 
-                $file->update([
-                    'nome' => $sub_data[$field]['original_name'],
-                    'path' => $sub_data[$field]['stored_path'],
-                ]);
+                if(isset($sub_data[$field]))
+                {
+                    $file->update([
+                        'nome' => $sub_data[$field]['original_name'],
+                        'path' => $sub_data[$field]['stored_path'],
+                    ]);
+                }
             }
         }
         
@@ -229,8 +236,6 @@ class AproveitamentoController extends Controller
      */
     public function store(Request $request)
     {
-        $request_id = $request->id ?? null;
-
         // Transforma os semestres da disciplina cursada do formato ordinal (1° ou 2°) para inteiro (1 ou 2)
         for($i = 1; $i < 4; $i++)
         {
@@ -248,8 +253,7 @@ class AproveitamentoController extends Controller
         // Gera (ou recupera) a submissão do formulário e a salva no banco de dados
         $submission = (new Form(['editable' => true]))->handleSubmission($request);
     
-        if(isset($request_id)) {  $data = self::update_req($request, $submission); }
-        else { $data = self::create_req($request, $submission); }
+        $data = self::create_req($request, $submission);
     
         if(!isset($data))
         { 
@@ -272,35 +276,23 @@ class AproveitamentoController extends Controller
         // Recupera o id do user
         $user_id = Auth::user()->id;
 
-        // Busca na tabela de equivalências as requisições feitas pelo usuário
-        // Retorna em formato de array, ordenado pelo tempo de criação, de forma decrescente (mais novo -> mais velho)
-        $reqs = Equivalencia::where('criado_por_id', $user_id)->orderBy('created_at', 'desc')->get()->toArray();
+        // Busca as solicitações feitas pelo aluno e agrupa por grupo.
+        $requisitions = Aproveitamento::query()
+            ->where('criado_por_id', $user_id)
+            ->with('requerida')
+            ->orderByDesc('created_at')
+            ->get()
+            ->groupBy('grupo')
+            ->map(function ($equivalenciasDoGrupo, $grupo) {
+                $primeiraEquivalencia = $equivalenciasDoGrupo->first();
 
-        $curr_group = 0;    // Variável auxiliar
-        $requisitions = []; //  Variável para exibição das requisições
-
-        // Percorre todas as requisições encontradas na busca anterior
-        foreach($reqs as $req)
-        {
-            // TODO - Verificar o que será necessário adicionar aqui para a exibição
-
-            // Recupera o nome da disciplina pelo id
-            $dis_name = Disciplina::where('id',$req['requerida_id'])->value('nomdis');
-
-            // Verifica se o grupo da requisição atual é o que está sendo utilizado, senão o atribui
-            if($curr_group != $req['grupo']){$curr_group = $req['grupo'];}
-
-            // Verifica se existe já um registro do grupo atual, se não, o cria
-            if(!isset($requisitions[$dis_name .'_gp' . $curr_group]))
-            {
-                $requisitions[$dis_name . '_gp'. $curr_group] = [
-                    'nomdis' => $dis_name,
-                    'estado' => $req['estado'],
-                    'grupo' => $req['grupo'],
+                return [
+                    'nomdis' => $primeiraEquivalencia->requerida?->nomdis,
+                    'estado' => $primeiraEquivalencia->estado,
+                    'grupo' => (int) $grupo,
                 ];
-            }
-            
-        }
+            })
+            ->all();
 
         // Retorna a view para exibição dos registros criados no loop acima
         return view('aproveitamentos.index',['requisicoes' => $requisitions]);
@@ -314,8 +306,18 @@ class AproveitamentoController extends Controller
      */
     public function show(int $group): View
     {
+        $user_id = Auth::id();
+
         // Recupera os registros de equivalencia e a a disciplina requerida
-        $eqs = Equivalencia::where('grupo', $group)->get()->toArray();
+        $eqs = Aproveitamento::query()
+            ->where('grupo', $group)
+            ->where('criado_por_id', $user_id)
+            ->orderBy('id')
+            ->get()
+            ->toArray();
+
+        abort_if(empty($eqs), 404);
+
         $req_dis = Disciplina::where('id', $eqs[0]['requerida_id'])->firstOrFail();
         
         // Array que armazena os dados a serem exibidos, divido em disciplina requerida e cursadas
@@ -363,8 +365,15 @@ class AproveitamentoController extends Controller
      */
     public function destroy(int $group)
     {   
+        $user_id = Auth::id();
+
         // Busca todos os registros de equivalencia do mesmo grupo (mesmo requerimento)
-        $eqs = Equivalencia::where('grupo', $group)->get();
+        $eqs = Aproveitamento::query()
+            ->where('grupo', $group)
+            ->where('criado_por_id', $user_id)
+            ->get();
+
+        abort_if($eqs->isEmpty(), 404);
 
         // Recupera a disciplina requerida
         $req_dis = Disciplina::where('id', $eqs[0]->requerida_id)->firstOrFail();
@@ -392,15 +401,10 @@ class AproveitamentoController extends Controller
      */
     public function edit(int $group): View
     {
-        // Recupera o id da submissão atrelada ao pedido de equivalência
-        $submission_id = Equivalencia::where('grupo',$group)->firstOrFail()->submission_id;
-
-        // Recupera a submissão e a definição de formulário atreladas à equivalência
-        $submission = FormSubmission::where('id', $submission_id)->firstOrFail();
-        $formDef = FormDefinition::where('id', $submission->form_definition_id)->firstOrFail();
+        $submission = $this->submissionFromGrupo($group);
         
         // Gera o html para a edição do formulário
-        $formHtml = (new Form(['method' => 'PUT']))->generateHtml($formDef->name, $submission);
+        $formHtml = (new Form(['method' => 'PUT']))->generateHtml(config('app.initial_form'), $submission);
 
         return view('aproveitamentos.edit',['formHtml' => $formHtml, 'submission' => $submission]);
     }
@@ -410,14 +414,94 @@ class AproveitamentoController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function update(Request $request)
-    {    
-        // Recupera o caminho e extrai o grupo de equivalências a partir dele
-        $path = $request->path();
-        $eq_group = (int)explode('/',$path)[3];
+    public function update(Request $request, int $group)
+    {
+        // Transforma os semestres da disciplina cursada do formato ordinal (1° ou 2°) para inteiro (1 ou 2)
+        for($i = 1; $i < 4; $i++)
+        {
+            if(!is_null($request->input('semestre_dis' . $i)))
+            { $request->merge(['semestre_dis' . $i => (int)$request->input('semestre_dis' . $i)]); }
+        }
 
-        // Recupera o id da submissão atrelada ao pedido de equivalência
-        $request->id = Equivalencia::where('grupo',$eq_group)->firstOrFail()->submission_id;
-        return $this->store($request);
+        // Gera o validator
+        $validator = static::validate_req($request);
+
+        // Caso alguma falha seja encontrada, retorna com os erros
+        if($validator->fails()) { return redirect()->back()->withErrors($validator)->withInput(); }
+
+        // Processa a submissão do formulário para aproveitar a rotina de upload do pacote.
+        $submission = (new Form(['editable' => true]))->handleSubmission($request);
+        $data = self::update_req($request, $submission, $group);
+
+        if(empty($data))
+        {
+            return redirect()->back()->with('alert-danger', 'Nao há equivalências para a submissão editada');
+        }
+
+        return redirect()
+            ->route('equivalencias.req-show', ['group' => $data['eq_group']])
+            ->with('alert-success','Requerimento para '. $data['req_name'] . ' ' . $data['modo'] . ' com sucesso !');
+    }
+
+    private function submissionFromGrupo(int $group): FormSubmission
+    {
+        $user_id = Auth::id();
+
+        $eqs = Aproveitamento::query()
+            ->where('grupo', $group)
+            ->where('criado_por_id', $user_id)
+            ->with(['requerida', 'cursada', 'arquivos'])
+            ->orderBy('id')
+            ->get();
+
+        abort_if($eqs->isEmpty(), 404);
+
+        $primeiraEquivalencia = $eqs->first();
+        $data = [
+            'unidade_ies' => $primeiraEquivalencia->cursada?->ies,
+            'coddis4' => $primeiraEquivalencia->requerida?->coddis,
+            'disciplina4' => $primeiraEquivalencia->requerida?->nomdis,
+        ];
+
+        foreach ($eqs as $index => $equivalencia) {
+            $numeroDisciplina = $index + 1;
+            $cursada = $equivalencia->cursada;
+
+            $data["coddis{$numeroDisciplina}"] = $cursada?->coddis;
+            $data["disciplina{$numeroDisciplina}"] = $cursada?->nomdis;
+            $data["credit_dis{$numeroDisciplina}"] = $cursada?->creditos;
+            $data["cghr_dis{$numeroDisciplina}"] = $cursada?->carga_horaria;
+            $data["ano_dis{$numeroDisciplina}"] = $cursada?->ano;
+            $data["semestre_dis{$numeroDisciplina}"] = match ((int) $cursada?->semestre) {
+                1 => '1°',
+                2 => '2°',
+                default => null,
+            };
+            $data["freq_dis{$numeroDisciplina}"] = $cursada?->frequencia;
+            $data["nota_dis{$numeroDisciplina}"] = $cursada?->nota;
+
+            foreach ($equivalencia->arquivos as $arquivo) {
+                if ($arquivo->tipo === 'historico') {
+                    $data['hist_esc'] = [
+                        'original_name' => $arquivo->nome,
+                        'stored_path' => $arquivo->path,
+                    ];
+
+                    continue;
+                }
+
+                if ($arquivo->tipo === 'ementa') {
+                    $data["file_dis{$numeroDisciplina}"] = [
+                        'original_name' => $arquivo->nome,
+                        'stored_path' => $arquivo->path,
+                    ];
+                }
+            }
+        }
+
+        $submission = new FormSubmission();
+        $submission->data = $data;
+
+        return $submission;
     }
 }

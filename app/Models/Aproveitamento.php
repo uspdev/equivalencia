@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\EquivalenciaTipo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
-class Equivalencia extends Model
+class Aproveitamento extends Model
 {
-    public const TIPO_AUTOMATICA = 'a';
+    public const TIPO_AUTOMATICA = EquivalenciaTipo::AUTOMATICA->value;
 
-    public const TIPO_REQUERIDA = 'r';
+    public const TIPO_REQUERIDA = EquivalenciaTipo::REQUERIDA->value;
 
     protected $table = 'equivalencias';
 
@@ -20,22 +21,23 @@ class Equivalencia extends Model
         'tipo',
         'codcur',
         'codhab',
-        'submission_id',
         'criado_por_id',
         'alterado_por_id',
     ];
 
     protected $attributes = [
-        'tipo' => self::TIPO_REQUERIDA,
+        'tipo' => EquivalenciaTipo::REQUERIDA->value,
     ];
 
     protected $casts = [
         'grupo' => 'integer',
         'requerida_id' => 'integer',
         'cursada_id' => 'integer',
+        'tipo' => EquivalenciaTipo::class,
         'codcur' => 'integer',
         'codhab' => 'integer',
-        'submission_id' => 'integer',
+        'criado_por_id' => 'integer',
+        'alterado_por_id' => 'integer',
     ];
 
     public function requerida()
@@ -65,7 +67,7 @@ class Equivalencia extends Model
 
     public function scopeAutomaticas(Builder $query): Builder
     {
-        return $query->where('tipo', self::TIPO_AUTOMATICA);
+        return $query->where('tipo', EquivalenciaTipo::AUTOMATICA);
     }
 
     public function scopeDoContexto(Builder $query, int $codcur, int $codhab): Builder
@@ -143,13 +145,13 @@ class Equivalencia extends Model
         int $cursadaId,
         int $codcur,
         int $codhab,
-        string $tipo = self::TIPO_AUTOMATICA
+        string|EquivalenciaTipo $tipo = EquivalenciaTipo::AUTOMATICA
     ): self {
         return static::create([
             'grupo' => $grupo,
             'requerida_id' => $requeridaId,
             'cursada_id' => $cursadaId,
-            'tipo' => $tipo,
+            'tipo' => $tipo instanceof EquivalenciaTipo ? $tipo : EquivalenciaTipo::from($tipo),
             'codcur' => $codcur,
             'codhab' => $codhab,
         ]);

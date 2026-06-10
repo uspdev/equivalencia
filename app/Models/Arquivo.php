@@ -17,8 +17,8 @@ class Arquivo extends Model
         'path',
     ];
 
-    public function equivalencia()
+    public function aproveitamento()
     {
-        return $this->belongsTo(Equivalencia::class);
+        return $this->belongsTo(Aproveitamento::class, 'equivalencia_id');
     }
 }

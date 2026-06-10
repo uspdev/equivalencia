@@ -1,5 +1,5 @@
 use App\Models\Disciplina;
-use App\Models\Equivalencia;
+use App\Models\Aproveitamento;
 use Illuminate\Support\Facades\DB;
 
 
@@ -273,17 +273,17 @@ foreach ($arquivos as $caminho) {
             &$totalGruposCriados,
             &$totalVinculosCriados
         ) {
-            $gruposExistentes = Equivalencia::query()
+            $gruposExistentes = Aproveitamento::query()
                 ->where('requerida_id', $requerida->id)
                 ->where('codcur', $codcur)
                 ->where('codhab', $codhab)
-                ->where('tipo', Equivalencia::TIPO_AUTOMATICA)
+                ->where('tipo', Aproveitamento::TIPO_AUTOMATICA)
                 ->pluck('grupo')
                 ->unique()
                 ->values();
 
             foreach ($gruposExistentes as $grupoExistente) {
-                $idsDoGrupoExistente = Equivalencia::query()
+                $idsDoGrupoExistente = Aproveitamento::query()
                     ->where('requerida_id', $requerida->id)
                     ->where('codcur', $codcur)
                     ->where('codhab', $codhab)
@@ -301,14 +301,14 @@ foreach ($arquivos as $caminho) {
                 }
             }
 
-            $novoGrupo = Equivalencia::proximoGrupo();
+            $novoGrupo = Aproveitamento::proximoGrupo();
 
             foreach ($cursadasIdsDoGrupo as $cursadaId) {
-                Equivalencia::create([
+                Aproveitamento::create([
                     'grupo' => $novoGrupo,
                     'requerida_id' => $requerida->id,
                     'cursada_id' => $cursadaId,
-                    'tipo' => Equivalencia::TIPO_AUTOMATICA,
+                    'tipo' => Aproveitamento::TIPO_AUTOMATICA,
                     'codcur' => $codcur,
                     'codhab' => $codhab,
                 ]);

@@ -41,19 +41,19 @@ class Disciplina extends Model
     // Equivalências onde esta disciplina é a requerida
     public function equivalenciasComoRequerida()
     {
-        return $this->hasMany(Equivalencia::class, 'requerida_id');
+        return $this->hasMany(Aproveitamento::class, 'requerida_id');
     }
 
     // Equivalências onde esta disciplina é a cursada
     public function equivalenciasComoCursada()
     {
-        return $this->hasMany(Equivalencia::class, 'cursada_id');
+        return $this->hasMany(Aproveitamento::class, 'cursada_id');
     }
 
     // Usado pela tela de show para listar apenas as cursadas equivalentes (sem a linha placeholder do grupo).
     public function equivalentes()
     {
-        return $this->hasMany(Equivalencia::class, 'requerida_id')
+        return $this->hasMany(Aproveitamento::class, 'requerida_id')
             ->whereColumn('cursada_id', '!=', 'requerida_id');
     }
 
@@ -95,7 +95,7 @@ class Disciplina extends Model
             $disciplina->setRelation(
                 'equivalentes',
                 $disciplina->equivalentes
-                    ->sortBy(function (Equivalencia $item) {
+                    ->sortBy(function (Aproveitamento $item) {
                         return sprintf('%010d-%s', (int) $item->grupo, (string) ($item->coddis ?? ''));
                     })
                     ->values()
