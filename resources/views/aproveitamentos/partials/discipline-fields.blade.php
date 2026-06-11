@@ -1,186 +1,159 @@
 @php
-    $unitType = old('unidade_tipo', $discipline['unidade_tipo'] ?? 'USP');
-    $selectedCode = old('coddis', $discipline['coddis'] ?? null);
-    $selectedName = old('nomdis', $discipline['nomdis'] ?? null);
+  $fieldPrefix = $fieldPrefix ?? 'discipline';
+  $useOldInput = $useOldInput ?? true;
+  $fieldId = fn(string $name) => $fieldPrefix . '_' . $name;
+  $value = fn(string $name, mixed $default = null) => $useOldInput ? old($name, $default) : $default;
+  $unitType = $value('unidade_tipo', $discipline['unidade_tipo'] ?? 'USP');
+  $selectedCode = $value('coddis', $discipline['coddis'] ?? null);
+  $selectedName = $value('nomdis', $discipline['nomdis'] ?? null);
 @endphp
 
-<div class="form-group">
-    <label for="unidade_tipo">Unidade onde a disciplina foi cursada <span class="text-danger">*</span></label>
-    <select class="form-control" id="unidade_tipo" name="unidade_tipo" required>
-        <option value="USP" @selected($unitType === 'USP')>USP</option>
-        <option value="OUTRA" @selected($unitType === 'OUTRA')>Outra</option>
+<div class="js-discipline-fields" data-has-syllabus="@json(isset($discipline['ementa']))">
+  <div class="form-group">
+    <label for="{{ $fieldId('unidade_tipo') }}">Unidade onde a disciplina foi cursada <span
+        class="text-danger">*</span></label>
+    <select class="form-control js-unit-type" id="{{ $fieldId('unidade_tipo') }}" name="unidade_tipo" required>
+      <option value="USP" @selected($unitType === 'USP')>USP</option>
+      <option value="OUTRA" @selected($unitType === 'OUTRA')>Outra</option>
     </select>
-</div>
+  </div>
 
-<div id="unidade_nome_group" class="form-group">
-    <label for="unidade_nome">Nome da unidade ou instituição <span class="text-danger">*</span></label>
-    <input type="text"
-           class="form-control"
-           id="unidade_nome"
-           name="unidade_nome"
-           maxlength="255"
-           value="{{ old('unidade_nome', $discipline['unidade_nome'] ?? '') }}">
-</div>
+  <div class="form-group js-external-unit-group">
+    <label for="{{ $fieldId('unidade_nome') }}">Nome da unidade ou instituição <span
+        class="text-danger">*</span></label>
+    <input type="text" class="form-control js-external-field" id="{{ $fieldId('unidade_nome') }}" name="unidade_nome"
+      maxlength="255" value="{{ $value('unidade_nome', $discipline['unidade_nome'] ?? '') }}">
+  </div>
 
-<div id="codigo_usp_group">
+  <div class="js-usp-code-group">
     @include('aproveitamentos.partials.disciplina-usp-field', [
         'name' => 'coddis_usp',
-        'id' => 'coddis_usp',
+        'id' => $fieldId('coddis_usp'),
         'label' => 'Código da disciplina',
         'selected' => $unitType === 'USP' ? $selectedCode : null,
         'selectedName' => $unitType === 'USP' ? $selectedName : null,
         'required' => false,
     ])
-</div>
+  </div>
 
-<div id="codigo_externo_group" class="form-group">
-    <label for="coddis_externo">Código da disciplina <span class="text-danger">*</span></label>
-    <input type="text"
-           class="form-control"
-           id="coddis_externo"
-           maxlength="7"
-           value="{{ $unitType === 'OUTRA' ? $selectedCode : '' }}">
-</div>
+  <div class="form-group js-external-code-group">
+    <label for="{{ $fieldId('coddis_externo') }}">Código da disciplina <span class="text-danger">*</span></label>
+    <input type="text" class="form-control js-external-code" id="{{ $fieldId('coddis_externo') }}" maxlength="7"
+      value="{{ $unitType === 'OUTRA' ? $selectedCode : '' }}">
+  </div>
 
-<input type="hidden" id="coddis" name="coddis" value="{{ $selectedCode }}">
+  <input type="hidden" class="js-discipline-code" name="coddis" value="{{ $selectedCode }}">
 
-<div id="nome_disciplina_group" class="form-group">
-    <label for="nomdis">Nome da disciplina <span class="text-danger">*</span></label>
-    <input type="text"
-           class="form-control"
-           id="nomdis"
-           name="nomdis"
-           maxlength="240"
-           value="{{ old('nomdis', $discipline['nomdis'] ?? '') }}">
-</div>
+  <div class="form-group js-external-name-group">
+    <label for="{{ $fieldId('nomdis') }}">Nome da disciplina <span class="text-danger">*</span></label>
+    <input type="text" class="form-control js-external-field" id="{{ $fieldId('nomdis') }}" name="nomdis"
+      maxlength="240" value="{{ $value('nomdis', $discipline['nomdis'] ?? '') }}">
+  </div>
 
-<div class="form-row">
+  <div class="form-row">
     <div class="form-group col-md-6">
-        <label for="ano">Ano em que cursou <span class="text-danger">*</span></label>
-        <input type="number"
-               class="form-control"
-               id="ano"
-               name="ano"
-               min="1900"
-               max="{{ date('Y') }}"
-               value="{{ old('ano', $discipline['ano'] ?? '') }}"
-               required>
-        <small class="form-text text-muted">
-            Informe o ano do calendário, por exemplo 2025, e não o ano do curso.
-        </small>
+      <label for="{{ $fieldId('ano') }}">Ano em que cursou <span class="text-danger">*</span></label>
+      <input type="number" class="form-control" id="{{ $fieldId('ano') }}" name="ano" min="1900"
+        max="{{ date('Y') }}" value="{{ $value('ano', $discipline['ano'] ?? '') }}" required>
     </div>
     <div class="form-group col-md-6">
-        <label for="semestre">Semestre em que cursou <span class="text-danger">*</span></label>
-        <select class="form-control" id="semestre" name="semestre" required>
-            <option value="">Selecione...</option>
-            <option value="1" @selected((string) old('semestre', $discipline['semestre'] ?? '') === '1')>1º semestre</option>
-            <option value="2" @selected((string) old('semestre', $discipline['semestre'] ?? '') === '2')>2º semestre</option>
-        </select>
-        <small class="form-text text-muted">
-            Informe o semestre do calendário, e não o semestre atual do curso.
-        </small>
+      <label for="{{ $fieldId('semestre') }}">Semestre em que cursou <span class="text-danger">*</span></label>
+      <select class="form-control" id="{{ $fieldId('semestre') }}" name="semestre" required>
+        <option value="">Selecione...</option>
+        <option value="1" @selected((string) $value('semestre', $discipline['semestre'] ?? '') === '1')>1º semestre</option>
+        <option value="2" @selected((string) $value('semestre', $discipline['semestre'] ?? '') === '2')>2º semestre</option>
+      </select>
     </div>
-</div>
+    <small class="form-text text-muted">
+      Informe o ano e o semestre do calendário, por exemplo: "2025 / 1º Semestre", e não ano e semestre do curso.
+    </small>
+  </div>
 
-<div id="campos_externos">
+  <div class="js-external-fields">
     <div class="form-group">
-        <label for="ementa">Ementa da disciplina <span class="text-danger">*</span></label>
-        @if (isset($discipline['ementa']))
-            <div class="small text-success mb-1">Arquivo atual: {{ $discipline['ementa']['name'] }}</div>
-        @endif
-        <input type="file"
-               class="form-control-file"
-               id="ementa"
-               name="ementa"
-               accept=".pdf,application/pdf">
+      <label for="{{ $fieldId('ementa') }}">Ementa da disciplina <span class="text-danger">*</span></label>
+      @if (isset($discipline['ementa']))
+        <div class="small text-success mb-1">Arquivo atual: {{ $discipline['ementa']['name'] }}</div>
+      @endif
+      <input type="file" class="form-control-file js-external-field js-syllabus-field" id="{{ $fieldId('ementa') }}"
+        name="ementa" accept=".pdf,application/pdf">
     </div>
 
     <div class="form-row">
-        <div class="form-group col-md-3">
-            <label for="frequencia">Frequência (%) <span class="text-danger">*</span></label>
-            <input type="number" class="form-control" id="frequencia" name="frequencia"
-                   min="0" max="100" step="0.01"
-                   value="{{ old('frequencia', $discipline['frequencia'] ?? '') }}">
-        </div>
-        <div class="form-group col-md-3">
-            <label for="nota">Nota <span class="text-danger">*</span></label>
-            <input type="number" class="form-control" id="nota" name="nota"
-                   min="0" max="10" step="0.01"
-                   value="{{ old('nota', $discipline['nota'] ?? '') }}">
-        </div>
-        <div class="form-group col-md-3">
-            <label for="creditos">Créditos <span class="text-danger">*</span></label>
-            <input type="number" class="form-control" id="creditos" name="creditos"
-                   min="1" step="1"
-                   value="{{ old('creditos', $discipline['creditos'] ?? '') }}">
-        </div>
-        <div class="form-group col-md-3">
-            <label for="carga_horaria">Carga horária <span class="text-danger">*</span></label>
-            <input type="number" class="form-control" id="carga_horaria" name="carga_horaria"
-                   min="1" step="1"
-                   value="{{ old('carga_horaria', $discipline['carga_horaria'] ?? '') }}">
-        </div>
+      <div class="form-group col-md-3">
+        <label for="{{ $fieldId('frequencia') }}">Frequência (%) <span class="text-danger">*</span></label>
+        <input type="number" class="form-control js-external-field" id="{{ $fieldId('frequencia') }}"
+          name="frequencia" min="0" max="100" step="0.01"
+          value="{{ $value('frequencia', $discipline['frequencia'] ?? '') }}">
+      </div>
+      <div class="form-group col-md-3">
+        <label for="{{ $fieldId('nota') }}">Nota <span class="text-danger">*</span></label>
+        <input type="number" class="form-control js-external-field" id="{{ $fieldId('nota') }}" name="nota"
+          min="0" max="10" step="0.01" value="{{ $value('nota', $discipline['nota'] ?? '') }}">
+      </div>
+      <div class="form-group col-md-3">
+        <label for="{{ $fieldId('creditos') }}">Créditos <span class="text-danger">*</span></label>
+        <input type="number" class="form-control js-external-field" id="{{ $fieldId('creditos') }}" name="creditos"
+          min="1" step="1" value="{{ $value('creditos', $discipline['creditos'] ?? '') }}">
+      </div>
+      <div class="form-group col-md-3">
+        <label for="{{ $fieldId('carga_horaria') }}">Carga horária <span class="text-danger">*</span></label>
+        <input type="number" class="form-control js-external-field" id="{{ $fieldId('carga_horaria') }}"
+          name="carga_horaria" min="1" step="1"
+          value="{{ $value('carga_horaria', $discipline['carga_horaria'] ?? '') }}">
+      </div>
     </div>
+  </div>
 </div>
 
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var unit = document.getElementById('unidade_tipo');
-        var uspCode = document.getElementById('coddis_usp');
-        var externalCode = document.getElementById('coddis_externo');
-        var code = document.getElementById('coddis');
-        var externalFieldIds = [
-            'unidade_nome', 'nomdis', 'ementa', 'frequencia', 'nota', 'creditos', 'carga_horaria'
-        ];
+@once
+  @push('scripts')
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.js-discipline-fields').forEach(function(container) {
+          var unit = container.querySelector('.js-unit-type');
+          var uspCode = container.querySelector('.disciplina-usp-select');
+          var externalCode = container.querySelector('.js-external-code');
+          var code = container.querySelector('.js-discipline-code');
+          var hasSyllabus = container.dataset.hasSyllabus === 'true';
 
-        function syncCode() {
+          function syncCode() {
             code.value = unit.value === 'USP' ? uspCode.value : externalCode.value;
-        }
+          }
 
-        function toggleFields() {
+          function toggleFields() {
             var isExternal = unit.value === 'OUTRA';
-            var externalFields = externalFieldIds.map(function (id) {
-                return document.getElementById(id);
-            }).filter(Boolean);
 
-            document.getElementById('unidade_nome_group').style.display = isExternal ? '' : 'none';
-            document.getElementById('codigo_usp_group').style.display = isExternal ? 'none' : '';
-            document.getElementById('codigo_externo_group').style.display = isExternal ? '' : 'none';
-            document.getElementById('nome_disciplina_group').style.display = isExternal ? '' : 'none';
-            document.getElementById('campos_externos').style.display = isExternal ? '' : 'none';
+            container.querySelector('.js-external-unit-group').style.display = isExternal ? '' : 'none';
+            container.querySelector('.js-usp-code-group').style.display = isExternal ? 'none' : '';
+            container.querySelector('.js-external-code-group').style.display = isExternal ? '' : 'none';
+            container.querySelector('.js-external-name-group').style.display = isExternal ? '' : 'none';
+            container.querySelector('.js-external-fields').style.display = isExternal ? '' : 'none';
 
             uspCode.required = !isExternal;
             uspCode.disabled = isExternal;
             externalCode.required = isExternal;
             externalCode.disabled = !isExternal;
-            externalFields.forEach(function (field) {
-                field.disabled = !isExternal;
-                field.required = isExternal && (field.id !== 'ementa' || !@json(isset($discipline['ementa'])));
+            container.querySelectorAll('.js-external-field').forEach(function(field) {
+              field.disabled = !isExternal;
+              field.required = isExternal && (!field.classList.contains('js-syllabus-field') || !hasSyllabus);
             });
             syncCode();
-        }
+          }
 
-        function bindUspEvents(attempt) {
-            if (window.jQuery) {
-                window.jQuery(uspCode)
-                    .off('.draftCodeSync')
-                    .on('change.draftCodeSync select2:select.draftCodeSync select2:clear.draftCodeSync', syncCode);
-                return;
-            }
+          unit.addEventListener('change', toggleFields);
+          uspCode.addEventListener('change', syncCode);
+          externalCode.addEventListener('input', syncCode);
 
-            if (attempt < 50) {
-                window.setTimeout(function () {
-                    bindUspEvents(attempt + 1);
-                }, 100);
-            }
-        }
+          if (window.jQuery) {
+            window.jQuery(uspCode)
+              .off('.draftCodeSync')
+              .on('change.draftCodeSync select2:select.draftCodeSync select2:clear.draftCodeSync', syncCode);
+          }
 
-        unit.addEventListener('change', toggleFields);
-        uspCode.addEventListener('change', syncCode);
-        externalCode.addEventListener('input', syncCode);
-        bindUspEvents(0);
-        toggleFields();
-    });
-</script>
-@endpush
+          toggleFields();
+        });
+      });
+    </script>
+  @endpush
+@endonce

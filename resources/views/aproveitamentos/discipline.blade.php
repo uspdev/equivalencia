@@ -21,9 +21,11 @@
             @if ($formMethod !== 'POST')
                 @method($formMethod)
             @endif
+            <input type="hidden" name="requerida_coddis" value="{{ $requiredDisciplineCode }}">
 
             @include('aproveitamentos.partials.discipline-fields', [
                 'discipline' => $discipline,
+                'fieldPrefix' => 'standalone',
             ])
 
             <div class="d-flex justify-content-between">

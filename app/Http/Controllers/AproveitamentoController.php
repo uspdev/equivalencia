@@ -73,6 +73,7 @@ class AproveitamentoController extends Controller
             'discipline' => null,
             'formAction' => route('equivalencias.newreq-discipline-store'),
             'formMethod' => 'POST',
+            'requiredDisciplineCode' => $draft->requerida_coddis,
         ]);
     }
 
@@ -81,9 +82,20 @@ class AproveitamentoController extends Controller
         $draft = $this->currentDraft();
         abort_if(count($draft->disciplinas ?? []) >= 3, 422, 'O limite de três disciplinas foi atingido.');
 
+        $request->session()->flash('discipline_modal', 'create');
+        $requiredCode = $request->filled('requerida_coddis')
+            ? $this->validatedRequiredDisciplineCode($request)
+            : null;
+        $discipline = $this->validatedDraftDiscipline($request, $draft);
+        $requiredCode ??= $this->validatedRequiredDisciplineCode($request);
+
         $disciplines = $draft->disciplinas ?? [];
-        $disciplines[] = $this->validatedDraftDiscipline($request, $draft);
-        $draft->update(['disciplinas' => $disciplines]);
+        $disciplines[] = $discipline;
+        $draft->update([
+            'requerida_coddis' => $requiredCode,
+            'disciplinas' => $disciplines,
+        ]);
+        $request->session()->forget('discipline_modal');
 
         return redirect()
             ->route('equivalencias.newreq-create')
@@ -92,12 +104,14 @@ class AproveitamentoController extends Controller
 
     public function editDiscipline(string $disciplineId): View
     {
-        $discipline = $this->findDraftDiscipline($this->currentDraft(), $disciplineId);
+        $draft = $this->currentDraft();
+        $discipline = $this->findDraftDiscipline($draft, $disciplineId);
 
         return view('aproveitamentos.discipline', [
             'discipline' => $discipline,
             'formAction' => route('equivalencias.newreq-discipline-update', $disciplineId),
             'formMethod' => 'PUT',
+            'requiredDisciplineCode' => $draft->requerida_coddis,
         ]);
     }
 
@@ -105,6 +119,9 @@ class AproveitamentoController extends Controller
     {
         $draft = $this->currentDraft();
         $current = $this->findDraftDiscipline($draft, $disciplineId);
+
+        $request->session()->flash('discipline_modal', $disciplineId);
+        $requiredCode = $this->validatedRequiredDisciplineCode($request);
         $updated = $this->validatedDraftDiscipline($request, $draft, $current);
 
         $disciplines = collect($draft->disciplinas ?? [])
@@ -119,9 +136,11 @@ class AproveitamentoController extends Controller
         }
 
         $draft->update([
+            'requerida_coddis' => $requiredCode,
             'disciplinas' => $disciplines,
             'historicos' => $histories,
         ]);
+        $request->session()->forget('discipline_modal');
 
         return redirect()
             ->route('equivalencias.newreq-create')
@@ -382,6 +401,25 @@ class AproveitamentoController extends Controller
             ['user_id' => Auth::id()],
             ['disciplinas' => [], 'historicos' => []]
         );
+    }
+
+    private function validatedRequiredDisciplineCode(Request $request): string
+    {
+        $validated = $request->validate([
+            'requerida_coddis' => ['required', 'string', 'regex:/^[A-Za-z0-9]{3,7}$/'],
+        ], [
+            'requerida_coddis.required' => 'Selecione a disciplina para a qual deseja equivalência.',
+            'requerida_coddis.regex' => 'Selecione uma disciplina USP válida.',
+        ]);
+
+        $code = Str::upper(trim($validated['requerida_coddis']));
+        if (! $this->graduacao->disciplinaExiste($code)) {
+            throw ValidationException::withMessages([
+                'requerida_coddis' => 'A disciplina USP selecionada não foi encontrada.',
+            ]);
+        }
+
+        return $code;
     }
 
     private function validatedDraftDiscipline(
