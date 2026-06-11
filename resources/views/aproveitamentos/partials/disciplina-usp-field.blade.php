@@ -5,6 +5,8 @@
     $selected = $selected ?? null;
     $selectedName = $selectedName ?? null;
     $required = $required ?? false;
+    $disabled = $disabled ?? false;
+    $class = trim('form-control disciplina-usp-select '.($class ?? ''));
 @endphp
 
 <div class="form-group">
@@ -14,8 +16,9 @@
     </label>
     <select id="{{ $id }}"
             name="{{ $name }}"
-            class="form-control disciplina-usp-select"
+            class="{{ $class }}"
             data-search-url="{{ route('equivalencias.disciplinas-usp.search') }}"
+            @disabled($disabled)
             @required($required)>
         <option value="">Selecione uma disciplina...</option>
         @if ($selected)

@@ -341,6 +341,25 @@ class Aproveitamento extends Model
     }
 
     /**
+     * Monta os dados de formulário de edição para cada disciplina requerida.
+     */
+    public static function dadosParaFormularioEdicaoDeEquivalencias(Collection $disciplinas): array
+    {
+        return $disciplinas
+            ->reduce(function (array $forms, Disciplina $disciplinaUsp) {
+                $formsDaDisciplina = $disciplinaUsp->equivalentes
+                    ->mapWithKeys(function (Aproveitamento $equivalenciaFilha) use ($disciplinaUsp) {
+                        return [
+                            $equivalenciaFilha->id => $disciplinaUsp->defaultsParaFormularioEdicaoDeGrupo($equivalenciaFilha),
+                        ];
+                    })
+                    ->all();
+
+                return $forms + $formsDaDisciplina;
+            }, []);
+    }
+
+    /**
      * Lista os requerimentos criados por um usuário agrupados por equivalência.
      */
     public static function requerimentosDoUsuario(int $userId): array

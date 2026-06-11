@@ -31,6 +31,9 @@ class UpdateEquivalenciaRequest extends FormRequest
 
         return [
             'coddis' => [
+                'required',
+                'string',
+                'max:7',
                 function (string $attribute, mixed $value, \Closure $fail) use ($codcur, $codhab, $requeridaId) {
                     $jaExisteNoContexto = Disciplina::query()
                         ->where('coddis', (string) $value)

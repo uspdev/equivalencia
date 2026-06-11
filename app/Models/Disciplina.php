@@ -170,9 +170,11 @@ class Disciplina extends Model
     public static function dadosDaCursadaPorFormulario(array $dados): array
     {
         $coddis = isset($dados['coddis']) ? trim((string) $dados['coddis']) : null;
-        $disciplinaReplicado = $coddis ? static::buscarNoReplicado($coddis) : null;
+        $isUsp = filter_var($dados['is_usp'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        // somente tenta buscar no Replicado se for USP e tiver código de disciplina
+        $disciplinaReplicado = ($isUsp && $coddis) ? static::buscarNoReplicado($coddis) : null;
 
-        if ($disciplinaReplicado) {
+        if ($isUsp && $disciplinaReplicado) {
             return [
                 'coddis' => $disciplinaReplicado['coddis'] ?? $coddis,
                 'nomdis' => $disciplinaReplicado['nomdis'] ?? null,
@@ -263,6 +265,64 @@ class Disciplina extends Model
     public static function removerSeOrfaPorId(int $disciplinaId): void
     {
         static::find($disciplinaId)?->removerSeOrfa();
+    }
+
+    /**
+     * Monta o estado da interface para o formulário de equivalências filhas.
+     */
+    public static function estadoFormularioEquivalencia(array $values = [], int $maxDisciplinas = 3): array
+    {
+        $fieldSuffixes = ['', '2', '3'];
+
+        $fieldValue = function (string $field) use ($values) {
+            return old($field, $values[$field] ?? null);
+        };
+
+        $isUspValue = function (string $suffix) use ($fieldValue) {
+            $field = 'is_usp' . $suffix;
+            $old = old($field);
+
+            if ($old !== null) {
+                return (bool) $old;
+            }
+
+            return $fieldValue('ies' . $suffix) === 'USP';
+        };
+
+        $hasAnyValue = function (string $suffix) use ($fieldValue, $isUspValue) {
+            return $isUspValue($suffix) ||
+                filled($fieldValue('coddis' . $suffix)) ||
+                filled($fieldValue('nome_disciplina' . $suffix)) ||
+                filled($fieldValue('ies' . $suffix));
+        };
+
+        $initialVisible = 1;
+        foreach (['2', '3'] as $suffix) {
+            if ($hasAnyValue($suffix)) {
+                $initialVisible = (int) $suffix;
+            }
+        }
+
+        $blocks = [];
+        foreach ($fieldSuffixes as $loopIndex => $suffix) {
+            $number = $loopIndex + 1;
+
+            $blocks[] = [
+                'number' => $number,
+                'suffix' => $suffix,
+                'visible' => $number <= $initialVisible,
+                'isUsp' => $isUspValue($suffix),
+                'coddis' => $fieldValue('coddis' . $suffix),
+                'nome' => $fieldValue('nome_disciplina' . $suffix),
+                'ies' => $fieldValue('ies' . $suffix),
+            ];
+        }
+
+        return [
+            'maxDisciplinas' => $maxDisciplinas,
+            'initialVisible' => $initialVisible,
+            'blocks' => $blocks,
+        ];
     }
 
     /**

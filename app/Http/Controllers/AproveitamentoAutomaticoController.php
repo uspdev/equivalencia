@@ -12,8 +12,6 @@ use App\Replicado\Graduacao;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
-use Uspdev\Forms\Form;
-use Uspdev\Forms\Models\FormDefinition;
 
 class AproveitamentoAutomaticoController extends Controller
 {
@@ -62,76 +60,9 @@ class AproveitamentoAutomaticoController extends Controller
         abort_unless($curso, 404);
 
         $disciplinas = Disciplina::listarDisciplinasComEquivalencias($codcur, $codhab);
-
-        $formHtmlCreate = '';
-        $formHtmlEdit = [];
-        $formHtmlEquivalenciaCreate = [];
-        $formHtmlEquivalenciaEdit = [];
-
-        if ($canManageEquivalencias) {
-            $formHtmlCreate = $this->buildFormHtml(
-                'eq_usp_create',
-                route('equivalencias.store', ['codcur' => $codcur, 'codhab' => $codhab]),
-                'POST',
-                $this->oldInputForFields(['coddis'])
-            );
-
-            $formHtmlEdit = $disciplinas
-                ->mapWithKeys(function (Disciplina $disciplinaUsp) use ($codcur, $codhab) {
-                    $formHtml = $this->buildFormHtml(
-                        'eq_usp_edit',
-                        route('equivalencias.update', [$codcur, $codhab, $disciplinaUsp]),
-                        'PUT',
-                        $this->oldInputForFields(['coddis'], ['coddis' => $disciplinaUsp->coddis])
-                    );
-
-                    return [
-                        $disciplinaUsp->id => $this->namespaceFormHtmlForIndex($formHtml, $disciplinaUsp->id),
-                    ];
-                })
-                ->all();
-
-            $formHtmlEquivalenciaCreate = $disciplinas
-                ->mapWithKeys(function (Disciplina $disciplinaUsp) use ($codcur, $codhab) {
-                    return [
-                        $disciplinaUsp->id => $this->buildFormHtml(
-                            'eq_child_add',
-                            route('equivalencias.add-equivalencia', [$codcur, $codhab, $disciplinaUsp]),
-                            'POST',
-                            $this->oldInputForFields([
-                                'coddis',
-                                'nome_disciplina',
-                                'ies',
-                                'coddis2',
-                                'nome_disciplina2',
-                                'ies2',
-                                'coddis3',
-                                'nome_disciplina3',
-                                'ies3',
-                            ])
-                        ),
-                    ];
-                })
-                ->all();
-
-            $formHtmlEquivalenciaEdit = $disciplinas
-                ->reduce(function (array $forms, Disciplina $disciplinaUsp) use ($codcur, $codhab) {
-                    $formsDaDisciplina = $disciplinaUsp->equivalentes
-                        ->mapWithKeys(function (Aproveitamento $equivalenciaFilha) use ($codcur, $codhab, $disciplinaUsp) {
-                            return [
-                                $equivalenciaFilha->id => $this->buildFormHtml(
-                                    'eq_child_add',
-                                    route('equivalencias.update-equivalencia', [$codcur, $codhab, $disciplinaUsp, $equivalenciaFilha]),
-                                    'PUT',
-                                    $disciplinaUsp->defaultsParaFormularioEdicaoDeGrupo($equivalenciaFilha)
-                                ),
-                            ];
-                        })
-                        ->all();
-
-                    return $forms + $formsDaDisciplina;
-                }, []);
-        }
+        $formDataEquivalenciaEdit = $canManageEquivalencias
+            ? Aproveitamento::dadosParaFormularioEdicaoDeEquivalencias($disciplinas)
+            : [];
 
         return view('aproveitamentos_automaticos.show', [
             'disciplinas' => $disciplinas,
@@ -140,10 +71,7 @@ class AproveitamentoAutomaticoController extends Controller
             'nomeCurso' => $curso['nomcur'],
             'editModeEnabled' => $canManageEquivalencias ? (bool) session()->get($this->editModeSessionKey(), false) : false,
             'canManageEquivalencias' => $canManageEquivalencias,
-            'formHtmlCreate' => $formHtmlCreate,
-            'formHtmlEdit' => $formHtmlEdit,
-            'formHtmlEquivalenciaCreate' => $formHtmlEquivalenciaCreate,
-            'formHtmlEquivalenciaEdit' => $formHtmlEquivalenciaEdit,
+            'formDataEquivalenciaEdit' => $formDataEquivalenciaEdit,
         ]);
     }
 
@@ -339,81 +267,6 @@ class AproveitamentoAutomaticoController extends Controller
             ->with('alert-success', 'Grupo de equivalências removido com sucesso.');
     }
 
-    /**
-     * Cria o HTML do formulário utilizando o pacote Uspdev/Forms.
-     * Gera o HTML a partir da configuração fornecida.
-     *
-     * @param  string  $name  Nome do formulário
-     * @param  string  $action  URL de ação do formulário
-     * @param  string  $method  Método HTTP (POST, PUT, etc)
-     * @param  array  $values  Valores padrão para os campos
-     * @return string HTML do formulário gerado
-     */
-    private function buildFormHtml(string $name, string $action, string $method, array $values): string
-    {
-        $form = new Form([
-            'name' => $name,
-            'action' => $action,
-            'method' => $method,
-        ]);
-
-        $formSubmission = in_array(strtoupper($method), ['PUT', 'PATCH'], true)
-            ? (object) ['data' => $values]
-            : null;
-
-        return $form->generateHtml($name, $formSubmission) ?? '';
-    }
-
-    /**
-     * Adiciona namespace aos IDs do formulário para evitar duplicatas em listas de modais.
-     * Essencial para manter o funcionamento correto do Select2 em múltiplos formulários.
-     *
-     * @param  string  $formHtml  HTML do formulário
-     * @param  int  $disciplinaId  ID da disciplina para criar um namespace único
-     * @return string HTML do formulário com IDs namespaceados
-     */
-    private function namespaceFormHtmlForIndex(string $formHtml, int $disciplinaId): string
-    {
-        $suffix = (string) $disciplinaId;
-
-        return str_replace(
-            [
-                'id="generatedForm"',
-                'id="uspdev-forms-coddis"',
-                'for="uspdev-forms-coddis"',
-                "selector: '#uspdev-forms-coddis'",
-                'id="uspdev-forms-disciplina-usp"',
-            ],
-            [
-                'id="generatedForm-'.$suffix.'"',
-                'id="uspdev-forms-coddis-'.$suffix.'"',
-                'for="uspdev-forms-coddis-'.$suffix.'"',
-                "selector: '#uspdev-forms-coddis-".$suffix."'",
-                'id="uspdev-forms-disciplina-usp-'.$suffix.'"',
-            ],
-            $formHtml
-        );
-    }
-
-    /**
-     * Recupera os valores antigos (old input) para os campos do formulário.
-     * Utiliza valores padrão caso não haja old input disponível.
-     *
-     * @param  array  $fields  Lista de nomes de campos
-     * @param  array  $defaults  Valores padrão para os campos (opcional)
-     * @return array Array com os valores old ou padrão
-     */
-    private function oldInputForFields(array $fields, array $defaults = []): array
-    {
-        $values = [];
-
-        foreach ($fields as $field) {
-            $values[$field] = old($field, $defaults[$field] ?? null);
-        }
-
-        return $values;
-    }
-
     private function abortUnlessEquivalenciaFilhaValida(
         Disciplina $equivalencia,
         Aproveitamento $equivalenciaFilha,
@@ -422,13 +275,5 @@ class AproveitamentoAutomaticoController extends Controller
     ): void {
         abort_unless($equivalencia->pertenceComoRequeridaAoContexto($codcur, $codhab), 404);
         abort_unless($equivalenciaFilha->isEquivalenciaRealDaRequeridaNoContexto($equivalencia->id, $codcur, $codhab), 404);
-    }
-
-    public function novaReq()
-    {
-        $initial_def = FormDefinition::where('name',config('app.initial_form'))->firstOrFail();
-        $formHtml = app(Form::class)->generateHtml($initial_def->name);
-
-        return view('showInitialForm',['formHtml' => $formHtml]);
     }
 }

@@ -269,6 +269,7 @@ class AproveitamentoController extends Controller
 
             foreach ($disciplines as $disciplineData) {
                 $courseData = [
+                    'is_usp' => $disciplineData['unidade_tipo'] === 'USP',
                     'coddis' => $disciplineData['coddis'],
                     'nome_disciplina' => $disciplineData['nomdis'],
                     'ies' => $disciplineData['unidade_tipo'] === 'USP'
