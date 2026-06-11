@@ -15,10 +15,12 @@
                 </button>
             </div>
             <div class="modal-body">
-
-                {!! $formHtmlCreate !!}
+                @include('aproveitamentos_automaticos.partials.forms.form-disciplina-requerida', [
+                    'action' => route('equivalencias.store', ['codcur' => $codcur, 'codhab' => $codhab]),
+                    'method' => 'POST',
+                    'id' => 'modalNovaDisciplina-coddis',
+                ])
             </div>
         </div>
     </div>
 </div>
-

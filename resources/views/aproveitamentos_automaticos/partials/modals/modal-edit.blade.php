@@ -1,9 +1,6 @@
 @php
     $modalId = $modalId ?? ('modalEditarDisciplina' . ($disciplina->id ?? ''));
     $modalLabelId = $modalLabelId ?? ($modalId . 'Label');
-    $formHtmlEdit = is_array($formHtmlEdit ?? null)
-        ? ($formHtmlEdit[$disciplina->id] ?? '')
-        : ($formHtmlEdit ?? '');
 @endphp
 
 <button type="button" class="btn btn-outline-primary btn-sm mr-2" data-toggle="modal" data-target="#{{ $modalId }}">
@@ -30,7 +27,13 @@
                     </div>
                 @endif
 
-                {!! $formHtmlEdit !!}
+                @include('aproveitamentos_automaticos.partials.forms.form-disciplina-requerida', [
+                    'action' => route('equivalencias.update', [$codcur, $codhab, $disciplina]),
+                    'method' => 'PUT',
+                    'id' => $modalId.'-coddis',
+                    'selected' => $disciplina->coddis,
+                    'selectedName' => $disciplina->nome_disciplina,
+                ])
             </div>
         </div>
     </div>
@@ -45,5 +48,3 @@
         });
     </script>
 @endonce
-
-

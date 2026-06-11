@@ -11,7 +11,7 @@
       </h4>
 
       <div class="pt-2">
-        @includeWhen($canManageEquivalencias, 'aproveitamentos_automaticos.partials.toggle-edit-button-and-modal')
+        @includeWhen($canManageEquivalencias, 'aproveitamentos_automaticos.partials.buttons.toggle-edit-button-and-modal')
       </div>
     </div>
 
@@ -29,8 +29,8 @@
           <tbody>
             @foreach ($disciplinas as $disciplina)
               <tr>
-                <td>@include('aproveitamentos_automaticos.partials.disciplina-requerida')</td>
-                <td>@include('aproveitamentos_automaticos.partials.disciplinas-equivalentes')</td>
+                <td>@include('aproveitamentos_automaticos.partials.display.disciplina-requerida')</td>
+                <td>@include('aproveitamentos_automaticos.partials.display.disciplinas-equivalentes')</td>
               </tr>
             @endforeach
           </tbody>

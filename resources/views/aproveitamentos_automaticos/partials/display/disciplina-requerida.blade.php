@@ -8,12 +8,11 @@
 
     @can('svgrad')
         <div class="disciplina-requerida-acoes js-edit-only ml-3 d-inline-flex align-items-center">
-            <div> @include('aproveitamentos_automaticos.partials.modal-equivalencia', [
+            <div> @include('aproveitamentos_automaticos.partials.modals.modal-equivalencia', [
                 'modalId' => "modalAdicionarEquivalencia{$disciplina->id}",
                 'modalLabelId' => "modalAdicionarEquivalenciaLabel{$disciplina->id}",
-                'formHtmlEquivalencia' => $formHtmlEquivalenciaCreate[$disciplina->id] ?? '',
             ])</div>
-            <div>@include('aproveitamentos_automaticos.partials.modal-edit')</div>
+            <div>@include('aproveitamentos_automaticos.partials.modals.modal-edit')</div>
 
             <form action="{{ route('equivalencias.destroy', [$codcur, $codhab, $disciplina]) }}" method="POST"
                 class="d-inline">

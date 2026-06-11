@@ -1,7 +1,6 @@
 @php
   $modalId = $modalId ?? ('modalAdicionarEquivalencia' . ($disciplina->id ?? ''));
   $modalLabelId = $modalLabelId ?? ($modalId . 'Label');
-  $formHtmlEquivalencia = $formHtmlEquivalencia ?? '';
 @endphp
 
 <button type="button" data-toggle="modal" data-target="#{{ $modalId }}"
@@ -19,7 +18,11 @@
         </button>
       </div>
       <div class="modal-body">
-        {!! $formHtmlEquivalencia !!}
+        @include('aproveitamentos_automaticos.partials.form-equivalencia', [
+          'action' => route('equivalencias.add-equivalencia', [$codcur, $codhab, $disciplina]),
+          'method' => 'POST',
+          'formId' => 'formAdicionarEquivalencia'.$disciplina->id,
+        ])
       </div>
     </div>
   </div>

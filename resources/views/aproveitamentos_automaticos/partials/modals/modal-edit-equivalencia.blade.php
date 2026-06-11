@@ -12,7 +12,12 @@
                 </button>
             </div>
             <div class="modal-body">
-                {!! $formHtmlEquivalenciaEdit[$equivalencia->id] ?? '' !!}
+                @include('aproveitamentos_automaticos.partials.form-equivalencia', [
+                    'action' => route('equivalencias.update-equivalencia', [$codcur, $codhab, $disciplina, $equivalencia]),
+                    'method' => 'PUT',
+                    'formId' => 'formEditarEquivalencia'.$equivalencia->id,
+                    'values' => $formDataEquivalenciaEdit[$equivalencia->id] ?? [],
+                ])
             </div>
         </div>
     </div>
