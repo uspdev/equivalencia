@@ -391,12 +391,22 @@ class Disciplina extends Model
             return null;
         }
 
+        if (! is_iterable($disciplinas)) {
+            return null;
+        }
+
         foreach ($disciplinas as $disciplina) {
+            if (! is_array($disciplina)) {
+                continue;
+            }
+
             if (($disciplina['coddis'] ?? null) === $coddis) {
                 return $disciplina;
             }
         }
 
-        return $disciplinas[0] ?? null;
+        $first = $disciplinas[0] ?? null;
+
+        return is_array($first) ? $first : null;
     }
 }

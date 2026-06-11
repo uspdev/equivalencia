@@ -7,6 +7,7 @@ use Laravel\Dusk\TestCase as BaseTestCase;
 use Facebook\WebDriver\Chrome\ChromeOptions;
 use Facebook\WebDriver\Remote\RemoteWebDriver;
 use Facebook\WebDriver\Remote\DesiredCapabilities;
+use Spatie\Permission\Models\Permission;
 
 abstract class DuskTestCase extends BaseTestCase
 {
@@ -54,7 +55,7 @@ abstract class DuskTestCase extends BaseTestCase
      *
      * @return bool
      */
-    protected function hasHeadlessDisabled()
+    protected function hasHeadlessDisabled(): bool
     {
         return isset($_SERVER['DUSK_HEADLESS_DISABLED']) ||
         isset($_ENV['DUSK_HEADLESS_DISABLED']);
@@ -65,7 +66,7 @@ abstract class DuskTestCase extends BaseTestCase
      *
      * @return bool
      */
-    protected function shouldStartMaximized()
+    protected function shouldStartMaximized(): bool
     {
         return isset($_SERVER['DUSK_START_MAXIMIZED']) ||
         isset($_ENV['DUSK_START_MAXIMIZED']);
@@ -84,8 +85,8 @@ abstract class DuskTestCase extends BaseTestCase
             'email' => 'fake@email.com',
             'codpes' => 888,
         ]);
-        $user->setDefaultPermission();
-        $user->syncPermissions($permission);
+        $user->criarPermissoesPadrao();
+        $user->syncPermissions(Permission::findByName($permission, 'senhaunica'));
         return $user;
     }
 }

@@ -27,6 +27,7 @@
 
 @section('javascripts_bottom')
   @parent
+  @stack('scripts')
   <script>
     // Seu código .js
   </script>
