@@ -1,10 +1,10 @@
 @php
-  $modalId = $modalId ?? ('modalAdicionarEquivalencia' . ($disciplina->id ?? ''));
-  $modalLabelId = $modalLabelId ?? ($modalId . 'Label');
+  $modalId = $modalId ?? 'modalAdicionarEquivalencia' . ($disciplina->id ?? '');
+  $modalLabelId = $modalLabelId ?? $modalId . 'Label';
 @endphp
 
-<button type="button" data-toggle="modal" data-target="#{{ $modalId }}"
-  class="btn btn-sm btn-outline-success mr-2" title="Adicionar disciplina cursada equivalente">
+<button type="button" data-toggle="modal" data-target="#{{ $modalId }}" class="btn btn-sm btn-outline-success mr-2"
+  title="Adicionar disciplina cursada equivalente">
   <i class="fas fa-plus"></i>
 </button>
 
@@ -19,9 +19,9 @@
       </div>
       <div class="modal-body">
         @include('aproveitamentos_automaticos.partials.form-equivalencia', [
-          'action' => route('equivalencias.add-equivalencia', [$codcur, $codhab, $disciplina]),
-          'method' => 'POST',
-          'formId' => 'formAdicionarEquivalencia'.$disciplina->id,
+            'action' => route('equivalencias.add-equivalencia', [$codcur, $codhab, $disciplina]),
+            'method' => 'POST',
+            'formId' => 'formAdicionarEquivalencia' . $disciplina->id,
         ])
       </div>
     </div>

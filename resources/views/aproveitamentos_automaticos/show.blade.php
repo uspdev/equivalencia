@@ -11,7 +11,10 @@
       </h4>
 
       <div class="pt-2">
-        @includeWhen($canManageEquivalencias, 'aproveitamentos_automaticos.partials.buttons.toggle-edit-button-and-modal')
+        {{-- Include when não funciona na extensão de ir para o arquivo --}}
+        @if ($canManageEquivalencias)
+          @include('aproveitamentos_automaticos.partials.buttons.toggle-edit-button-and-modal')
+        @endif
       </div>
     </div>
 
@@ -131,12 +134,12 @@
 
         $(document).off('click.equivalenciasToggleEdit', '.equivalencias-toggle-edit')
           .on('click.equivalenciasToggleEdit', '.equivalencias-toggle-edit', function(event) {
-          event.preventDefault();
+            event.preventDefault();
 
-          editModeEnabled = !$scope.hasClass('equivalencias-edit-enabled');
-          applyEditModeState(editModeEnabled, $toggle);
-          persistEditModeState(editModeEnabled, $toggle);
-        });
+            editModeEnabled = !$scope.hasClass('equivalencias-edit-enabled');
+            applyEditModeState(editModeEnabled, $toggle);
+            persistEditModeState(editModeEnabled, $toggle);
+          });
       };
 
       attachEditToggle();

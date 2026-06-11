@@ -21,10 +21,10 @@
               @foreach ($cursos as $curso)
                 <tr>
                   <td>
-                   <p> <a href="{{ route('equivalencias.show', [$curso['codcur'], $curso['codhab']]) }}">
-                      {{ $curso['nomcur'] ?? '-' }} ({{ $curso['codcur'] ?? '-' }})
-                    </a>
-                    / {{ $curso['nomhab'] ?? '-' }} ({{ $curso['codhab'] ?? '-' }})</p>
+                    <p> <a href="{{ route('equivalencias.show', [$curso['codcur'], $curso['codhab']]) }}">
+                        {{ $curso['nomcur'] ?? '-' }} ({{ $curso['codcur'] ?? '-' }})
+                      </a>
+                      / {{ $curso['nomhab'] ?? '-' }} ({{ $curso['codhab'] ?? '-' }})</p>
                   </td>
                 </tr>
               @endforeach

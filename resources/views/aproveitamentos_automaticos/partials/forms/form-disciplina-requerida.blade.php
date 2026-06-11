@@ -7,7 +7,7 @@
 
 <form method="{{ $formMethod }}" action="{{ $action }}">
   @csrf
-  @if (! in_array($method, ['GET', 'POST'], true))
+  @if (!in_array($method, ['GET', 'POST'], true))
     @method($method)
   @endif
 
@@ -22,10 +22,10 @@
   @endif
 
   @include('aproveitamentos.partials.disciplina-usp-field', [
-    'name' => 'coddis',
-    'id' => $id ?? 'coddis',
-    'label' => 'Código da disciplina',
-    'required' => true,
+      'name' => 'coddis',
+      'id' => $id ?? 'coddis',
+      'label' => 'Código da disciplina',
+      'required' => true,
   ])
 
   <div class="text-right">
