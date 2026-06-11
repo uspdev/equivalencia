@@ -2,7 +2,6 @@
 
 @section('content')
   @php
-    $externalDisciplines = $disciplines->where('unidade_tipo', 'OUTRA');
     $openDisciplineModal = session('discipline_modal');
     $selectedRequiredCode = $openDisciplineModal
         ? old('requerida_coddis', $draft->requerida_coddis)
@@ -10,7 +9,7 @@
     $canSubmit =
         $draft->requerida_coddis &&
         $disciplines->isNotEmpty() &&
-        $externalDisciplines->every(fn($discipline) => isset($transcripts[$discipline['id']]));
+        $transcriptGroups->every(fn($group) => isset($group['file']));
   @endphp
 
   <div class="card">
@@ -86,30 +85,35 @@
         </div>
       </div>
 
-      @if ($externalDisciplines->isNotEmpty())
+      @if ($transcriptGroups->isNotEmpty())
         <div class="card mb-4">
           <div class="card-header">
-            <strong>Históricos escolares</strong>
+            <strong>Histórico Escolar</strong>
           </div>
           <div class="card-body">
             <p>
-              Envie um PDF para cada disciplina cursada fora da USP.
+              Envie um PDF para cada unidade ou instituição externa. Disciplinas da mesma unidade utilizam o mesmo
+              histórico.
             </p>
             <form method="POST" action="{{ route('equivalencias.newreq-transcripts') }}" enctype="multipart/form-data">
               @csrf
-              @foreach ($externalDisciplines as $discipline)
+              @foreach ($transcriptGroups as $group)
                 <div class="form-group">
-                  <label for="historico_{{ $discipline['id'] }}">
-                    {{ $discipline['unidade_nome'] }} - {{ $discipline['coddis'] }}
+                  <label for="historico_{{ $group['key'] }}">
+                    {{ $group['unit_name'] }}
                     <span class="text-danger">*</span>
                   </label>
-                  @if (isset($transcripts[$discipline['id']]))
+                  <div class="small text-muted mb-1">
+                    Disciplinas:
+                    {{ $group['disciplines']->map(fn($discipline) => $discipline['coddis'] . ' - ' . $discipline['nomdis'])->join('; ') }}
+                  </div>
+                  @if (isset($group['file']))
                     <div class="small text-success mb-1">
-                      Arquivo atual: {{ $transcripts[$discipline['id']]['name'] }}
+                      Arquivo atual: {{ $group['file']['name'] }}
                     </div>
                   @endif
-                  <input type="file" class="form-control-file" id="historico_{{ $discipline['id'] }}"
-                    name="historicos[{{ $discipline['id'] }}]" accept=".pdf,application/pdf" @required(!isset($transcripts[$discipline['id']]))>
+                  <input type="file" class="form-control-file" id="historico_{{ $group['key'] }}"
+                    name="historicos[{{ $group['key'] }}]" accept=".pdf,application/pdf" @required(!isset($group['file']))>
                 </div>
               @endforeach
               <button type="submit" class="btn btn-primary">Salvar históricos</button>

@@ -9,6 +9,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 use Uspdev\Replicado\Replicado;
@@ -93,12 +94,12 @@ class AproveitamentoMultistepTest extends TestCase
 
         $draft = AproveitamentoRascunho::where('user_id', $user->id)->firstOrFail();
         $this->assertSame('MAC0110', $draft->requerida_coddis);
-        $disciplineId = $draft->disciplinas[0]['id'];
+        $transcriptKey = $this->transcriptKey('Universidade Externa');
 
         $this->actingAs($user)
             ->post(route('equivalencias.newreq-transcripts', absolute: false), [
                 'historicos' => [
-                    $disciplineId => UploadedFile::fake()
+                    $transcriptKey => UploadedFile::fake()
                         ->create('historico.pdf', 100, 'application/pdf'),
                 ],
             ])
@@ -112,6 +113,162 @@ class AproveitamentoMultistepTest extends TestCase
         $this->assertDatabaseCount('equivalencias', 1);
         $this->assertDatabaseCount('arquivos', 2);
         $this->assertDatabaseMissing('aproveitamento_rascunhos', ['user_id' => $user->id]);
+    }
+
+    public function test_disciplines_from_same_normalized_unit_share_transcript(): void
+    {
+        $user = $this->createAuthorizedUser(654320);
+        $disciplineData = [
+            'requerida_coddis' => 'MAC0110',
+            'unidade_tipo' => 'OUTRA',
+            'nomdis' => 'Programação',
+            'ano' => 2025,
+            'semestre' => 1,
+            'frequencia' => 90,
+            'nota' => 8.5,
+            'creditos' => 4,
+            'carga_horaria' => 60,
+        ];
+
+        $this->actingAs($user)
+            ->post(route('equivalencias.newreq-discipline-store', absolute: false), array_merge($disciplineData, [
+                'unidade_nome' => 'Universidade São Paulo',
+                'coddis' => 'EXT100',
+                'ementa' => UploadedFile::fake()->create('ementa-1.pdf', 100, 'application/pdf'),
+            ]))
+            ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
+
+        $this->actingAs($user)
+            ->post(route('equivalencias.newreq-discipline-store', absolute: false), array_merge($disciplineData, [
+                'unidade_nome' => ' universidade sao   paulo ',
+                'coddis' => 'EXT200',
+                'nomdis' => 'Algoritmos',
+                'ementa' => UploadedFile::fake()->create('ementa-2.pdf', 100, 'application/pdf'),
+            ]))
+            ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
+
+        $transcriptKey = $this->transcriptKey('Universidade São Paulo');
+        $this->actingAs($user)
+            ->get(route('equivalencias.newreq-create', absolute: false))
+            ->assertOk()
+            ->assertSee('Universidade São Paulo')
+            ->assertSee('EXT100 - Programação')
+            ->assertSee('EXT200 - Algoritmos')
+            ->assertSee("name=\"historicos[{$transcriptKey}]\"", false);
+
+        $this->actingAs($user)
+            ->post(route('equivalencias.newreq-transcripts', absolute: false), [
+                'historicos' => [
+                    $transcriptKey => UploadedFile::fake()
+                        ->create('historico-compartilhado.pdf', 100, 'application/pdf'),
+                ],
+            ])
+            ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
+
+        $draft = AproveitamentoRascunho::where('user_id', $user->id)->firstOrFail();
+        $this->assertCount(1, $draft->historicos);
+        $this->assertSame('historico-compartilhado.pdf', $draft->historicos[$transcriptKey]['name']);
+
+        $this->actingAs($user)
+            ->post(route('equivalencias.newreq-store', absolute: false))
+            ->assertRedirect(route('equivalencias.req-show', ['group' => 1], false));
+
+        $this->assertDatabaseCount('equivalencias', 2);
+        $this->assertDatabaseCount('arquivos', 4);
+        $this->assertSame(
+            2,
+            DB::table('arquivos')->where('tipo', 'historico')->distinct()->count('equivalencia_id')
+        );
+        $this->assertSame(
+            1,
+            DB::table('arquivos')->where('tipo', 'historico')->distinct()->count('path')
+        );
+    }
+
+    public function test_shared_transcript_is_deleted_only_after_last_unit_discipline_is_removed(): void
+    {
+        $user = $this->createAuthorizedUser(654319);
+        $transcriptKey = $this->transcriptKey('Universidade Externa');
+        $transcriptPath = 'aproveitamentos/1/historicos/historico.pdf';
+        Storage::put($transcriptPath, 'pdf');
+
+        $draft = AproveitamentoRascunho::create([
+            'user_id' => $user->id,
+            'requerida_coddis' => 'MAC0110',
+            'disciplinas' => [
+                $this->externalDraftDiscipline('discipline-1', 'EXT100'),
+                $this->externalDraftDiscipline('discipline-2', 'EXT200'),
+            ],
+            'historicos' => [
+                $transcriptKey => [
+                    'name' => 'historico.pdf',
+                    'path' => $transcriptPath,
+                ],
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('equivalencias.newreq-discipline-destroy', 'discipline-1', absolute: false))
+            ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
+
+        $draft->refresh();
+        $this->assertArrayHasKey($transcriptKey, $draft->historicos);
+        Storage::assertExists($transcriptPath);
+
+        $this->actingAs($user)
+            ->delete(route('equivalencias.newreq-discipline-destroy', 'discipline-2', absolute: false))
+            ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
+
+        $draft->refresh();
+        $this->assertSame([], $draft->historicos);
+        Storage::assertMissing($transcriptPath);
+    }
+
+    public function test_transcript_is_removed_when_edit_moves_last_discipline_to_another_unit(): void
+    {
+        $user = $this->createAuthorizedUser(654318);
+        $oldKey = $this->transcriptKey('Universidade Antiga');
+        $transcriptPath = 'aproveitamentos/1/historicos/historico-antigo.pdf';
+        Storage::put($transcriptPath, 'pdf');
+
+        $discipline = $this->externalDraftDiscipline('discipline-1', 'EXT100');
+        $discipline['unidade_nome'] = 'Universidade Antiga';
+        $discipline['ementa'] = [
+            'name' => 'ementa.pdf',
+            'path' => 'aproveitamentos/1/ementas/ementa.pdf',
+        ];
+
+        $draft = AproveitamentoRascunho::create([
+            'user_id' => $user->id,
+            'requerida_coddis' => 'MAC0110',
+            'disciplinas' => [$discipline],
+            'historicos' => [
+                $oldKey => [
+                    'name' => 'historico-antigo.pdf',
+                    'path' => $transcriptPath,
+                ],
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('equivalencias.newreq-discipline-update', 'discipline-1', absolute: false), [
+                'requerida_coddis' => 'MAC0110',
+                'unidade_tipo' => 'OUTRA',
+                'unidade_nome' => 'Universidade Nova',
+                'coddis' => 'EXT100',
+                'nomdis' => 'Disciplina EXT100',
+                'ano' => 2025,
+                'semestre' => 1,
+                'frequencia' => 90,
+                'nota' => 8.5,
+                'creditos' => 4,
+                'carga_horaria' => 60,
+            ])
+            ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
+
+        $draft->refresh();
+        $this->assertSame([], $draft->historicos);
+        Storage::assertMissing($transcriptPath);
     }
 
     public function test_add_button_starts_disabled_without_required_discipline(): void
@@ -212,5 +369,27 @@ class AproveitamentoMultistepTest extends TestCase
         $user->givePermissionTo(Permission::findByName('admin', 'senhaunica'));
 
         return $user;
+    }
+
+    private function transcriptKey(string $unitName): string
+    {
+        return hash('sha256', Str::of($unitName)->ascii()->lower()->squish()->value());
+    }
+
+    private function externalDraftDiscipline(string $id, string $code): array
+    {
+        return [
+            'id' => $id,
+            'unidade_tipo' => 'OUTRA',
+            'unidade_nome' => 'Universidade Externa',
+            'coddis' => $code,
+            'nomdis' => "Disciplina {$code}",
+            'ano' => 2025,
+            'semestre' => 1,
+            'frequencia' => 90.0,
+            'nota' => 8.5,
+            'creditos' => 4,
+            'carga_horaria' => 60,
+        ];
     }
 }

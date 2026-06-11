@@ -31,12 +31,15 @@ class AproveitamentoController extends Controller
     public function create(): View
     {
         $draft = $this->currentDraft();
+        $disciplines = collect($draft->disciplinas ?? []);
+        $transcripts = $draft->historicos ?? [];
 
         return view('aproveitamentos.createReq', [
             'draft' => $draft,
             'requiredDisciplineName' => $this->uspDisciplineName($draft->requerida_coddis),
-            'disciplines' => collect($draft->disciplinas ?? []),
-            'transcripts' => $draft->historicos ?? [],
+            'disciplines' => $disciplines,
+            'transcripts' => $transcripts,
+            'transcriptGroups' => $this->externalDisciplineGroups($disciplines, $transcripts),
         ]);
     }
 
@@ -129,11 +132,10 @@ class AproveitamentoController extends Controller
             ->values()
             ->all();
 
-        $histories = $draft->historicos ?? [];
-        if ($updated['unidade_tipo'] === 'USP' && isset($histories[$disciplineId])) {
-            Storage::delete($histories[$disciplineId]['path']);
-            unset($histories[$disciplineId]);
-        }
+        $histories = $this->removeOrphanedTranscripts(
+            $draft->historicos ?? [],
+            collect($disciplines)
+        );
 
         $draft->update([
             'requerida_coddis' => $requiredCode,
@@ -156,17 +158,17 @@ class AproveitamentoController extends Controller
             Storage::delete($discipline['ementa']['path']);
         }
 
-        $histories = $draft->historicos ?? [];
-        if (isset($histories[$disciplineId])) {
-            Storage::delete($histories[$disciplineId]['path']);
-            unset($histories[$disciplineId]);
-        }
+        $disciplines = collect($draft->disciplinas ?? [])
+            ->reject(fn (array $item) => $item['id'] === $disciplineId)
+            ->values()
+            ->all();
+        $histories = $this->removeOrphanedTranscripts(
+            $draft->historicos ?? [],
+            collect($disciplines)
+        );
 
         $draft->update([
-            'disciplinas' => collect($draft->disciplinas ?? [])
-                ->reject(fn (array $item) => $item['id'] === $disciplineId)
-                ->values()
-                ->all(),
+            'disciplinas' => $disciplines,
             'historicos' => $histories,
         ]);
 
@@ -178,15 +180,17 @@ class AproveitamentoController extends Controller
     public function saveTranscripts(Request $request)
     {
         $draft = $this->currentDraft();
-        $externalDisciplines = collect($draft->disciplinas ?? [])
-            ->where('unidade_tipo', 'OUTRA');
+        $groups = $this->externalDisciplineGroups(
+            collect($draft->disciplinas ?? []),
+            $draft->historicos ?? []
+        );
 
-        abort_if($externalDisciplines->isEmpty(), 422, 'Não há disciplinas externas no rascunho.');
+        abort_if($groups->isEmpty(), 422, 'Não há disciplinas externas no rascunho.');
 
         $rules = [];
-        foreach ($externalDisciplines as $discipline) {
-            $rules["historicos.{$discipline['id']}"] = [
-                isset(($draft->historicos ?? [])[$discipline['id']]) ? 'nullable' : 'required',
+        foreach ($groups as $group) {
+            $rules["historicos.{$group['key']}"] = [
+                isset($group['file']) ? 'nullable' : 'required',
                 'file',
                 'mimes:pdf',
                 'max:10240',
@@ -200,24 +204,24 @@ class AproveitamentoController extends Controller
         ]);
 
         $histories = $draft->historicos ?? [];
-        foreach ($externalDisciplines as $discipline) {
-            $file = $request->file("historicos.{$discipline['id']}");
+        foreach ($groups as $group) {
+            $file = $request->file("historicos.{$group['key']}");
             if (! $file) {
                 continue;
             }
 
-            if (isset($histories[$discipline['id']]['path'])) {
-                Storage::delete($histories[$discipline['id']]['path']);
+            if (isset($histories[$group['key']]['path'])) {
+                Storage::delete($histories[$group['key']]['path']);
             }
 
-            $histories[$discipline['id']] = $this->storeDraftFile($draft, $file, 'historicos');
+            $histories[$group['key']] = $this->storeDraftFile($draft, $file, 'historicos');
         }
 
         $draft->update(['historicos' => $histories]);
 
         return redirect()
             ->route('equivalencias.newreq-create')
-            ->with('alert-success', 'Históricos escolares salvos no rascunho.');
+            ->with('alert-success', 'Histórico escolare salvos no rascunho.');
     }
 
     /**
@@ -240,9 +244,10 @@ class AproveitamentoController extends Controller
         if ($disciplines->isEmpty()) {
             $errors['disciplinas'] = 'Adicione ao menos uma disciplina cursada.';
         }
-        foreach ($externalDisciplines as $discipline) {
-            if (! isset($histories[$discipline['id']])) {
-                $errors["historicos.{$discipline['id']}"] = 'Envie o histórico escolar desta disciplina.';
+        foreach ($this->externalDisciplineGroups($disciplines, $histories) as $group) {
+            if (! isset($group['file'])) {
+                $errors["historicos.{$group['key']}"] =
+                    "Envie o histórico escolar da unidade {$group['unit_name']}.";
             }
         }
 
@@ -299,12 +304,15 @@ class AproveitamentoController extends Controller
                     ]);
                 }
 
-                if (isset($histories[$disciplineData['id']])) {
+                $transcriptKey = $disciplineData['unidade_tipo'] === 'OUTRA'
+                    ? $this->transcriptKey($disciplineData['unidade_nome'])
+                    : null;
+                if ($transcriptKey && isset($histories[$transcriptKey])) {
                     Arquivo::create([
                         'equivalencia_id' => $equivalence->id,
                         'tipo' => Arquivo::TIPO_HISTORICO,
-                        'nome' => $histories[$disciplineData['id']]['name'],
-                        'path' => $histories[$disciplineData['id']]['path'],
+                        'nome' => $histories[$transcriptKey]['name'],
+                        'path' => $histories[$transcriptKey]['path'],
                     ]);
                 }
             }
@@ -510,6 +518,57 @@ class AproveitamentoController extends Controller
         abort_if(! $discipline, 404);
 
         return $discipline;
+    }
+
+    private function externalDisciplineGroups(
+        \Illuminate\Support\Collection $disciplines,
+        array $histories
+    ): \Illuminate\Support\Collection {
+        return $disciplines
+            ->where('unidade_tipo', 'OUTRA')
+            ->groupBy(fn (array $discipline) => $this->transcriptKey($discipline['unidade_nome']))
+            ->map(function (\Illuminate\Support\Collection $group, string $key) use ($histories) {
+                return [
+                    'key' => $key,
+                    'unit_name' => $group->first()['unidade_nome'],
+                    'disciplines' => $group->values(),
+                    'file' => $histories[$key] ?? null,
+                ];
+            })
+            ->values();
+    }
+
+    private function removeOrphanedTranscripts(
+        array $histories,
+        \Illuminate\Support\Collection $disciplines
+    ): array {
+        $validKeys = $this->externalDisciplineGroups($disciplines, $histories)
+            ->pluck('key')
+            ->all();
+
+        foreach ($histories as $key => $history) {
+            if (in_array($key, $validKeys, true)) {
+                continue;
+            }
+
+            if (isset($history['path'])) {
+                Storage::delete($history['path']);
+            }
+            unset($histories[$key]);
+        }
+
+        return $histories;
+    }
+
+    private function transcriptKey(string $unitName): string
+    {
+        $normalized = Str::of($unitName)
+            ->ascii()
+            ->lower()
+            ->squish()
+            ->value();
+
+        return hash('sha256', $normalized);
     }
 
     private function storeDraftFile(
