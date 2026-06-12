@@ -73,7 +73,7 @@ class AproveitamentoMultistepTest extends TestCase
             ->assertSee(route('equivalencias.disciplinas-usp.search'), false)
             ->assertSee('minimumInputLength: 3', false)
             ->assertSee("term: params.term || ''", false)
-            ->assertSee('processResults: function (response)', false);
+            ->assertSee('processResults: function(response)', false);
 
         $this->actingAs($user)
             ->post(route('equivalencias.newreq-discipline-store', absolute: false), [
@@ -110,7 +110,15 @@ class AproveitamentoMultistepTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('equivalencias.newreq-store', absolute: false))
-            ->assertRedirect(route('equivalencias.req-show', ['group' => 1], false));
+            ->assertRedirect(route('equivalencias.req-index', absolute: false))
+            ->assertSessionHas('alert-success');
+
+        $this->actingAs($user)
+            ->get(route('equivalencias.req-index', absolute: false))
+            ->assertOk()
+            ->assertSee('Minhas requisições')
+            ->assertSee('MAC0110')
+            ->assertDontSee('Editar');
 
         $this->assertDatabaseCount('disciplinas', 2);
         $this->assertDatabaseCount('equivalencias', 1);
@@ -183,7 +191,7 @@ class AproveitamentoMultistepTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('equivalencias.newreq-store', absolute: false))
-            ->assertRedirect(route('equivalencias.req-show', ['group' => 1], false));
+            ->assertRedirect(route('equivalencias.req-index', absolute: false));
 
         $this->assertDatabaseCount('equivalencias', 2);
         $this->assertDatabaseCount('arquivos', 3);
@@ -254,7 +262,7 @@ class AproveitamentoMultistepTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('equivalencias.newreq-store', absolute: false))
-            ->assertRedirect(route('equivalencias.req-show', ['group' => 1], false));
+            ->assertRedirect(route('equivalencias.req-index', absolute: false));
 
         $this->assertDatabaseCount('arquivos', 3);
         $this->assertSame(2, DB::table('arquivos')->where('tipo', 'historico')->count());

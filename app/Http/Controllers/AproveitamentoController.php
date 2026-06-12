@@ -334,7 +334,7 @@ class AproveitamentoController extends Controller
         });
 
         return redirect()
-            ->route('equivalencias.req-show', ['group' => $result['group']])
+            ->route('equivalencias.req-index')
             ->with('alert-success', "Requerimento para {$result['name']} criado com sucesso!");
     }
 
