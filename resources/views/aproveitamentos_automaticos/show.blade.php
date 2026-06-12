@@ -22,7 +22,7 @@
       @if ($disciplinas->isEmpty())
         <p class="mb-0">Nenhuma disciplina requerida cadastrada.</p>
       @else
-        <table id="equivalencias-table" class="table table-striped table-bordered datatable-simples dt-state-save">
+        <table id="equivalencias-table" class="table table-striped table-bordered datatable-simples dt-state-save dt-buttons">
           <thead>
             <tr>
               <th>Disciplina requerida</th>

@@ -3,20 +3,18 @@
 </button>
 <input type="hidden" name="codpes_rem" value="0">
 
-@once
-  @push('scripts')
-    <script>
-      $(document).ready(function() {
+@pushOnce('scripts')
+  <script>
+    $(document).ready(function() {
 
-        $('.remover-codpes-btn').on('click', function() {
-          if (confirm('Tem certeza?')) {
-            $(':input[name=codpes_rem]').val($(this).data('codpes'))
-          } else {
-            return false
-          }
-        })
-
+      $('.remover-codpes-btn').on('click', function() {
+        if (confirm('Tem certeza?')) {
+          $(':input[name=codpes_rem]').val($(this).data('codpes'))
+        } else {
+          return false
+        }
       })
-    </script>
-  @endpush
-@endonce
+
+    })
+  </script>
+@endpushOnce
