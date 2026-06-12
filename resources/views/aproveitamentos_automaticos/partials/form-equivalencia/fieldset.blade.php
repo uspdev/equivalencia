@@ -13,7 +13,7 @@
 <fieldset class="equivalencia-disciplina border rounded p-3 mb-3 {{ $visible ? '' : 'd-none' }}" data-equivalencia-block
   data-index="{{ $number }}">
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <legend class="h6 mb-0">Disciplina equivalente {{ $number }}</legend>
+    <legend class="h5 mb-0">Disciplina equivalente {{ $number }}</legend>
     @if ($number > 1)
       <button type="button" class="btn btn-sm btn-outline-danger js-remove-equivalencia" title="Remover disciplina">
         <i class="fas fa-trash"></i>

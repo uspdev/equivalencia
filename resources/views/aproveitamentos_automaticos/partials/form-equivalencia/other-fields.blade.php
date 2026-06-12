@@ -5,7 +5,7 @@
       value="{{ $isUsp ? '' : $coddis }}" maxlength="7" @disabled(!($visible && !$isUsp)) @required($visible && !$isUsp)>
   </div>
   <div class="form-group col-md-9">
-    <label for="{{ $baseId }}-nome">Nome da equivalência <span class="text-danger">*</span></label>
+    <label for="{{ $baseId }}-nome">Nome da Disciplina <span class="text-danger">*</span></label>
     <input type="text" class="form-control" id="{{ $baseId }}-nome" name="{{ $nomeField }}"
       value="{{ $isUsp ? '' : $nome }}" maxlength="240" @disabled(!($visible && !$isUsp)) @required($visible && !$isUsp)>
   </div>

@@ -269,6 +269,9 @@ class Disciplina extends Model
 
     /**
      * Monta o estado da interface para o formulário de equivalências filhas.
+     *
+     * O formulário suporta até 3 disciplinas cursadas por grupo de equivalência, e esse método monta os dados
+     * para preencher os campos e controlar a visibilidade dos blocos de acordo com os valores
      */
     public static function estadoFormularioEquivalencia(array $values = [], int $maxDisciplinas = 3): array
     {
@@ -285,12 +288,21 @@ class Disciplina extends Model
             if ($old !== null) {
                 return (bool) $old;
             }
+            // se não tiver valor antigo, considera como USP se a IES for USP
+            //(com base no valor atual do campo, que pode vir do banco(edição) ou do formulário)
+            $ies = $fieldValue('ies' . $suffix);
 
-            return $fieldValue('ies' . $suffix) === 'USP';
+            if (filled($ies)) {
+                return $ies === 'USP';
+            }
+
+            return true;
         };
 
-        $hasAnyValue = function (string $suffix) use ($fieldValue, $isUspValue) {
-            return $isUspValue($suffix) ||
+        $hasAnyValue = function (string $suffix) use ($fieldValue) {
+            $hasOldValue = old('is_usp' . $suffix) !== null;
+
+            return $hasOldValue ||
                 filled($fieldValue('coddis' . $suffix)) ||
                 filled($fieldValue('nome_disciplina' . $suffix)) ||
                 filled($fieldValue('ies' . $suffix));
@@ -336,7 +348,7 @@ class Disciplina extends Model
             ->values();
 
         $outrosDoGrupo = $equivalentesDoMesmoGrupo
-            ->reject(fn (Aproveitamento $item) => $item->id === $equivalenciaFilha->id)
+            ->reject(fn(Aproveitamento $item) => $item->id === $equivalenciaFilha->id)
             ->values();
 
         $equivalencia2 = $outrosDoGrupo->get(0);

@@ -82,7 +82,7 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
 
             if (! $marcadaComoUsp) {
                 if (empty($dadosCursada['nome_disciplina'])) {
-                    $erros[$kNome] = 'Nome da equivalência é obrigatório quando a disciplina não for USP.';
+                    $erros[$kNome] = 'Nome da disciplina é obrigatório quando a disciplina não for USP.';
                 }
 
                 if (empty($dadosCursada['ies'])) {
