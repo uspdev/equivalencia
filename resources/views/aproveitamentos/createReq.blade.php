@@ -141,99 +141,101 @@
     </div>
   </div>
 
-  @if ($disciplines->count() < 3)
-    <div class="modal fade" id="create-discipline-modal" tabindex="-1" aria-labelledby="create-discipline-modal-label"
-      aria-hidden="true">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <form method="POST" action="{{ route('equivalencias.newreq-discipline-store') }}"
-            enctype="multipart/form-data">
-            @csrf
-            <input type="hidden" class="js-required-discipline-code" name="requerida_coddis"
-              value="{{ $selectedRequiredCode }}">
-            <div class="modal-header">
-              <h5 class="modal-title" id="create-discipline-modal-label">Adicionar disciplina cursada</h5>
-              <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
-                <span aria-hidden="true">&times;</span>
-              </button>
-            </div>
-            <div class="modal-body">
-              @if ($openDisciplineModal === 'create' && $errors->any())
-                <div class="alert alert-danger">
-                  <strong>Revise os dados da disciplina.</strong>
-                  <ul class="mb-0 mt-2">
-                    @foreach ($errors->all() as $error)
-                      <li>{{ $error }}</li>
-                    @endforeach
-                  </ul>
-                </div>
-              @endif
+  @push('modals')
+    @if ($disciplines->count() < 3)
+      <div class="modal fade" id="create-discipline-modal" tabindex="-1" aria-labelledby="create-discipline-modal-label"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <form method="POST" action="{{ route('equivalencias.newreq-discipline-store') }}"
+              enctype="multipart/form-data">
+              @csrf
+              <input type="hidden" class="js-required-discipline-code" name="requerida_coddis"
+                value="{{ $selectedRequiredCode }}">
+              <div class="modal-header">
+                <h5 class="modal-title" id="create-discipline-modal-label">Adicionar disciplina cursada</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                @if ($openDisciplineModal === 'create' && $errors->any())
+                  <div class="alert alert-danger">
+                    <strong>Revise os dados da disciplina.</strong>
+                    <ul class="mb-0 mt-2">
+                      @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                      @endforeach
+                    </ul>
+                  </div>
+                @endif
 
-              @include('aproveitamentos.partials.discipline-fields', [
-                  'discipline' => null,
-                  'fieldPrefix' => 'create',
-                  'useOldInput' => $openDisciplineModal === 'create',
-              ])
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancelar</button>
-              <button type="submit" class="btn btn-primary">Salvar disciplina</button>
-            </div>
-          </form>
+                @include('aproveitamentos.partials.discipline-fields', [
+                    'discipline' => null,
+                    'fieldPrefix' => 'create',
+                    'useOldInput' => $openDisciplineModal === 'create',
+                ])
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar disciplina</button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
-  @endif
+    @endif
 
-  @foreach ($disciplines as $discipline)
-    @php
-      $editModalId = 'edit-discipline-modal-' . $discipline['id'];
-      $editFieldPrefix = 'edit_' . str_replace('-', '_', $discipline['id']);
-      $isOpenEditModal = $openDisciplineModal === $discipline['id'];
-    @endphp
-    <div class="modal fade" id="{{ $editModalId }}" tabindex="-1" aria-labelledby="{{ $editModalId }}-label"
-      aria-hidden="true">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <form method="POST" action="{{ route('equivalencias.newreq-discipline-update', $discipline['id']) }}"
-            enctype="multipart/form-data">
-            @csrf
-            @method('PUT')
-            <input type="hidden" class="js-required-discipline-code" name="requerida_coddis"
-              value="{{ $selectedRequiredCode }}">
-            <div class="modal-header">
-              <h5 class="modal-title" id="{{ $editModalId }}-label">Editar disciplina cursada</h5>
-              <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
-                <span aria-hidden="true">&times;</span>
-              </button>
-            </div>
-            <div class="modal-body">
-              @if ($isOpenEditModal && $errors->any())
-                <div class="alert alert-danger">
-                  <strong>Revise os dados da disciplina.</strong>
-                  <ul class="mb-0 mt-2">
-                    @foreach ($errors->all() as $error)
-                      <li>{{ $error }}</li>
-                    @endforeach
-                  </ul>
-                </div>
-              @endif
+    @foreach ($disciplines as $discipline)
+      @php
+        $editModalId = 'edit-discipline-modal-' . $discipline['id'];
+        $editFieldPrefix = 'edit_' . str_replace('-', '_', $discipline['id']);
+        $isOpenEditModal = $openDisciplineModal === $discipline['id'];
+      @endphp
+      <div class="modal fade" id="{{ $editModalId }}" tabindex="-1" aria-labelledby="{{ $editModalId }}-label"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <form method="POST" action="{{ route('equivalencias.newreq-discipline-update', $discipline['id']) }}"
+              enctype="multipart/form-data">
+              @csrf
+              @method('PUT')
+              <input type="hidden" class="js-required-discipline-code" name="requerida_coddis"
+                value="{{ $selectedRequiredCode }}">
+              <div class="modal-header">
+                <h5 class="modal-title" id="{{ $editModalId }}-label">Editar disciplina cursada</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                @if ($isOpenEditModal && $errors->any())
+                  <div class="alert alert-danger">
+                    <strong>Revise os dados da disciplina.</strong>
+                    <ul class="mb-0 mt-2">
+                      @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                      @endforeach
+                    </ul>
+                  </div>
+                @endif
 
-              @include('aproveitamentos.partials.discipline-fields', [
-                  'discipline' => $discipline,
-                  'fieldPrefix' => $editFieldPrefix,
-                  'useOldInput' => $isOpenEditModal,
-              ])
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancelar</button>
-              <button type="submit" class="btn btn-primary">Salvar disciplina</button>
-            </div>
-          </form>
+                @include('aproveitamentos.partials.discipline-fields', [
+                    'discipline' => $discipline,
+                    'fieldPrefix' => $editFieldPrefix,
+                    'useOldInput' => $isOpenEditModal,
+                ])
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar disciplina</button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
-  @endforeach
+    @endforeach
+  @endpush
 
   @push('scripts')
     <script>

@@ -3,8 +3,7 @@
      - Se existir formulário para a transição: exibe o formulário e rola até ele.
      - Se não houver formulário: aplica a transição via POST/AJAX. --}}
 @once
-    @section('javascripts_bottom')
-        @parent
+    @push('scripts')
         <script>
             $(document).ready(function () {
                 var objectId = '{{ $workflowObjectData['workflowObject']->id ?? 'novo' }}';
@@ -188,5 +187,5 @@
                 });
             });
         </script>
-    @endsection
+    @endpush
 @endonce

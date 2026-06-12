@@ -8,8 +8,7 @@
 </button>
 
 @once
-  @section('javascripts_bottom')
-    @parent
+  @push('modals')
     <div class="modal fade" id="adicionar-codpes-modal" tabindex="-1">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -40,6 +39,9 @@
         </div>
       </div>
     </div>
+  @endpush
+
+  @push('scripts')
     <script>
       $(document).ready(function() {
 
@@ -88,5 +90,5 @@
 
       })
     </script>
-  @endsection
+  @endpush
 @endonce

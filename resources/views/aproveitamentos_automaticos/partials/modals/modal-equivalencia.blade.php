@@ -8,22 +8,24 @@
   <i class="fas fa-plus"></i>
 </button>
 
-<div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-labelledby="{{ $modalLabelId }}" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="{{ $modalLabelId }}">Adicionar disciplina cursada equivalente</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div class="modal-body">
-        @include('aproveitamentos_automaticos.partials.form-equivalencia', [
-            'action' => route('equivalencias.add-equivalencia', [$codcur, $codhab, $disciplina]),
-            'method' => 'POST',
-            'formId' => 'formAdicionarEquivalencia' . $disciplina->id,
-        ])
+@push('modals')
+  <div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-labelledby="{{ $modalLabelId }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="{{ $modalLabelId }}">Adicionar disciplina cursada equivalente</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          @include('aproveitamentos_automaticos.partials.form-equivalencia', [
+              'action' => route('equivalencias.add-equivalencia', [$codcur, $codhab, $disciplina]),
+              'method' => 'POST',
+              'formId' => 'formAdicionarEquivalencia' . $disciplina->id,
+          ])
+        </div>
       </div>
     </div>
   </div>
-</div>
+@endpush

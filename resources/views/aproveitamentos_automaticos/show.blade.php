@@ -43,8 +43,7 @@
   </div>
 @endsection
 
-@section('styles')
-  @parent
+@push('styles')
   <style>
     .js-edit-only {
       display: none !important;
@@ -71,10 +70,9 @@
       white-space: nowrap;
     }
   </style>
-@endsection
+@endpush
 
-@section('javascripts_bottom')
-  @parent
+@push('scripts')
   <script>
     jQuery(function($) {
       var $scope = $('.aproveitamentos-automaticos-edit-scope');
@@ -145,4 +143,4 @@
       attachEditToggle();
     });
   </script>
-@endsection
+@endpush

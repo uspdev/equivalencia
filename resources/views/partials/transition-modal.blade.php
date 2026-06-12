@@ -1,22 +1,23 @@
-<div class="modal fade" id="transition-modal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalLabel">Confirmar Transição</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
-      </div>
-      <div class="modal-body" id="formContent">
-        <p>Carregando formulário...</p>
+@once
+  @push('modals')
+    <div class="modal fade" id="transition-modal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalLabel">Confirmar Transição</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body" id="formContent">
+            <p>Carregando formulário...</p>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
+  @endpush
 
-@once
-  @section('javascripts_bottom')
-    @parent
+  @push('scripts')
     <script>
       $(document).ready(function() {
         var transitionModal = $('#transition-modal');
@@ -53,5 +54,5 @@
         });
       });
     </script>
-  @endsection
+  @endpush
 @endonce

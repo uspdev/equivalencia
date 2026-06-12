@@ -4,8 +4,7 @@
 <input type="hidden" name="codpes_rem" value="0">
 
 @once
-  @section('javascripts_bottom')
-    @parent
+  @push('scripts')
     <script>
       $(document).ready(function() {
 
@@ -19,5 +18,5 @@
 
       })
     </script>
-  @endsection
+  @endpush
 @endonce
