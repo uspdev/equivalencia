@@ -69,7 +69,7 @@ $right_menu = [
     [
         'text' => '<span class="text-danger">Workflows</span>',
         'can' => 'admin',
-        'url' => 'listdefinitions'
+        'url' => 'uspdev-workflow/listdefinitions'
     ],
     [
         // menu utilizado para views da biblioteca senhaunica-socialite.
