@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Enums\EquivalenciaTipo;
-use App\Http\Requests\SaveAproveitamentoRequest;
 use App\Models\Arquivo;
 use App\Models\Disciplina;
 use App\Models\Aproveitamento;
@@ -16,12 +15,12 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Uspdev\Forms\Form;
-use Uspdev\Forms\Models\FormSubmission;
 use Illuminate\Contracts\View\View;
 
 class AproveitamentoController extends Controller
 {
+    private const ADDITIONAL_TRANSCRIPT_KEY = 'additional';
+
     // TODO - Fazer CRUD, index, show e etc.
 
     public function __construct(private Graduacao $graduacao)
@@ -196,11 +195,14 @@ class AproveitamentoController extends Controller
                 'max:10240',
             ];
         }
+        $rules['historico_adicional'] = ['nullable', 'file', 'mimes:pdf', 'max:10240'];
 
         $request->validate($rules, [
             'historicos.*.required' => 'Envie um histórico escolar para cada disciplina externa.',
             'historicos.*.mimes' => 'O histórico escolar deve ser um arquivo PDF.',
             'historicos.*.max' => 'Cada histórico escolar pode ter no máximo 10 MB.',
+            'historico_adicional.mimes' => 'O histórico escolar adicional deve ser um arquivo PDF.',
+            'historico_adicional.max' => 'O histórico escolar adicional pode ter no máximo 10 MB.',
         ]);
 
         $histories = $draft->historicos ?? [];
@@ -217,11 +219,23 @@ class AproveitamentoController extends Controller
             $histories[$group['key']] = $this->storeDraftFile($draft, $file, 'historicos');
         }
 
+        if ($request->hasFile('historico_adicional')) {
+            if (isset($histories[self::ADDITIONAL_TRANSCRIPT_KEY]['path'])) {
+                Storage::delete($histories[self::ADDITIONAL_TRANSCRIPT_KEY]['path']);
+            }
+
+            $histories[self::ADDITIONAL_TRANSCRIPT_KEY] = $this->storeDraftFile(
+                $draft,
+                $request->file('historico_adicional'),
+                'historicos'
+            );
+        }
+
         $draft->update(['historicos' => $histories]);
 
         return redirect()
             ->route('equivalencias.newreq-create')
-            ->with('alert-success', 'Histórico escolare salvos no rascunho.');
+            ->with('alert-success', 'Históricos escolares salvos no rascunho.');
     }
 
     /**
@@ -305,17 +319,13 @@ class AproveitamentoController extends Controller
                     ]);
                 }
 
-                $transcriptKey = $disciplineData['unidade_tipo'] === 'OUTRA'
-                    ? $this->transcriptKey($disciplineData['unidade_nome'])
-                    : null;
-                if ($transcriptKey && isset($histories[$transcriptKey])) {
-                    Arquivo::create([
-                        'equivalencia_id' => $equivalence->id,
-                        'tipo' => Arquivo::TIPO_HISTORICO,
-                        'nome' => $histories[$transcriptKey]['name'],
-                        'path' => $histories[$transcriptKey]['path'],
-                    ]);
-                }
+            }
+
+            foreach ($histories as $history) {
+                Arquivo::criarHistorico($group, [
+                    'original_name' => $history['name'],
+                    'stored_path' => $history['path'],
+                ]);
             }
 
             $draft->delete();
@@ -362,46 +372,6 @@ class AproveitamentoController extends Controller
         $req_name = Aproveitamento::removerRequerimentoDoUsuario($group, Auth::id());
 
         return redirect()->back()->with('alert-success','Requerimento de equivalência para '. $req_name . ' removido com sucesso.');
-    }
-
-    /**
-     * Função que possibilita a edição de uma requisição de equivalência
-     * @param int $group
-     * @return View
-     */
-    public function edit(int $group): View
-    {
-        $submission = $this->submissionFromGrupo($group);
-        
-        // Gera o html para a edição do formulário
-        $formHtml = (new Form(['method' => 'PUT']))->generateHtml(config('app.initial_form'), $submission);
-
-        return view('aproveitamentos.edit',['formHtml' => $formHtml, 'submission' => $submission]);
-    }
-
-    /**
-     * Atualiza os registros de equivalencia de acordo com as modificações do usuário
-     * @param SaveAproveitamentoRequest $request
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function update(SaveAproveitamentoRequest $request, int $group)
-    {
-        $submission = (new Form(['editable' => true]))->handleSubmission($request);
-        $data = Aproveitamento::atualizarRequerimentoDoFormulario(
-            $group,
-            $request->input(),
-            $submission->data,
-            $request->user()->id
-        );
-
-        if(empty($data))
-        {
-            return redirect()->back()->with('alert-danger', 'Nao há equivalências para a submissão editada');
-        }
-
-        return redirect()
-            ->route('equivalencias.req-show', ['group' => $data['eq_group']])
-            ->with('alert-success','Requerimento para '. $data['req_name'] . ' ' . $data['modo'] . ' com sucesso !');
     }
 
     private function currentDraft(): AproveitamentoRascunho
@@ -548,6 +518,10 @@ class AproveitamentoController extends Controller
             ->all();
 
         foreach ($histories as $key => $history) {
+            if ($key === self::ADDITIONAL_TRANSCRIPT_KEY && $validKeys !== []) {
+                continue;
+            }
+
             if (in_array($key, $validKeys, true)) {
                 continue;
             }
@@ -592,11 +566,4 @@ class AproveitamentoController extends Controller
         return $this->graduacao->buscarDisciplina($code)['nomdis'] ?? null;
     }
 
-    private function submissionFromGrupo(int $group): FormSubmission
-    {
-        $submission = new FormSubmission();
-        $submission->data = Aproveitamento::dadosParaFormularioDoRequerimento($group, Auth::id());
-
-        return $submission;
-    }
 }

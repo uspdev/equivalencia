@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('arquivos', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('equivalencia_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('equivalencia_id')->nullable()->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('grupo')->nullable()->index();
             $table->enum('tipo', ['historico', 'ementa']);
 
             $table->string('nome');

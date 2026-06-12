@@ -105,6 +105,9 @@ class AproveitamentoMultistepTest extends TestCase
             ])
             ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
 
+        $draft->refresh();
+        $transcriptPath = $draft->historicos[$transcriptKey]['path'];
+
         $this->actingAs($user)
             ->post(route('equivalencias.newreq-store', absolute: false))
             ->assertRedirect(route('equivalencias.req-show', ['group' => 1], false));
@@ -113,6 +116,15 @@ class AproveitamentoMultistepTest extends TestCase
         $this->assertDatabaseCount('equivalencias', 1);
         $this->assertDatabaseCount('arquivos', 2);
         $this->assertDatabaseMissing('aproveitamento_rascunhos', ['user_id' => $user->id]);
+
+        $this->actingAs($user)
+            ->from(route('equivalencias.req-index', absolute: false))
+            ->get(route('equivalencias.req-destroy', ['group' => 1], false))
+            ->assertRedirect(route('equivalencias.req-index', absolute: false));
+
+        $this->assertDatabaseCount('equivalencias', 0);
+        $this->assertDatabaseCount('arquivos', 0);
+        Storage::assertMissing($transcriptPath);
     }
 
     public function test_disciplines_from_same_normalized_unit_share_transcript(): void
@@ -174,15 +186,108 @@ class AproveitamentoMultistepTest extends TestCase
             ->assertRedirect(route('equivalencias.req-show', ['group' => 1], false));
 
         $this->assertDatabaseCount('equivalencias', 2);
-        $this->assertDatabaseCount('arquivos', 4);
-        $this->assertSame(
-            2,
-            DB::table('arquivos')->where('tipo', 'historico')->distinct()->count('equivalencia_id')
-        );
-        $this->assertSame(
-            1,
-            DB::table('arquivos')->where('tipo', 'historico')->distinct()->count('path')
-        );
+        $this->assertDatabaseCount('arquivos', 3);
+        $this->assertDatabaseHas('arquivos', [
+            'equivalencia_id' => null,
+            'grupo' => 1,
+            'tipo' => 'historico',
+            'nome' => 'historico-compartilhado.pdf',
+        ]);
+        $this->assertSame(1, DB::table('arquivos')->where('tipo', 'historico')->count());
+    }
+
+    public function test_optional_additional_transcript_can_be_uploaded_replaced_and_submitted(): void
+    {
+        $user = $this->createAuthorizedUser(654317);
+        $transcriptKey = $this->transcriptKey('Universidade Externa');
+
+        $this->actingAs($user)
+            ->post(route('equivalencias.newreq-discipline-store', absolute: false), [
+                'requerida_coddis' => 'MAC0110',
+                'unidade_tipo' => 'OUTRA',
+                'unidade_nome' => 'Universidade Externa',
+                'coddis' => 'EXT100',
+                'nomdis' => 'Programação',
+                'ano' => 2025,
+                'semestre' => 1,
+                'ementa' => UploadedFile::fake()->create('ementa.pdf', 100, 'application/pdf'),
+                'frequencia' => 90,
+                'nota' => 8.5,
+                'creditos' => 4,
+                'carga_horaria' => 60,
+            ])
+            ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
+
+        $this->actingAs($user)
+            ->get(route('equivalencias.newreq-create', absolute: false))
+            ->assertOk()
+            ->assertSee('Histórico escolar adicional')
+            ->assertSee('(opcional)')
+            ->assertSee('name="historico_adicional"', false);
+
+        $this->actingAs($user)
+            ->post(route('equivalencias.newreq-transcripts', absolute: false), [
+                'historicos' => [
+                    $transcriptKey => UploadedFile::fake()
+                        ->create('historico.pdf', 100, 'application/pdf'),
+                ],
+                'historico_adicional' => UploadedFile::fake()
+                    ->create('historico-completo.pdf', 100, 'application/pdf'),
+            ])
+            ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
+
+        $draft = AproveitamentoRascunho::where('user_id', $user->id)->firstOrFail();
+        $oldAdditionalPath = $draft->historicos['additional']['path'];
+        Storage::assertExists($oldAdditionalPath);
+
+        $this->actingAs($user)
+            ->post(route('equivalencias.newreq-transcripts', absolute: false), [
+                'historico_adicional' => UploadedFile::fake()
+                    ->create('historico-atualizado.pdf', 100, 'application/pdf'),
+            ])
+            ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
+
+        $draft->refresh();
+        $this->assertSame('historico-atualizado.pdf', $draft->historicos['additional']['name']);
+        Storage::assertMissing($oldAdditionalPath);
+        Storage::assertExists($draft->historicos['additional']['path']);
+
+        $this->actingAs($user)
+            ->post(route('equivalencias.newreq-store', absolute: false))
+            ->assertRedirect(route('equivalencias.req-show', ['group' => 1], false));
+
+        $this->assertDatabaseCount('arquivos', 3);
+        $this->assertSame(2, DB::table('arquivos')->where('tipo', 'historico')->count());
+        $this->assertDatabaseHas('arquivos', [
+            'equivalencia_id' => null,
+            'grupo' => 1,
+            'tipo' => 'historico',
+            'nome' => 'historico-atualizado.pdf',
+        ]);
+    }
+
+    public function test_additional_transcript_must_be_a_pdf_when_provided(): void
+    {
+        $user = $this->createAuthorizedUser(654316);
+        $transcriptKey = $this->transcriptKey('Universidade Externa');
+        AproveitamentoRascunho::create([
+            'user_id' => $user->id,
+            'requerida_coddis' => 'MAC0110',
+            'disciplinas' => [$this->externalDraftDiscipline('discipline-1', 'EXT100')],
+            'historicos' => [
+                $transcriptKey => [
+                    'name' => 'historico.pdf',
+                    'path' => 'aproveitamentos/1/historicos/historico.pdf',
+                ],
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('equivalencias.newreq-transcripts', absolute: false), [
+                'historico_adicional' => UploadedFile::fake()
+                    ->create('historico.txt', 10, 'text/plain'),
+            ])
+            ->assertSessionHasErrors('historico_adicional');
     }
 
     public function test_shared_transcript_is_deleted_only_after_last_unit_discipline_is_removed(): void
@@ -222,6 +327,38 @@ class AproveitamentoMultistepTest extends TestCase
         $draft->refresh();
         $this->assertSame([], $draft->historicos);
         Storage::assertMissing($transcriptPath);
+    }
+
+    public function test_additional_transcript_is_removed_with_last_external_discipline(): void
+    {
+        $user = $this->createAuthorizedUser(654315);
+        $transcriptKey = $this->transcriptKey('Universidade Externa');
+        $additionalPath = 'aproveitamentos/1/historicos/adicional.pdf';
+        Storage::put($additionalPath, 'pdf');
+
+        $draft = AproveitamentoRascunho::create([
+            'user_id' => $user->id,
+            'requerida_coddis' => 'MAC0110',
+            'disciplinas' => [$this->externalDraftDiscipline('discipline-1', 'EXT100')],
+            'historicos' => [
+                $transcriptKey => [
+                    'name' => 'historico.pdf',
+                    'path' => 'aproveitamentos/1/historicos/historico.pdf',
+                ],
+                'additional' => [
+                    'name' => 'adicional.pdf',
+                    'path' => $additionalPath,
+                ],
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('equivalencias.newreq-discipline-destroy', 'discipline-1', absolute: false))
+            ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
+
+        $draft->refresh();
+        $this->assertSame([], $draft->historicos);
+        Storage::assertMissing($additionalPath);
     }
 
     public function test_transcript_is_removed_when_edit_moves_last_discipline_to_another_unit(): void

@@ -116,6 +116,19 @@
                     name="historicos[{{ $group['key'] }}]" accept=".pdf,application/pdf" @required(!isset($group['file']))>
                 </div>
               @endforeach
+              <div class="form-group">
+                <label for="historico_adicional">
+                  Histórico escolar adicional
+                  <span class="text-muted">(opcional)</span>
+                </label>
+                @if (isset($transcripts['additional']))
+                  <div class="small text-success mb-1">
+                    Arquivo atual: {{ $transcripts['additional']['name'] }}
+                  </div>
+                @endif
+                <input type="file" class="form-control-file" id="historico_adicional" name="historico_adicional"
+                  accept=".pdf,application/pdf">
+              </div>
               <button type="submit" class="btn btn-primary">Salvar históricos</button>
             </form>
           </div>
