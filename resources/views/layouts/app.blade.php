@@ -21,7 +21,18 @@
 @section('styles')
   @parent
   <style>
-    /*seus estilos*/
+    /* Rodapé sempre em baixo */
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    #skin_footer {
+      /* flex-shrink -> ele não se redimensiona */
+      flex-shrink: 0;
+      margin-top: auto;
+    }
   </style>
 @endsection
 
