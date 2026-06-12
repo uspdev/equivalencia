@@ -300,10 +300,9 @@ class Disciplina extends Model
         };
 
         $hasAnyValue = function (string $suffix) use ($fieldValue) {
-            $hasOldValue = old('is_usp' . $suffix) !== null;
-
-            return $hasOldValue ||
-                filled($fieldValue('coddis' . $suffix)) ||
+            // considera que o bloco tem valor se tiver código, nome ou IES preenchidos,
+            // para facilitar a UX de mostrar o bloco quando o usuário começar a preencher
+            return filled($fieldValue('coddis' . $suffix)) ||
                 filled($fieldValue('nome_disciplina' . $suffix)) ||
                 filled($fieldValue('ies' . $suffix));
         };

@@ -34,6 +34,8 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
     }
 
     /**
+     * Processa os dados dos conjuntos de equivalência preenchidos no formulário, validando as regras de negócio
+     * e retornando um array estruturado para ser salvo.
      * @throws ValidationException
      */
     public function conjuntosDeEquivalencia(): array
@@ -52,8 +54,13 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
             $nome = trim((string) ($dados[$kNome] ?? ''));
             $ies = trim((string) ($dados[$kIes] ?? ''));
             $marcadaComoUsp = $this->boolean($kIsUsp);
+            $temDadosPreenchidos = $coddis !== '' || $nome !== '' || $ies !== '';
 
-            if ($coddis === '' && $nome === '' && $ies === '' && ! $marcadaComoUsp) {
+            // Se não tem dados preenchidos, ignora o conjunto, a menos que seja o primeiro (sufixo vazio)
+            // ou esteja marcado como USP
+            // ignora o primeiro pois é obrigatório preencher ao menos um conjunto,
+            // e os outros apenas se tiverem dados ou forem USP
+            if (! $temDadosPreenchidos && ($sufixo !== '' || ! $marcadaComoUsp)) {
                 continue;
             }
 
