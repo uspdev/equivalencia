@@ -12,12 +12,10 @@ class AproveitamentoRascunho extends Model
         'user_id',
         'requerida_coddis',
         'disciplinas',
-        'historicos',
     ];
 
     protected $casts = [
         'disciplinas' => 'array',
-        'historicos' => 'array',
     ];
 
     public function user()

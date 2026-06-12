@@ -13,7 +13,6 @@ return new class extends Migration
             $table->foreignId('user_id')->unique()->constrained()->cascadeOnDelete();
             $table->string('requerida_coddis', 20)->nullable();
             $table->json('disciplinas')->nullable();
-            $table->json('historicos')->nullable();
             $table->timestamps();
         });
     }

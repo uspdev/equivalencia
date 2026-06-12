@@ -8,8 +8,7 @@
         : $draft->requerida_coddis;
     $canSubmit =
         $draft->requerida_coddis &&
-        $disciplines->isNotEmpty() &&
-        $transcriptGroups->every(fn($group) => isset($group['file']));
+        $disciplines->isNotEmpty();
   @endphp
 
   <div class="card">
@@ -85,18 +84,18 @@
         </div>
       </div>
 
-      @if ($transcriptGroups->isNotEmpty())
-        <div class="card mb-4">
-          <div class="card-header">
-            <strong>Histórico Escolar</strong>
-          </div>
-          <div class="card-body">
-            <p>
-              Envie um PDF para cada unidade ou instituição externa. Disciplinas da mesma unidade utilizam o mesmo
-              histórico.
-            </p>
-            <form method="POST" action="{{ route('equivalencias.newreq-transcripts') }}" enctype="multipart/form-data">
-              @csrf
+      <form method="POST" action="{{ route('equivalencias.newreq-store') }}" enctype="multipart/form-data">
+        @csrf
+        @if ($transcriptGroups->isNotEmpty())
+          <div class="card mb-4">
+            <div class="card-header">
+              <strong>Histórico Escolar</strong>
+            </div>
+            <div class="card-body">
+              <p>
+                Envie um PDF para cada unidade ou instituição externa. Disciplinas da mesma unidade utilizam o mesmo
+                histórico. Os arquivos serão salvos somente ao enviar o requerimento.
+              </p>
               @foreach ($transcriptGroups as $group)
                 <div class="form-group">
                   <label for="historico_{{ $group['key'] }}">
@@ -107,13 +106,8 @@
                     Disciplinas:
                     {{ $group['disciplines']->map(fn($discipline) => $discipline['coddis'] . ' - ' . $discipline['nomdis'])->join('; ') }}
                   </div>
-                  @if (isset($group['file']))
-                    <div class="small text-success mb-1">
-                      Arquivo atual: {{ $group['file']['name'] }}
-                    </div>
-                  @endif
                   <input type="file" class="form-control-file" id="historico_{{ $group['key'] }}"
-                    name="historicos[{{ $group['key'] }}]" accept=".pdf,application/pdf" @required(!isset($group['file']))>
+                    name="historicos[{{ $group['key'] }}]" accept=".pdf,application/pdf" required>
                 </div>
               @endforeach
               <div class="form-group">
@@ -121,36 +115,27 @@
                   Histórico escolar adicional
                   <span class="text-muted">(opcional)</span>
                 </label>
-                @if (isset($transcripts['additional']))
-                  <div class="small text-success mb-1">
-                    Arquivo atual: {{ $transcripts['additional']['name'] }}
-                  </div>
-                @endif
                 <input type="file" class="form-control-file" id="historico_adicional" name="historico_adicional"
                   accept=".pdf,application/pdf">
               </div>
-              <button type="submit" class="btn btn-primary">Salvar históricos</button>
-            </form>
+            </div>
           </div>
-        </div>
-      @endif
+        @endif
 
-      <div class="card">
-        <div class="card-header">
-          <strong>Revisão e envio</strong>
-        </div>
-        <div class="card-body">
-          <p class="text-muted">
-            O rascunho é salvo a cada etapa. Você pode sair desta página e continuar depois.
-          </p>
-          <form method="POST" action="{{ route('equivalencias.newreq-store') }}">
-            @csrf
+        <div class="card">
+          <div class="card-header">
+            <strong>Revisão e envio</strong>
+          </div>
+          <div class="card-body">
+            <p class="text-muted">
+              As disciplinas são salvas no rascunho. Os históricos escolares serão salvos ao enviar o requerimento.
+            </p>
             <button type="submit" class="btn btn-success" @disabled(!$canSubmit)>
               Enviar requerimento
             </button>
-          </form>
+          </div>
         </div>
-      </div>
+      </form>
     </div>
   </div>
 

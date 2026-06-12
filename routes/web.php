@@ -37,8 +37,6 @@ Route::middleware(['auth'])->prefix('equivalencias')->group(function () {
             ->name('equivalencias.newreq-discipline-update');
         Route::delete('/newreq/disciplinas/{disciplineId}', [AproveitamentoController::class, 'destroyDiscipline'])
             ->name('equivalencias.newreq-discipline-destroy');
-        Route::post('/newreq/historicos', [AproveitamentoController::class, 'saveTranscripts'])
-            ->name('equivalencias.newreq-transcripts');
         Route::post('/newreq', [AproveitamentoController::class, 'store'])->name('equivalencias.newreq-store');
 
         Route::get('/', [AproveitamentoAutomaticoController::class, 'index'])
