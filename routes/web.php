@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Route;
 | contains the "web" middleware group. Now create something great!
 |
 */
+Route::get('/', [AproveitamentoController::class, 'home'])->name('workflows.index');
+
 Route::middleware(['auth'])->prefix('equivalencias')->group(function () {
     Route::middleware('can:equivalencias')->group(function () {
         Route::get('/', [AproveitamentoAutomaticoController::class, 'index'])

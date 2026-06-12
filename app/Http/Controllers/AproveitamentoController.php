@@ -11,7 +11,10 @@ use Illuminate\Contracts\View\View;
 
 class AproveitamentoController extends Controller
 {
-    // TODO - Fazer CRUD, index, show e etc.
+    public function home()
+    {
+        return view('home');
+    }
 
     /**
      * Exibe o formulário para criação de uma requisição de equivalência,
