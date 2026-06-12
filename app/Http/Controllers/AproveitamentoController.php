@@ -56,8 +56,6 @@ class AproveitamentoController extends Controller
         return view('aproveitamentos.index',['requisicoes' => $requisitions]);
     }
 
-    // TODO - implementar a função show
-
     /**
      * Função para exibição de um pedido de aproveitamento - Placeholder
      * @param int $group

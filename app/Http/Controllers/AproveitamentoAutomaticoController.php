@@ -424,11 +424,16 @@ class AproveitamentoAutomaticoController extends Controller
         abort_unless($equivalenciaFilha->isEquivalenciaRealDaRequeridaNoContexto($equivalencia->id, $codcur, $codhab), 404);
     }
 
-    public function novaReq()
+    public function showInitForm()
     {
         $initial_def = FormDefinition::where('name',config('app.initial_form'))->firstOrFail();
         $formHtml = app(Form::class)->generateHtml($initial_def->name);
 
         return view('showInitialForm',['formHtml' => $formHtml]);
+    }
+
+    public function novaReq(Request $request)
+    {
+        
     }
 }
