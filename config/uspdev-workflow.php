@@ -5,5 +5,5 @@
 return [
     'storagePath' => env('WORKFLOW_STORAGE_PATH', storage_path('app/workflowsJson')),
     
-    'prefix' => 'workflows',
+    'prefix' => 'uspdev-workflow',
 ];
