@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Aproveitamento extends Model
 {
@@ -199,6 +200,104 @@ class Aproveitamento extends Model
                 static::TIPO_AUTOMATICA
             );
         }
+    }
+
+    /**
+     * Cria um requerimento manual a partir de um rascunho e dos arquivos já armazenados.
+     *
+     * @param AproveitamentoRascunho $draft Rascunho do aproveitamento usado como base.
+     * @param array<int, array{name: string, path: string}> $histories Históricos já armazenados.
+     * @param int $userId ID do usuário responsável pela criação.
+     *
+     * @return array{group: int, name: string}
+     */
+    public static function criarRequerimentoDoRascunho(
+        AproveitamentoRascunho $draft,
+        array $histories,
+        int $userId
+    ): array {
+        return DB::transaction(function () use ($draft, $histories, $userId) {
+            $requiredData = Disciplina::dadosDaRequeridaPorCoddis($draft->requerida_coddis);
+            $requiredData['nomdis'] ??= $draft->requerida_coddis;
+            $requiredData['ies'] = 'USP';
+            $requiredData['criado_por_id'] = $userId;
+            $requiredData['alterado_por_id'] = $userId;
+            $required = Disciplina::create($requiredData);
+            $group = static::proximoGrupo();
+
+            foreach ($draft->disciplinas() as $disciplineData) {
+                $course = Disciplina::create(static::dadosDaCursadaDoRascunho($disciplineData, $userId));
+
+                $equivalence = static::create([
+                    'grupo' => $group,
+                    'requerida_id' => $required->id,
+                    'cursada_id' => $course->id,
+                    'tipo' => EquivalenciaTipo::REQUERIDA,
+                    'criado_por_id' => $userId,
+                    'alterado_por_id' => $userId,
+                ]);
+
+                if (isset($disciplineData['ementa'])) {
+                    Arquivo::criarEmenta($equivalence->id, [
+                        'original_name' => $disciplineData['ementa']['name'],
+                        'stored_path' => $disciplineData['ementa']['path'],
+                    ]);
+                }
+            }
+
+            foreach ($histories as $history) {
+                Arquivo::criarHistorico($group, [
+                    'original_name' => $history['name'],
+                    'stored_path' => $history['path'],
+                ]);
+            }
+
+            $draft->delete();
+
+            return ['group' => $group, 'name' => $required->nomdis];
+        });
+    }
+
+    /**
+     * Monta os dados da disciplina cursada a partir dos dados salvos no rascunho.
+     *
+     * @param array{
+     *     unidade_tipo: string,
+     *     coddis: string,
+     *     nomdis: string,
+     *     unidade_nome: string,
+     *     ano: int|string,
+     *     semestre: int|string,
+     *     frequencia: int|float|string,
+     *     nota: int|float|string,
+     *     creditos: int|float|string,
+     *     carga_horaria: int|float|string
+     * } $disciplineData Dados da disciplina cursada no rascunho.
+     * @param int $userId ID do usuário responsável pela criação/alteração.
+     *
+     * @return array<string, mixed>
+     */
+    private static function dadosDaCursadaDoRascunho(array $disciplineData, int $userId): array
+    {
+        $courseData = Disciplina::dadosDaCursadaPorFormulario([
+            'is_usp' => $disciplineData['unidade_tipo'] === 'USP',
+            'coddis' => $disciplineData['coddis'],
+            'nome_disciplina' => $disciplineData['nomdis'],
+            'ies' => $disciplineData['unidade_tipo'] === 'USP'
+                ? 'USP'
+                : $disciplineData['unidade_nome'],
+            'ano' => $disciplineData['ano'],
+            'semestre' => $disciplineData['semestre'],
+            'frequencia' => $disciplineData['frequencia'],
+            'nota' => $disciplineData['nota'],
+            'creditos' => $disciplineData['creditos'],
+            'carga_horaria' => $disciplineData['carga_horaria'],
+        ]);
+
+        $courseData['criado_por_id'] = $userId;
+        $courseData['alterado_por_id'] = $userId;
+
+        return $courseData;
     }
 
     /**
