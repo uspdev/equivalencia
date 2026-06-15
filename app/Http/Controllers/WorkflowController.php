@@ -400,9 +400,12 @@ class WorkflowController extends Controller
 
     public function atendimentos()
     {
-        \UspTheme::activeUrl('atendimentos');
+        \UspTheme::activeUrl('equivalencias/atendimentos');
 
         $workflowsDisplay = Workflow::listarWorkflowsObjectsRelacionados();
+        $workflowsDisplay['workflows'] = collect($workflowsDisplay['workflows'] ?? [])
+            ->unique('id')
+            ->values();
 
         return view('userRelatedObjects', compact('workflowsDisplay'));
 

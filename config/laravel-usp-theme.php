@@ -52,7 +52,7 @@ $menu = [
     ],
     [
         'text' => 'Atendimentos',
-        'url' => 'atendimentos',
+        'url' => 'equivalencias/atendimentos',
         'can' => 'user',
     ],
     [
