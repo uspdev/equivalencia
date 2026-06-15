@@ -2,7 +2,7 @@
   <div class="form-group col-md-3">
     <label for="{{ $baseId }}-coddis">Código <span class="text-danger">*</span></label>
     <input type="text" class="form-control" id="{{ $baseId }}-coddis" name="{{ $coddisField }}"
-      value="{{ $isUsp ? '' : $coddis }}" maxlength="7" @disabled(!($visible && !$isUsp)) @required($visible && !$isUsp)>
+      value="{{ $isUsp ? '' : $coddis }}" maxlength="15" @disabled(!($visible && !$isUsp)) @required($visible && !$isUsp)>
   </div>
   <div class="form-group col-md-9">
     <label for="{{ $baseId }}-nome">Nome da Disciplina <span class="text-danger">*</span></label>

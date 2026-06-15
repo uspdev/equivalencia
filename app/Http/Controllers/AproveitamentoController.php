@@ -353,7 +353,7 @@ class AproveitamentoController extends Controller
                 'required',
                 'string',
                 $isExternal
-                    ? 'regex:/^[A-Za-z0-9]{1,7}$/'
+                    ? 'regex:/^[A-Za-z0-9]{1,15}$/'
                     : 'regex:/^[A-Za-z0-9]{3,7}$/',
             ],
             'nomdis' => [$isExternal ? 'required' : 'nullable', 'string', 'max:240'],
@@ -372,7 +372,7 @@ class AproveitamentoController extends Controller
             'ementa.required' => 'Envie a ementa da disciplina externa.',
             'ementa.mimes' => 'A ementa deve ser um arquivo PDF.',
             'ementa.max' => 'A ementa pode ter no máximo 10 MB.',
-            'coddis.regex' => 'Informe um código de disciplina válido, com até 7 letras ou números.',
+            'coddis.regex' => 'Informe um código de disciplina válido, com até 15 letras ou números.',
         ]);
 
         $code = Str::upper(trim($validated['coddis']));

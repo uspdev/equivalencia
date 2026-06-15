@@ -38,7 +38,7 @@
 
   <div class="form-group js-external-code-group">
     <label for="{{ $fieldId('coddis_externo') }}">Código da disciplina <span class="text-danger">*</span></label>
-    <input type="text" class="form-control js-external-code" id="{{ $fieldId('coddis_externo') }}" maxlength="7"
+    <input type="text" class="form-control js-external-code" id="{{ $fieldId('coddis_externo') }}" maxlength="15"
       value="{{ $unitType === 'OUTRA' ? $selectedCode : '' }}">
   </div>
 

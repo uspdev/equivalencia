@@ -19,18 +19,23 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
     {
         return [
             'is_usp' => ['nullable', 'boolean'],
-            'coddis' => ['nullable', 'string', 'max:7'],
+            'coddis' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('')],
             'nome_disciplina' => ['nullable', 'string', 'max:240'],
             'ies' => ['nullable', 'string', 'max:255'],
             'is_usp2' => ['nullable', 'boolean'],
-            'coddis2' => ['nullable', 'string', 'max:7'],
+            'coddis2' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('2')],
             'nome_disciplina2' => ['nullable', 'string', 'max:240'],
             'ies2' => ['nullable', 'string', 'max:255'],
             'is_usp3' => ['nullable', 'boolean'],
-            'coddis3' => ['nullable', 'string', 'max:7'],
+            'coddis3' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('3')],
             'nome_disciplina3' => ['nullable', 'string', 'max:240'],
             'ies3' => ['nullable', 'string', 'max:255'],
         ];
+    }
+
+    private function maxCoddisLength(string $sufixo): int
+    {
+        return $this->boolean('is_usp'.$sufixo) ? 7 : 15;
     }
 
     /**
