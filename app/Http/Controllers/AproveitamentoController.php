@@ -18,7 +18,7 @@ class AproveitamentoController extends Controller
         $draft = $this->currentDraft();
         $disciplines = $draft->disciplinas();
 
-        return view('aproveitamentos.createReq', [
+        return view('aproveitamentos.create', [
             'draft' => $draft,
             'requiredDisciplineName' => $draft->nomeDaDisciplinaRequerida(),
             'disciplines' => $disciplines,
@@ -40,7 +40,7 @@ class AproveitamentoController extends Controller
         $draft = $this->currentDraft();
         abort_if($draft->atingiuLimiteDeDisciplinas(), 422, 'O limite de três disciplinas foi atingido.');
 
-        return view('aproveitamentos.discipline', [
+        return view('aproveitamentos.disciplina', [
             'discipline' => null,
             'formAction' => route('equivalencias.newreq-discipline-store'),
             'formMethod' => 'POST',
@@ -67,7 +67,7 @@ class AproveitamentoController extends Controller
         $draft = $this->currentDraft();
         $discipline = $draft->disciplinaPorIdOrFail($disciplineId);
 
-        return view('aproveitamentos.discipline', [
+        return view('aproveitamentos.disciplina', [
             'discipline' => $discipline,
             'formAction' => route('equivalencias.newreq-discipline-update', $disciplineId),
             'formMethod' => 'PUT',

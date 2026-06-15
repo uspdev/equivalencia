@@ -1,3 +1,4 @@
+{{-- Renderiza o formulário para criar ou editar uma disciplina requerida automática. --}}
 @php
   $method = strtoupper($method ?? 'POST');
   $formMethod = in_array($method, ['GET', 'POST'], true) ? $method : 'POST';
@@ -21,7 +22,7 @@
     </div>
   @endif
 
-  @include('aproveitamentos.partials.disciplina-usp-field', [
+  @include('aproveitamentos.partials.forms.campo-disciplina-usp', [
       'name' => 'coddis',
       'id' => $id ?? 'coddis',
       'label' => 'Código da disciplina',

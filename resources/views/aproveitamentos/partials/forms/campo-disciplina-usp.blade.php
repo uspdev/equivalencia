@@ -1,3 +1,4 @@
+{{-- Renderiza um select AJAX para busca e seleção de disciplinas USP. --}}
 @php
   $name = $name ?? 'coddis';
   $id = $id ?? $name;
