@@ -71,7 +71,7 @@ class AproveitamentoMultistepTest extends TestCase
             ->assertDontSee('Salvar históricos')
             ->assertSee('id="create-discipline-modal"', false)
             ->assertSee('disciplina-usp-select', false)
-            ->assertSee(route('equivalencias.disciplinas-usp.search'), false)
+            ->assertSee(route('form.find.disciplina'), false)
             ->assertSee('minimumInputLength: 3', false)
             ->assertSee("term: params.term || ''", false)
             ->assertSee('processResults: function(response)', false);

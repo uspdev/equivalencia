@@ -17,7 +17,7 @@
     @endif
   </label>
   <select id="{{ $id }}" name="{{ $name }}" class="{{ $class }}"
-    data-search-url="{{ route('equivalencias.disciplinas-usp.search') }}" @disabled($disabled) @required($required)>
+    data-search-url="{{ route('form.find.disciplina') }}" @disabled($disabled) @required($required)>
     <option value="">Selecione uma disciplina...</option>
     @if ($selected)
       <option value="{{ $selected }}" selected>

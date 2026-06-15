@@ -3,47 +3,21 @@
 namespace App\Replicado;
 
 use Illuminate\Support\Str;
+use Uspdev\Forms\Replicado\Graduacao as GraduacaoForms;
 use Uspdev\Replicado\DB;
 use Uspdev\Replicado\Graduacao as GraduacaoReplicado;
 
 class Graduacao extends GraduacaoReplicado
 {
-    public function buscarDisciplinas(string $term, int $limit = 50): array
-    {
-        $term = Str::upper(trim($term));
-
-        if (mb_strlen($term) < 3 || ! preg_match('/^[A-Z0-9]+$/', $term) || ! hasReplicado()) {
-            return [];
-        }
-
-        $limit = max(1, min($limit, 50));
-        $query = "SELECT D1.*
-                    FROM DISCIPLINAGR D1
-                    INNER JOIN (
-                        SELECT coddis, MAX(verdis) AS verdis
-                        FROM DISCIPLINAGR
-                        GROUP BY coddis
-                    ) D2 ON D1.coddis = D2.coddis AND D1.verdis = D2.verdis
-                    WHERE D1.coddis LIKE :coddis
-                    AND D1.dtadtvdis IS NULL
-                    AND D1.dtaatvdis IS NOT NULL
-                    ORDER BY D1.coddis ASC
-                    OFFSET 0 ROWS FETCH NEXT {$limit} ROWS ONLY";
-
-        $disciplinas = DB::fetchAll($query, ['coddis' => $term.'%']);
-
-        return is_array($disciplinas) ? $disciplinas : [];
-    }
-
     public function buscarDisciplina(string $code): ?array
     {
         $code = Str::upper(trim($code));
 
-        if ($code === '') {
+        if (! preg_match('/^[A-Z0-9]+$/', $code)) {
             return null;
         }
 
-        foreach ($this->buscarDisciplinas($code) as $disciplina) {
+        foreach (GraduacaoForms::procurarDisciplinas($code, 50) as $disciplina) {
             if (Str::upper(trim((string) ($disciplina['coddis'] ?? ''))) === $code) {
                 return $disciplina;
             }

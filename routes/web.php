@@ -3,7 +3,6 @@
 use App\Http\Controllers\AproveitamentoAutomaticoController;
 use App\Http\Controllers\WorkflowController;
 use App\Http\Controllers\AproveitamentoController;
-use App\Http\Controllers\DisciplinaUspController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -21,9 +20,6 @@ Route::get('/', [WorkflowController::class, 'home'])->name('workflows.index');
 
 Route::middleware(['auth'])->prefix('equivalencias')->group(function () {
     Route::middleware('can:equivalencias')->group(function () {
-        Route::get('/disciplinas-usp', DisciplinaUspController::class)
-            ->name('equivalencias.disciplinas-usp.search');
-
         Route::get('/newreq', [AproveitamentoController::class, 'create'])->name('equivalencias.newreq-create');
         Route::post('/newreq/requerida', [AproveitamentoController::class, 'saveRequiredDiscipline'])
             ->name('equivalencias.newreq-required');
