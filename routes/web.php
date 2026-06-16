@@ -62,6 +62,8 @@ Route::middleware(['auth'])->prefix('equivalencias')->group(function () {
 
         Route::get('/index',[AproveitamentoController::class, 'index'])->name('equivalencias.req-index');
         Route::get('/req/show/{group}',[AproveitamentoController::class, 'show'])->name('equivalencias.req-show');
+        Route::get('/req/show/{group}/arquivos/{arquivo}', [AproveitamentoController::class, 'showFile'])
+            ->name('equivalencias.req-file');
         Route::get('/req/destroy/{group}',[AproveitamentoController::class, 'destroy'])->name('equivalencias.req-destroy');
     });
 

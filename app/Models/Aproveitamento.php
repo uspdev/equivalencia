@@ -19,6 +19,7 @@ class Aproveitamento extends Model
 
     protected $fillable = [
         'grupo',
+        'estado',
         'requerida_id',
         'cursada_id',
         'tipo',
@@ -513,7 +514,8 @@ class Aproveitamento extends Model
     public static function dadosDeExibicaoDoRequerimento(int $group, int $userId): array
     {
         $equivalencias = static::equivalenciasDoRequerimentoDoUsuario($group, $userId);
-        $requerida = $equivalencias->first()->requerida;
+        $primeiraEquivalencia = $equivalencias->first();
+        $requerida = $primeiraEquivalencia->requerida;
 
         if (! $requerida) {
             throw new ModelNotFoundException();
@@ -525,24 +527,35 @@ class Aproveitamento extends Model
                 'nomdis' => $requerida->nomdis,
                 'sglund' => $requerida->sglund,
             ],
+            'grupo' => $group,
+            'estado' => $primeiraEquivalencia->estado,
+            'created_at' => $equivalencias->min('created_at'),
             'cursadas' => [],
+            'historicos' => Arquivo::historicosDoGrupo($group)
+                ->map(fn (Arquivo $arquivo) => [
+                    'id' => $arquivo->id,
+                    'name' => $arquivo->nome,
+                ])
+                ->all(),
         ];
 
         foreach ($equivalencias as $equivalencia) {
             $cursada = $equivalencia->cursada;
-            $arquivo = $equivalencia->arquivos->first();
 
-            if (! $cursada || ! $arquivo) {
+            if (! $cursada) {
                 throw new ModelNotFoundException();
             }
+
+            $ementa = $equivalencia->arquivos
+                ->firstWhere('tipo', Arquivo::TIPO_EMENTA);
 
             $showData['cursadas'][] = [
                 'coddis' => $cursada->coddis,
                 'nomdis' => $cursada->nomdis,
-                'ementa_file' => [
-                    'name' => $arquivo->nome,
-                    'path' => $arquivo->path,
-                ],
+                'ementa_file' => $ementa ? [
+                    'id' => $ementa->id,
+                    'name' => $ementa->nome,
+                ] : null,
                 'semestre' => $cursada->semestre,
                 'ano' => $cursada->ano,
                 'freq' => $cursada->frequencia,

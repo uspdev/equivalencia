@@ -7,9 +7,12 @@ use App\Http\Requests\SaveRequiredDisciplineRequest;
 use App\Http\Requests\StoreAproveitamentoRequest;
 use App\Models\Aproveitamento;
 use App\Models\AproveitamentoRascunho;
+use App\Models\Arquivo;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AproveitamentoController extends Controller
 {
@@ -132,10 +135,8 @@ class AproveitamentoController extends Controller
         return view('aproveitamentos.index', ['requisicoes' => $requisitions]);
     }
 
-    // TODO - implementar a função show
-
     /**
-     * Função para exibição de um pedido de aproveitamento - Placeholder
+     * Exibe um pedido de aproveitamento do usuário autenticado.
      * @param int $group
      */
     public function show(int $group): View
@@ -143,6 +144,23 @@ class AproveitamentoController extends Controller
         $show_data = Aproveitamento::dadosDeExibicaoDoRequerimento($group, Auth::id());
 
         return view('aproveitamentos.show', ['show_data' => $show_data]);
+    }
+
+    /**
+     * Exibe um PDF do requerimento no navegador.
+     */
+    public function showFile(int $group, int $arquivo): StreamedResponse
+    {
+        $file = Arquivo::doRequerimentoDoUsuarioOrFail($arquivo, $group, (int) Auth::id());
+
+        abort_unless(Storage::exists($file->path), 404);
+
+        return Storage::response(
+            $file->path,
+            $file->nome,
+            ['Content-Type' => 'application/pdf'],
+            'inline'
+        );
     }
 
     /**
