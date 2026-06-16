@@ -27,6 +27,9 @@ class StoreEquivalenciaRequest extends FormRequest
         return [
             // Valida se a disciplina já existe
             'coddis' => [
+                'required',
+                'string',
+                'max:7',
                 function (string $attribute, mixed $value, Closure $fail) use ($codcur, $codhab) {
                     if (Disciplina::existeComoRequeridaNoContexto($value, $codcur, $codhab)) {
                         $fail('A disciplina requerida informada já está cadastrada para este curso/habilitação.');

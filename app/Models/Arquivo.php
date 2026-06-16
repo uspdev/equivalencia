@@ -3,6 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Storage;
 
 class Arquivo extends Model
 {
@@ -12,9 +15,15 @@ class Arquivo extends Model
 
     protected $fillable = [
         'equivalencia_id',
+        'grupo',
         'tipo',
         'nome',
         'path',
+    ];
+
+    protected $casts = [
+        'equivalencia_id' => 'integer',
+        'grupo' => 'integer',
     ];
 
     public function aproveitamento()
@@ -22,12 +31,14 @@ class Arquivo extends Model
         return $this->belongsTo(Aproveitamento::class, 'equivalencia_id');
     }
 
-    /**
-     * Cria o arquivo de histórico escolar associado a uma equivalência.
-     */
-    public static function criarHistorico(int $equivalenciaId, array $dadosArquivo): self
+    public static function criarHistorico(int $grupo, array $dadosArquivo): self
     {
-        return static::criarDoFormulario($equivalenciaId, static::TIPO_HISTORICO, $dadosArquivo);
+        return static::create([
+            'grupo' => $grupo,
+            'tipo' => static::TIPO_HISTORICO,
+            'nome' => $dadosArquivo['original_name'],
+            'path' => $dadosArquivo['stored_path'],
+        ]);
     }
 
     /**
@@ -38,11 +49,65 @@ class Arquivo extends Model
         return static::criarDoFormulario($equivalenciaId, static::TIPO_EMENTA, $dadosArquivo);
     }
 
+    public static function historicosDoGrupo(int $grupo): Collection
+    {
+        return static::query()
+            ->where('grupo', $grupo)
+            ->where('tipo', static::TIPO_HISTORICO)
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * Retorna um arquivo que pertença ao requerimento do usuário ou lança exceção.
+     */
+    public static function doRequerimentoDoUsuarioOrFail(int $arquivoId, int $grupo, int $userId): self
+    {
+        $equivalencias = Aproveitamento::equivalenciasDoRequerimentoDoUsuario($grupo, $userId);
+
+        $arquivo = static::query()
+            ->whereKey($arquivoId)
+            ->where(function ($query) use ($grupo, $equivalencias) {
+                $query
+                    ->where(function ($ementaQuery) use ($equivalencias) {
+                        $ementaQuery
+                            ->where('tipo', static::TIPO_EMENTA)
+                            ->whereIn('equivalencia_id', $equivalencias->pluck('id'));
+                    })
+                    ->orWhere(function ($historicoQuery) use ($grupo) {
+                        $historicoQuery
+                            ->where('tipo', static::TIPO_HISTORICO)
+                            ->where('grupo', $grupo);
+                    });
+            })
+            ->first();
+
+        if (! $arquivo) {
+            throw (new ModelNotFoundException())->setModel(static::class, [$arquivoId]);
+        }
+
+        return $arquivo;
+    }
+
+    public static function removerHistoricosDoGrupo(int $grupo): void
+    {
+        $historicos = static::historicosDoGrupo($grupo);
+
+        foreach ($historicos as $historico) {
+            Storage::delete($historico->path);
+            $historico->delete();
+        }
+    }
+
     /**
      * Atualiza os metadados do arquivo a partir dos dados armazenados pelo formulário.
      */
     public function atualizarDoFormulario(array $dadosArquivo): void
     {
+        if ($this->path !== $dadosArquivo['stored_path']) {
+            Storage::delete($this->path);
+        }
+
         $this->update([
             'nome' => $dadosArquivo['original_name'],
             'path' => $dadosArquivo['stored_path'],

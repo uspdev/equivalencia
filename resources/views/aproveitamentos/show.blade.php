@@ -1,60 +1,88 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="card">
-    <div class="card-header-sticky card-header">
-        <h3 class="">
-            Requisição de equivalência &rarr; 
-            <span class="text-primary">
-                <strong>{{$show_data['requerida']['coddis'] .' - ' . $show_data['requerida']['nomdis'] }}</strong>
-            </span>
-        </h3>
-    </div>
-    <div class="card-body card-body-sticky">
-        <div class="card card-header card-header-sticky mb-0">
-            <div style="overflow-x: auto;">
-                <table class="table mb-0 mt-0 text-center">
-                    <thead>
-                        <tr>
-                            <th class="text-info"><strong>Código</strong></th>
-                            <th class="text-warning"><strong>Nome</strong></th>
-                            <th class="text-secondary "><strong>Semestre</strong></th>
-                            <th class="text-danger "><strong>Ano</strong></th>
-                            <th class=""><strong>Frequência</strong></th>
-                            <th class=""><strong>Nota</strong></th>
-                            <th class=""><strong>Créditos</strong></th>
-                            <th class=""><span class="text-nowrap"><strong>Carga horária</strong></span></th>
-                            <th class=""><strong>IES</strong></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($show_data['cursadas'] as $cursada)
-                        <tr>
-                            <td class="text-info ">{{ $cursada['coddis'] }}</td>
-                            <td class="text-warning ">{{ $cursada['nomdis'] }}</td>
-                            <td class="text-secondary ">{{ $cursada['semestre'] }}°</td>
-                            <td class="text-danger ">{{ $cursada['ano'] }}</td>
-                            <td class="">{{ $cursada['freq'] }}%</td>
-                            <td class="">{{ $cursada['nota'] }}</td>
-                            <td class="">{{ $cursada['creditos'] }}</td>
-                            <td class="">{{ $cursada['carga_hr'] }}</td>
-                            <td class="">{{ $cursada['ies'] }}</td>
-                            {{-- <div class="col">
-                                <span title="Ementa">
-                                    <a href="{{ route('form-submissions.download-file', ['formDefinition' => $submission->form_definition_id, 'formSubmission' => $submission->id,'fi       eldName' => $field['name']]) }}" target="_blank">
-                                        {{ Illuminate\Support\Str::limit($filename, 30) }}
-                                    </a>
-                                </span>
-                            </div> --}}
-                        </tr>
-                        @if (!$loop->last)
-                            <br>
-                        @endif
-                    @endforeach
-                    </tbody>
-                </table>
-            </div>
+  @php
+    $disciplinaRequerida = $show_data['requerida']['coddis'] . ' - ' . $show_data['requerida']['nomdis'];
+  @endphp
+
+  <div class="card">
+    <x-page-header
+      :breadcrumbs="[
+          ['label' => 'Meus requerimentos', 'url' => route('equivalencias.req-index')],
+          ['label' => $disciplinaRequerida],
+      ]"
+    >
+    </x-page-header>
+
+    <div class="card-body">
+      <div class="card mb-4">
+        <div class="card-header">
+          <strong>Dados do requerimento</strong>
         </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4 mb-3 mb-md-0">
+              <div class="text-muted small">Grupo</div>
+              <strong>{{ $show_data['grupo'] }}</strong>
+            </div>
+            <div class="col-md-4 mb-3 mb-md-0">
+              <div class="text-muted small">Data de criação</div>
+              <strong>{{ $show_data['created_at']->format('d/m/Y H:i') }}</strong>
+            </div>
+            <div class="col-md-4">
+              <div class="text-muted small">Status</div>
+              <span class="badge badge-warning">{{ $show_data['estado'] ?: 'Enviado' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-header">
+          <strong>Disciplina desejada</strong>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-3 mb-3 mb-md-0">
+              <div class="text-muted small">Código</div>
+              <strong>{{ $show_data['requerida']['coddis'] }}</strong>
+            </div>
+            <div class="col-md-6 mb-3 mb-md-0">
+              <div class="text-muted small">Nome</div>
+              <strong>{{ $show_data['requerida']['nomdis'] }}</strong>
+            </div>
+            <div class="col-md-3">
+              <div class="text-muted small">Unidade</div>
+              <strong>{{ $show_data['requerida']['sglund'] ?: 'Não informada' }}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h4 class="mb-3">Disciplinas cursadas</h4>
+      @foreach ($show_data['cursadas'] as $cursada)
+        @include('aproveitamentos.partials.show-disciplina', [
+            'cursada' => $cursada,
+            'group' => $show_data['grupo'],
+            'position' => $loop->iteration,
+        ])
+      @endforeach
+
+      <div class="card">
+        <div class="card-header">
+          <strong>Históricos escolares</strong>
+        </div>
+        <div class="card-body">
+          @forelse ($show_data['historicos'] as $arquivo)
+            @include('aproveitamentos.partials.show-arquivo', [
+                'arquivo' => $arquivo,
+                'group' => $show_data['grupo'],
+            ])
+          @empty
+            <p class="text-muted mb-0">Nenhum histórico escolar foi enviado.</p>
+          @endforelse
+        </div>
+      </div>
     </div>
-</div>
+  </div>
 @endsection

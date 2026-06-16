@@ -170,9 +170,11 @@ class Disciplina extends Model
     public static function dadosDaCursadaPorFormulario(array $dados): array
     {
         $coddis = isset($dados['coddis']) ? trim((string) $dados['coddis']) : null;
-        $disciplinaReplicado = $coddis ? static::buscarNoReplicado($coddis) : null;
+        $isUsp = filter_var($dados['is_usp'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        // somente tenta buscar no Replicado se for USP e tiver código de disciplina
+        $disciplinaReplicado = ($isUsp && $coddis) ? static::buscarNoReplicado($coddis) : null;
 
-        if ($disciplinaReplicado) {
+        if ($isUsp && $disciplinaReplicado) {
             return [
                 'coddis' => $disciplinaReplicado['coddis'] ?? $coddis,
                 'nomdis' => $disciplinaReplicado['nomdis'] ?? null,
@@ -266,6 +268,75 @@ class Disciplina extends Model
     }
 
     /**
+     * Monta o estado da interface para o formulário de equivalências filhas.
+     *
+     * O formulário suporta até 3 disciplinas cursadas por grupo de equivalência, e esse método monta os dados
+     * para preencher os campos e controlar a visibilidade dos blocos de acordo com os valores
+     */
+    public static function estadoFormularioEquivalencia(array $values = [], int $maxDisciplinas = 3): array
+    {
+        $fieldSuffixes = ['', '2', '3'];
+
+        $fieldValue = function (string $field) use ($values) {
+            return old($field, $values[$field] ?? null);
+        };
+
+        $isUspValue = function (string $suffix) use ($fieldValue) {
+            $field = 'is_usp' . $suffix;
+            $old = old($field);
+
+            if ($old !== null) {
+                return (bool) $old;
+            }
+            // se não tiver valor antigo, considera como USP se a IES for USP
+            //(com base no valor atual do campo, que pode vir do banco(edição) ou do formulário)
+            $ies = $fieldValue('ies' . $suffix);
+
+            if (filled($ies)) {
+                return $ies === 'USP';
+            }
+
+            return true;
+        };
+
+        $hasAnyValue = function (string $suffix) use ($fieldValue) {
+            // considera que o bloco tem valor se tiver código, nome ou IES preenchidos,
+            // para facilitar a UX de mostrar o bloco quando o usuário começar a preencher
+            return filled($fieldValue('coddis' . $suffix)) ||
+                filled($fieldValue('nome_disciplina' . $suffix)) ||
+                filled($fieldValue('ies' . $suffix));
+        };
+
+        $initialVisible = 1;
+        foreach (['2', '3'] as $suffix) {
+            if ($hasAnyValue($suffix)) {
+                $initialVisible = (int) $suffix;
+            }
+        }
+
+        $blocks = [];
+        foreach ($fieldSuffixes as $loopIndex => $suffix) {
+            $number = $loopIndex + 1;
+
+            $blocks[] = [
+                'number' => $number,
+                'suffix' => $suffix,
+                'visible' => $number <= $initialVisible,
+                'isUsp' => $isUspValue($suffix),
+                'coddis' => $fieldValue('coddis' . $suffix),
+                'nome' => $fieldValue('nome_disciplina' . $suffix),
+                'ies' => $fieldValue('ies' . $suffix),
+            ];
+        }
+
+        return [
+            'maxDisciplinas' => $maxDisciplinas,
+            'initialVisible' => $initialVisible,
+            'blocks' => $blocks,
+        ];
+    }
+
+    /**
      * Monta os valores padrão da edição de um grupo de equivalências automáticas.
      */
     public function defaultsParaFormularioEdicaoDeGrupo(Aproveitamento $equivalenciaFilha): array
@@ -276,7 +347,7 @@ class Disciplina extends Model
             ->values();
 
         $outrosDoGrupo = $equivalentesDoMesmoGrupo
-            ->reject(fn (Aproveitamento $item) => $item->id === $equivalenciaFilha->id)
+            ->reject(fn(Aproveitamento $item) => $item->id === $equivalenciaFilha->id)
             ->values();
 
         $equivalencia2 = $outrosDoGrupo->get(0);
@@ -292,72 +363,6 @@ class Disciplina extends Model
             'coddis3' => old('coddis3', $equivalencia3?->coddis),
             'nome_disciplina3' => old('nome_disciplina3', $equivalencia3?->nome_disciplina),
             'ies3' => old('ies3', $equivalencia3?->ies),
-        ];
-    }
-
-    /**
-     * Cria a disciplina requerida informada em um requerimento do usuário.
-     */
-    public static function criarRequeridaDeRequerimento(array $dados, int $userId): Disciplina
-    {
-        return static::create([
-            'coddis' => $dados['coddis4'],
-            'nomdis' => $dados['disciplina4'],
-            'ies' => 'USP',
-            'criado_por_id' => $userId,
-            'alterado_por_id' => $userId,
-        ]);
-    }
-
-    /**
-     * Atualiza a disciplina requerida informada em um requerimento do usuário.
-     */
-    public function atualizarRequeridaDeRequerimento(array $dados, int $userId): void
-    {
-        $this->update([
-            'coddis' => $dados['coddis4'],
-            'nomdis' => $dados['disciplina4'],
-            'ies' => 'USP',
-            'alterado_por_id' => $userId,
-        ]);
-    }
-
-    /**
-     * Cria uma disciplina cursada de um requerimento pelo índice do formulário.
-     */
-    public static function criarCursadaDeRequerimento(array $dados, int $numeroDisciplina, int $userId): Disciplina
-    {
-        return static::create(static::dadosCursadaDeRequerimento($dados, $numeroDisciplina, $userId));
-    }
-
-    /**
-     * Atualiza uma disciplina cursada de requerimento pelo índice do formulário.
-     */
-    public function atualizarCursadaDeRequerimento(array $dados, int $numeroDisciplina, int $userId): void
-    {
-        $dadosCursada = static::dadosCursadaDeRequerimento($dados, $numeroDisciplina, $userId);
-        unset($dadosCursada['criado_por_id']);
-
-        $this->update($dadosCursada);
-    }
-
-    /**
-     * Monta os atributos de uma disciplina cursada enviada em um requerimento.
-     */
-    private static function dadosCursadaDeRequerimento(array $dados, int $numeroDisciplina, int $userId): array
-    {
-        return [
-            'coddis' => $dados['coddis'.$numeroDisciplina],
-            'nomdis' => $dados['disciplina'.$numeroDisciplina],
-            'creditos' => $dados['credit_dis'.$numeroDisciplina],
-            'carga_horaria' => $dados['cghr_dis'.$numeroDisciplina],
-            'ies' => $dados['unidade_ies'],
-            'ano' => $dados['ano_dis'.$numeroDisciplina],
-            'semestre' => $dados['semestre_dis'.$numeroDisciplina],
-            'frequencia' => $dados['freq_dis'.$numeroDisciplina],
-            'nota' => $dados['nota_dis'.$numeroDisciplina],
-            'criado_por_id' => $userId,
-            'alterado_por_id' => $userId,
         ];
     }
 
@@ -391,12 +396,22 @@ class Disciplina extends Model
             return null;
         }
 
+        if (! is_iterable($disciplinas)) {
+            return null;
+        }
+
         foreach ($disciplinas as $disciplina) {
+            if (! is_array($disciplina)) {
+                continue;
+            }
+
             if (($disciplina['coddis'] ?? null) === $coddis) {
                 return $disciplina;
             }
         }
 
-        return $disciplinas[0] ?? null;
+        $first = $disciplinas[0] ?? null;
+
+        return is_array($first) ? $first : null;
     }
 }

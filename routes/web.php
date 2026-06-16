@@ -18,14 +18,33 @@ Route::get('/', [AproveitamentoController::class, 'home'])->name('workflows.inde
 
 Route::middleware(['auth'])->prefix('equivalencias')->group(function () {
     Route::middleware('can:equivalencias')->group(function () {
+        Route::get('/newreq', [AproveitamentoController::class, 'create'])->name('equivalencias.newreq-create');
+        Route::post('/newreq/requerida', [AproveitamentoController::class, 'saveRequiredDiscipline'])
+            ->name('equivalencias.newreq-required');
+        Route::get('/newreq/disciplinas/create', [AproveitamentoController::class, 'createDiscipline'])
+            ->name('equivalencias.newreq-discipline-create');
+        Route::post('/newreq/disciplinas', [AproveitamentoController::class, 'storeDiscipline'])
+            ->name('equivalencias.newreq-discipline-store');
+        Route::get('/newreq/disciplinas/{disciplineId}/edit', [AproveitamentoController::class, 'editDiscipline'])
+            ->name('equivalencias.newreq-discipline-edit');
+        Route::put('/newreq/disciplinas/{disciplineId}', [AproveitamentoController::class, 'updateDiscipline'])
+            ->name('equivalencias.newreq-discipline-update');
+        Route::delete('/newreq/disciplinas/{disciplineId}', [AproveitamentoController::class, 'destroyDiscipline'])
+            ->name('equivalencias.newreq-discipline-destroy');
+        Route::post('/newreq', [AproveitamentoController::class, 'store'])->name('equivalencias.newreq-store');
+
         Route::get('/', [AproveitamentoAutomaticoController::class, 'index'])
             ->name('equivalencias.index');
         Route::get('/{codcur}/{codhab}', [AproveitamentoAutomaticoController::class, 'show'])
-            ->name('equivalencias.show');
+            ->name('equivalencias.show')
+            ->whereNumber('codcur')
+            ->whereNumber('codhab');
         Route::post('/equivalencia/estado-edicao', [AproveitamentoAutomaticoController::class, 'saveEditModeState'])
             ->name('equivalencias.save-edit-mode-state');
         Route::post('/{codcur}/{codhab}', [AproveitamentoAutomaticoController::class, 'store'])
-            ->name('equivalencias.store');
+            ->name('equivalencias.store')
+            ->whereNumber('codcur')
+            ->whereNumber('codhab');
         Route::put('/{codcur}/{codhab}/{equivalencia}', [AproveitamentoAutomaticoController::class, 'update'])
             ->name('equivalencias.update')->whereNumber('codcur')->whereNumber('codhab');
         Route::delete('/{codcur}/{codhab}/{equivalencia}', [AproveitamentoAutomaticoController::class, 'destroy'])
@@ -39,13 +58,11 @@ Route::middleware(['auth'])->prefix('equivalencias')->group(function () {
         Route::delete('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}/grupo', [AproveitamentoAutomaticoController::class, 'destroyEquivalenciaGrupo'])
             ->name('equivalencias.destroy-equivalencia-grupo');
 
-        Route::get('/newreq', [AproveitamentoController::class, 'create'])->name('equivalencias.newreq-create');
-        Route::post('/newreq', [AproveitamentoController::class, 'store'])->name('equivalencias.newreq-store');
         Route::get('/index',[AproveitamentoController::class, 'index'])->name('equivalencias.req-index');
         Route::get('/req/show/{group}',[AproveitamentoController::class, 'show'])->name('equivalencias.req-show');
+        Route::get('/req/show/{group}/arquivos/{arquivo}', [AproveitamentoController::class, 'showFile'])
+            ->name('equivalencias.req-file');
         Route::get('/req/destroy/{group}',[AproveitamentoController::class, 'destroy'])->name('equivalencias.req-destroy');
-        Route::get('/req/edit/{group}',[AproveitamentoController::class, 'edit'])->name('equivalencias.req-edit');
-        Route::put('/req/edit/{group}',[AproveitamentoController::class, 'update'])->name('equivalencias.req-update');
     });
 });
 

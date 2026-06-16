@@ -18,19 +18,29 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'coddis' => ['nullable', 'string', 'max:7'],
+            'is_usp' => ['nullable', 'boolean'],
+            'coddis' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('')],
             'nome_disciplina' => ['nullable', 'string', 'max:240'],
             'ies' => ['nullable', 'string', 'max:255'],
-            'coddis2' => ['nullable', 'string', 'max:7'],
+            'is_usp2' => ['nullable', 'boolean'],
+            'coddis2' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('2')],
             'nome_disciplina2' => ['nullable', 'string', 'max:240'],
             'ies2' => ['nullable', 'string', 'max:255'],
-            'coddis3' => ['nullable', 'string', 'max:7'],
+            'is_usp3' => ['nullable', 'boolean'],
+            'coddis3' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('3')],
             'nome_disciplina3' => ['nullable', 'string', 'max:240'],
             'ies3' => ['nullable', 'string', 'max:255'],
         ];
     }
 
+    private function maxCoddisLength(string $sufixo): int
+    {
+        return $this->boolean('is_usp'.$sufixo) ? 7 : 15;
+    }
+
     /**
+     * Processa os dados dos conjuntos de equivalência preenchidos no formulário, validando as regras de negócio
+     * e retornando um array estruturado para ser salvo.
      * @throws ValidationException
      */
     public function conjuntosDeEquivalencia(): array
@@ -43,12 +53,19 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
             $kCoddis = 'coddis'.$sufixo;
             $kNome = 'nome_disciplina'.$sufixo;
             $kIes = 'ies'.$sufixo;
+            $kIsUsp = 'is_usp'.$sufixo;
 
             $coddis = trim((string) ($dados[$kCoddis] ?? ''));
             $nome = trim((string) ($dados[$kNome] ?? ''));
             $ies = trim((string) ($dados[$kIes] ?? ''));
+            $marcadaComoUsp = $this->boolean($kIsUsp);
+            $temDadosPreenchidos = $coddis !== '' || $nome !== '' || $ies !== '';
 
-            if ($coddis === '' && $nome === '' && $ies === '') {
+            // Se não tem dados preenchidos, ignora o conjunto, a menos que seja o primeiro (sufixo vazio)
+            // ou esteja marcado como USP
+            // ignora o primeiro pois é obrigatório preencher ao menos um conjunto,
+            // e os outros apenas se tiverem dados ou forem USP
+            if (! $temDadosPreenchidos && ($sufixo !== '' || ! $marcadaComoUsp)) {
                 continue;
             }
 
@@ -58,20 +75,34 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
                 continue;
             }
 
+            $disciplinaUsp = $marcadaComoUsp
+                ? Disciplina::disciplinaUspNoReplicado($coddis)
+                : null;
+
+            if ($marcadaComoUsp && ! $disciplinaUsp) {
+                $erros[$kCoddis] = 'Selecione uma disciplina USP válida.';
+
+                continue;
+            }
+
             $dadosCursada = [
+                'is_usp' => $marcadaComoUsp,
                 'coddis' => $coddis,
                 'nome_disciplina' => $nome !== '' ? $nome : null,
                 'ies' => $ies !== '' ? $ies : null,
             ];
 
-            if (! Disciplina::disciplinaUspNoReplicado($coddis)) {
+            if (! $marcadaComoUsp) {
                 if (empty($dadosCursada['nome_disciplina'])) {
-                    $erros[$kNome] = 'Nome da equivalência é obrigatório quando a disciplina não for USP.';
+                    $erros[$kNome] = 'Nome da disciplina é obrigatório quando a disciplina não for USP.';
                 }
 
                 if (empty($dadosCursada['ies'])) {
                     $erros[$kIes] = 'IES é obrigatória quando a disciplina não for USP.';
                 }
+            } else {
+                $dadosCursada['nome_disciplina'] = null;
+                $dadosCursada['ies'] = 'USP';
             }
 
             $conjuntos[] = $dadosCursada;

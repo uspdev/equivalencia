@@ -231,6 +231,4 @@ return [
         'View' => Illuminate\Support\Facades\View::class,
 
     ],
-
-    'initial_form' => env('INITIAL_FORM','initial_form'),
 ];

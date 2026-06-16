@@ -41,18 +41,18 @@ $menu = [
         'url' => './',
     ],
     [
-        'text' => 'Novo requerimento',
-        'url' => 'equivalencias/newreq',
-        'can' => 'user',
-    ],
-    [
         'text' => 'Meus requerimentos',
         'url' => 'equivalencias/index',
         'can' => 'user',
     ],
     [
+        'text' => 'Novo requerimento',
+        'url' => 'equivalencias/newreq',
+        'can' => 'user',
+    ],
+    [
         'text' => 'Atendimentos',
-        'url' => 'atendimentos',
+        'url' => 'equivalencias/atendimentos',
         'can' => 'user',
     ],
     [

@@ -18,7 +18,8 @@ return new class extends Migration
             $table->tinyInteger('verdis')->nullable();
 
             // CAMPOS COMPARTILHADOS
-            $table->string('coddis', 7);
+            // Codigo da disciplina -> USP usa 7 caracteres, mas outras instituições podem usar mais
+            $table->string('coddis', 15);
             $table->string('nomdis', 240)->nullable();
             $table->tinyInteger('creditos')->nullable()->default(0);
             $table->smallInteger('carga_horaria')->nullable();

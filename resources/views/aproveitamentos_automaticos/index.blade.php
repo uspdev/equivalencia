@@ -3,9 +3,12 @@
 @section('content')
 
   <div class="card">
-    <div class="card-header h4">
-      Aproveitamentos automáticos
-    </div>
+    <x-page-header
+      :breadcrumbs="[
+          ['label' => 'Aproveitamentos automáticos'],
+      ]"
+    />
+
     <div class="card-body">
       @if (empty($cursos))
         <p class="mb-0">Nenhum curso/habilitação ativo encontrado.</p>
@@ -21,10 +24,10 @@
               @foreach ($cursos as $curso)
                 <tr>
                   <td>
-                   <p> <a href="{{ route('equivalencias.show', [$curso['codcur'], $curso['codhab']]) }}">
-                      {{ $curso['nomcur'] ?? '-' }} ({{ $curso['codcur'] ?? '-' }})
-                    </a>
-                    / {{ $curso['nomhab'] ?? '-' }} ({{ $curso['codhab'] ?? '-' }})</p>
+                    <p> <a href="{{ route('equivalencias.show', [$curso['codcur'], $curso['codhab']]) }}">
+                        {{ $curso['nomcur'] ?? '-' }} ({{ $curso['codcur'] ?? '-' }})
+                      </a>
+                      / {{ $curso['nomhab'] ?? '-' }} ({{ $curso['codhab'] ?? '-' }})</p>
                   </td>
                 </tr>
               @endforeach

@@ -2,11 +2,35 @@
 
 namespace App\Replicado;
 
+use Illuminate\Support\Str;
+use Uspdev\Forms\Replicado\Graduacao as GraduacaoForms;
 use Uspdev\Replicado\DB;
 use Uspdev\Replicado\Graduacao as GraduacaoReplicado;
 
 class Graduacao extends GraduacaoReplicado
 {
+    public function buscarDisciplina(string $code): ?array
+    {
+        $code = Str::upper(trim($code));
+
+        if (! preg_match('/^[A-Z0-9]+$/', $code)) {
+            return null;
+        }
+
+        foreach (GraduacaoForms::procurarDisciplinas($code, 50) as $disciplina) {
+            if (Str::upper(trim((string) ($disciplina['coddis'] ?? ''))) === $code) {
+                return $disciplina;
+            }
+        }
+
+        return null;
+    }
+
+    public function disciplinaExiste(string $code): bool
+    {
+        return $this->buscarDisciplina($code) !== null;
+    }
+
     /**
      * Lista os cursos e habilitações da unidade
      *
