@@ -20,6 +20,7 @@ return new class extends Migration
             // essa logica pode ser feita no Model
 
             $table->string('estado')->nullable(); // deferida, negada, etc
+            // adicionar rascunho aqui como enum -> rascunho, processando, deferido, negado
 
             $table->foreignId('requerida_id')
                 ->constrained('disciplinas')

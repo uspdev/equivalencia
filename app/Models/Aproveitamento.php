@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\EquivalenciaEstado;
 use App\Enums\EquivalenciaTipo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -11,6 +12,14 @@ use Illuminate\Support\Facades\DB;
 
 class Aproveitamento extends Model
 {
+    public const ESTADO_RASCUNHO = EquivalenciaEstado::RASCUNHO->value;
+
+    public const ESTADO_PROCESSANDO = EquivalenciaEstado::PROCESSANDO->value;
+
+    public const ESTADO_DEFERIDO = EquivalenciaEstado::DEFERIDO->value;
+
+    public const ESTADO_NEGADO = EquivalenciaEstado::NEGADO->value;
+
     public const TIPO_AUTOMATICA = EquivalenciaTipo::AUTOMATICA->value;
 
     public const TIPO_REQUERIDA = EquivalenciaTipo::REQUERIDA->value;
@@ -35,6 +44,7 @@ class Aproveitamento extends Model
 
     protected $casts = [
         'grupo' => 'integer',
+        'estado' => EquivalenciaEstado::class,
         'requerida_id' => 'integer',
         'cursada_id' => 'integer',
         'tipo' => EquivalenciaTipo::class,
@@ -71,7 +81,40 @@ class Aproveitamento extends Model
 
     public function scopeAutomaticas(Builder $query): Builder
     {
-        return $query->where('tipo', EquivalenciaTipo::AUTOMATICA);
+        return $query->where('tipo', EquivalenciaTipo::AUTOMATICA->value);
+    }
+
+    public function estadoEnum(): ?EquivalenciaEstado
+    {
+        if ($this->estado instanceof EquivalenciaEstado) {
+            return $this->estado;
+        }
+
+        if ($this->estado === null || $this->estado === '') {
+            return null;
+        }
+
+        return EquivalenciaEstado::tryFrom((string) $this->estado);
+    }
+
+    public function estadoLabel(): ?string
+    {
+        return $this->estadoEnum()?->label();
+    }
+
+    public function marcarComoProcessando(): void
+    {
+        $this->estado = EquivalenciaEstado::PROCESSANDO;
+    }
+
+    public function marcarComoDeferido(): void
+    {
+        $this->estado = EquivalenciaEstado::DEFERIDO;
+    }
+
+    public function marcarComoNegado(): void
+    {
+        $this->estado = EquivalenciaEstado::NEGADO;
     }
 
     public function scopeDoContexto(Builder $query, int $codcur, int $codhab): Builder
@@ -233,6 +276,7 @@ class Aproveitamento extends Model
                     'grupo' => $group,
                     'requerida_id' => $required->id,
                     'cursada_id' => $course->id,
+                    'estado' => EquivalenciaEstado::PROCESSANDO,
                     'tipo' => EquivalenciaTipo::REQUERIDA,
                     'criado_por_id' => $userId,
                     'alterado_por_id' => $userId,
@@ -482,7 +526,7 @@ class Aproveitamento extends Model
 
                 return [
                     'nomdis' => $primeiraEquivalencia->requerida?->nomdis,
-                    'estado' => $primeiraEquivalencia->estado,
+                    'estado' => $primeiraEquivalencia->estadoLabel(),
                     'grupo' => (int) $grupo,
                 ];
             })
@@ -528,7 +572,7 @@ class Aproveitamento extends Model
                 'sglund' => $requerida->sglund,
             ],
             'grupo' => $group,
-            'estado' => $primeiraEquivalencia->estado,
+            'estado' => $primeiraEquivalencia->estadoLabel(),
             'created_at' => $equivalencias->min('created_at'),
             'cursadas' => [],
             'historicos' => Arquivo::historicosDoGrupo($group)
