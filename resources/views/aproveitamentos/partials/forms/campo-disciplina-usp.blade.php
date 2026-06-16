@@ -87,7 +87,6 @@
               },
               allowClear: true,
               placeholder: 'Digite o código da disciplina...',
-              minimumInputLength: 3,
               theme: 'bootstrap4',
               width: '100%',
               language: 'pt-BR'
