@@ -1,18 +1,18 @@
 @extends('layouts.app')
 
 @section('content')
+  @php
+    $disciplinaRequerida = $show_data['requerida']['coddis'] . ' - ' . $show_data['requerida']['nomdis'];
+  @endphp
+
   <div class="card">
-    <div class="card-header card-header-sticky d-flex flex-wrap align-items-center justify-content-between">
-      <div>
-        <h3 class="mb-1">Requerimento de aproveitamento de estudos</h3>
-        <strong class="text-primary">
-          {{ $show_data['requerida']['coddis'] }} - {{ $show_data['requerida']['nomdis'] }}
-        </strong>
-      </div>
-      <a href="{{ route('equivalencias.req-index') }}" class="btn btn-outline-secondary mt-2 mt-md-0">
-        Voltar aos requerimentos
-      </a>
-    </div>
+    <x-page-header
+      :breadcrumbs="[
+          ['label' => 'Meus requerimentos', 'url' => route('equivalencias.req-index')],
+          ['label' => $disciplinaRequerida],
+      ]"
+    >
+    </x-page-header>
 
     <div class="card-body">
       <div class="card mb-4">
