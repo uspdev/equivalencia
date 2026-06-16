@@ -1,19 +1,24 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $workflowId = $workflowObjectData['workflowObject']->id;
+        $breadcrumbLabel = $workflowId != 0 ? 'Requerimento #' . $workflowId : 'Novo requerimento';
+    @endphp
+
     @if (session('error'))
         <div class="alert alert-danger">{{ session('error') }}</div>
     @endif
 
     <div class="card">
-        <div class="m-3">
-            <h2 class="card-title pb-3">
-                {{ $workflowObjectData['workflowDefinition']->definition['title'] }}
-                @if ($workflowObjectData['workflowObject']->id != 0)
-                    - ID {{ $workflowObjectData['workflowObject']->id }}
-                @endif
-            </h2>
+        <x-page-header
+            :breadcrumbs="[
+                ['label' => 'Atendimentos', 'url' => route('workflows.atendimentos')],
+                ['label' => $breadcrumbLabel],
+            ]"
+        />
 
+        <div class="card-body">
             @include('show.partials.user-guidance')
             @include('show.partials.acoes-usuario')
             @include('show.partials.todas-transicoes-admin')

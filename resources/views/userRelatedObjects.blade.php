@@ -11,16 +11,18 @@
   @endphp
 
   <div class="card atendimentos-card">
-    <div class="card-header card-header-sticky d-flex flex-column flex-md-row justify-content-between align-items-md-center">
-      <div>
-        <h2 class="h4 mb-1">Atendimentos</h2>
-        <p class="text-muted mb-0">Requerimentos em estados relacionados às suas permissões de atendimento.</p>
-      </div>
-      <div class="atendimentos-summary mt-3 mt-md-0">
-        <span class="badge badge-outline-primary mr-2">{{ $totalAtendimentos }} atendimento(s)</span>
-        <span class="badge badge-outline-success">{{ $totalPendentes }} em andamento</span>
-      </div>
-    </div>
+    <x-page-header
+      :breadcrumbs="[
+          ['label' => 'Atendimentos'],
+      ]"
+    >
+      <x-slot:actions>
+        <div class="atendimentos-summary">
+          <span class="badge badge-outline-primary mr-2">{{ $totalAtendimentos }} atendimento(s)</span>
+          <span class="badge badge-outline-success">{{ $totalPendentes }} em andamento</span>
+        </div>
+      </x-slot:actions>
+    </x-page-header>
 
     <div class="card-body">
       @if ($workflowObjects->isEmpty())
@@ -93,4 +95,3 @@
     </div>
   </div>
 @endsection
-

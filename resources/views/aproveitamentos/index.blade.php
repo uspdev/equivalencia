@@ -2,9 +2,12 @@
 
 @section('content')
   <div class="card">
-    <div class="card-header card-header-sticky">
-      <strong class="text-info" style="font-size: 24px;">Minhas requisições</strong>
-    </div>
+    <x-page-header
+      :breadcrumbs="[
+          ['label' => 'Meus requerimentos'],
+      ]"
+    />
+
     <div class="card-body">
       @include('aproveitamentos.partials.display.requisicoes')
     </div>

@@ -3,20 +3,19 @@
 @section('content')
 
   <div class="card aproveitamentos-automaticos-edit-scope">
-    <div class="card-header d-flex align-items-center">
-      <h4 class="mb-0">
-        <a href="{{ route('equivalencias.index') }}">Cursos</a>
-        <i class="fas fa-angle-right mx-2"></i>
-        {{ $nomeCurso }} ({{ $codcur }}/{{ $codhab }})
-      </h4>
-
-      <div class="pt-2">
+    <x-page-header
+      :breadcrumbs="[
+          ['label' => 'Aproveitamentos automáticos', 'url' => route('equivalencias.index')],
+          ['label' => $nomeCurso . ' (' . $codcur . '/' . $codhab . ')'],
+      ]"
+    >
+      <x-slot:actions>
         {{-- Include when não funciona na extensão de ir para o arquivo --}}
         @if ($canManageEquivalencias)
           @include('aproveitamentos_automaticos.partials.buttons.toggle-edit-button-and-modal')
         @endif
-      </div>
-    </div>
+      </x-slot:actions>
+    </x-page-header>
 
     <div class="card-body">
       @if ($disciplinas->isEmpty())

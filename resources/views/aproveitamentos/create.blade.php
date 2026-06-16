@@ -10,9 +10,12 @@
   @endphp
 
   <div class="card">
-    <div class="card-header card-header-sticky">
-      <h3 class="mb-0">Novo requerimento de aproveitamento de estudos</h3>
-    </div>
+    <x-page-header
+      :breadcrumbs="[
+          ['label' => 'Meus requerimentos', 'url' => route('equivalencias.req-index')],
+          ['label' => 'Novo requerimento'],
+      ]"
+    />
 
     <div class="card-body">
       @include('aproveitamentos.partials.forms.errors', [

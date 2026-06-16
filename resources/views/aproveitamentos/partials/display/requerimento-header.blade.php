@@ -1,9 +1,11 @@
 {{-- Exibe o cabeçalho da página de detalhes do requerimento. --}}
-<div class="card-header-sticky card-header">
-  <h3>
-    Requisição de equivalência &rarr;
-    <span class="text-primary">
-      <strong>{{ $show_data['requerida']['coddis'] . ' - ' . $show_data['requerida']['nomdis'] }}</strong>
-    </span>
-  </h3>
-</div>
+@php
+  $disciplinaRequerida = $show_data['requerida']['coddis'] . ' - ' . $show_data['requerida']['nomdis'];
+@endphp
+
+<x-page-header
+  :breadcrumbs="[
+      ['label' => 'Meus requerimentos', 'url' => route('equivalencias.req-index')],
+      ['label' => $disciplinaRequerida],
+  ]"
+/>
