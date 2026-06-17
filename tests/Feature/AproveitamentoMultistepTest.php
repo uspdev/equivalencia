@@ -51,6 +51,12 @@ class AproveitamentoMultistepTest extends TestCase
             ->with('MAT0111')
             ->andReturnTrue()
             ->byDefault();
+        $graduacao->shouldReceive('buscarDadosDisciplina')
+            ->andReturn(null)
+            ->byDefault();
+        $graduacao->shouldReceive('buscarDisciplinaCursadaNoHistorico')
+            ->andReturn(null)
+            ->byDefault();
         $this->app->instance(Graduacao::class, $graduacao);
     }
 
@@ -332,6 +338,144 @@ class AproveitamentoMultistepTest extends TestCase
             ->assertSee("id=\"edit-discipline-modal-{$disciplineId}\"", false);
     }
 
+    public function test_usp_discipline_is_enriched_when_added_to_draft(): void
+    {
+        $user = $this->createAuthorizedUser(654324);
+        $this->mockGraduacaoWithUspHistory($user->codpes, 'MAT0111', 2024, 2, [
+            'coddis' => 'MAT0111',
+            'verdis' => 3,
+            'nomdis' => 'Cálculo Diferencial',
+            'creaul' => 4,
+            'cretrb' => 1,
+            'frqfim' => 92.5,
+            'notfim' => 7.5,
+            'notfim2' => 8.0,
+            'pgmdis' => 'Limites, derivadas e integrais.',
+            'pgmrsudis' => 'Cálculo em uma variável.',
+            'objdis' => 'Apresentar fundamentos de cálculo.',
+            'dtaatvdis' => '2020-01-01 00:00:00',
+            'dtadtvdis' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('equivalencias.newreq-discipline-store', absolute: false), [
+                'requerida_coddis' => 'MAC0110',
+                'unidade_tipo' => 'USP',
+                'coddis' => 'MAT0111',
+                'ano' => 2024,
+                'semestre' => 2,
+            ])
+            ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
+
+        $this->assertDatabaseHas('disciplinas', [
+            'coddis' => 'MAT0111',
+            'nomdis' => 'Cálculo Diferencial',
+            'ies' => 'USP',
+            'verdis' => 3,
+            'creditos' => 5,
+            'carga_horaria' => 90,
+            'ano' => 2024,
+            'semestre' => 2,
+            'frequencia' => 92.5,
+            'nota' => 8.0,
+            'programa' => 'Limites, derivadas e integrais.',
+            'programa_resumo' => 'Cálculo em uma variável.',
+            'objetivo' => 'Apresentar fundamentos de cálculo.',
+            'disciplina_ativa' => true,
+        ]);
+        $this->assertDatabaseHas('equivalencias', [
+            'criado_por_id' => $user->id,
+            'estado' => 'rascunho',
+        ]);
+    }
+
+    public function test_usp_discipline_without_matching_history_is_rejected(): void
+    {
+        $user = $this->createAuthorizedUser(654325);
+
+        $this->actingAs($user)
+            ->from(route('equivalencias.newreq-create', absolute: false))
+            ->post(route('equivalencias.newreq-discipline-store', absolute: false), [
+                'requerida_coddis' => 'MAC0110',
+                'unidade_tipo' => 'USP',
+                'coddis' => 'MAT0111',
+                'ano' => 2024,
+                'semestre' => 2,
+            ])
+            ->assertRedirect(route('equivalencias.newreq-create', absolute: false))
+            ->assertSessionHasErrors('coddis');
+
+        $this->assertDatabaseMissing('disciplinas', [
+            'coddis' => 'MAT0111',
+            'criado_por_id' => $user->id,
+        ]);
+    }
+
+    public function test_usp_discipline_is_reenriched_when_draft_is_updated(): void
+    {
+        $user = $this->createAuthorizedUser(654326);
+        $this->mockGraduacaoWithUspHistory($user->codpes, 'MAC0110', 2023, 1, [
+            'coddis' => 'MAC0110',
+            'verdis' => 1,
+            'nomdis' => 'Introdução à Computação',
+            'creaul' => 4,
+            'cretrb' => 0,
+            'frqfim' => 88,
+            'notfim' => 7,
+            'notfim2' => null,
+            'pgmdis' => 'Computação introdutória.',
+            'pgmrsudis' => 'Introdução.',
+            'objdis' => 'Introduzir computação.',
+            'dtaatvdis' => '2020-01-01 00:00:00',
+            'dtadtvdis' => null,
+        ]);
+        $this->actingAs($user)
+            ->post(route('equivalencias.newreq-discipline-store', absolute: false), [
+                'requerida_coddis' => 'MAC0110',
+                'unidade_tipo' => 'USP',
+                'coddis' => 'MAC0110',
+                'ano' => 2023,
+                'semestre' => 1,
+            ]);
+
+        $draft = AproveitamentoRascunho::atualDoUsuario($user->id);
+        $disciplineId = $draft->disciplinas()->first()['id'];
+        $this->mockGraduacaoWithUspHistory($user->codpes, 'MAT0111', 2024, 2, [
+            'coddis' => 'MAT0111',
+            'verdis' => 4,
+            'nomdis' => 'Cálculo Diferencial Atualizado',
+            'creaul' => 6,
+            'cretrb' => 0,
+            'frqfim' => 95,
+            'notfim' => 9,
+            'notfim2' => null,
+            'pgmdis' => 'Novo programa.',
+            'pgmrsudis' => 'Novo resumo.',
+            'objdis' => 'Novo objetivo.',
+            'dtaatvdis' => '2021-01-01 00:00:00',
+            'dtadtvdis' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->put(route('equivalencias.newreq-discipline-update', $disciplineId, absolute: false), [
+                'requerida_coddis' => 'MAC0110',
+                'unidade_tipo' => 'USP',
+                'coddis' => 'MAT0111',
+                'ano' => 2024,
+                'semestre' => 2,
+            ])
+            ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
+
+        $this->assertDatabaseHas('disciplinas', [
+            'coddis' => 'MAT0111',
+            'nomdis' => 'Cálculo Diferencial Atualizado',
+            'verdis' => 4,
+            'frequencia' => 95,
+            'nota' => 9,
+            'programa' => 'Novo programa.',
+        ]);
+    }
+
     public function test_validation_error_reopens_originating_modal(): void
     {
         $user = $this->createAuthorizedUser(654323);
@@ -370,6 +514,51 @@ class AproveitamentoMultistepTest extends TestCase
     private function transcriptKey(string $unitName): string
     {
         return hash('sha256', Str::of($unitName)->ascii()->lower()->squish()->value());
+    }
+
+    private function mockGraduacaoWithUspHistory(int $codpes, string $coddis, int $ano, int $semestre, array $history): void
+    {
+        $graduacao = Mockery::mock(Graduacao::class);
+        foreach (['MAC0110', 'MAT0111'] as $knownCode) {
+            $graduacao->shouldReceive('buscarDisciplina')
+                ->with($knownCode)
+                ->andReturn([
+                    'coddis' => $knownCode,
+                    'nomdis' => $knownCode === 'MAC0110'
+                        ? 'Introdução à Computação'
+                        : 'Cálculo Diferencial',
+                ])
+                ->byDefault();
+            $graduacao->shouldReceive('disciplinaExiste')
+                ->with($knownCode)
+                ->andReturnTrue()
+                ->byDefault();
+        }
+        $graduacao->shouldReceive('buscarDadosDisciplina')
+            ->andReturn(null)
+            ->byDefault();
+        $graduacao->shouldReceive('buscarDisciplinaCursadaNoHistorico')
+            ->andReturnUsing(function (int $receivedCodpes, string $receivedCoddis, int $receivedAno, int $receivedSemestre) use (
+                $codpes,
+                $coddis,
+                $ano,
+                $semestre,
+                $history
+            ) {
+                if (
+                    $receivedCodpes === $codpes &&
+                    $receivedCoddis === $coddis &&
+                    $receivedAno === $ano &&
+                    $receivedSemestre === $semestre
+                ) {
+                    return $history;
+                }
+
+                return null;
+            })
+            ->byDefault();
+
+        $this->app->instance(Graduacao::class, $graduacao);
     }
 
     private function createExternalDraft(User $user): AproveitamentoRascunho

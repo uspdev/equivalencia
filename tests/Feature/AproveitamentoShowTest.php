@@ -107,21 +107,31 @@ class AproveitamentoShowTest extends TestCase
         $user = $this->createAuthorizedUser(700003);
         $this->createRequest($user, 12, [
             'ies' => 'USP',
+            'sglund' => 'IME',
             'coddis' => 'MAT0111',
             'nomdis' => 'Cálculo Diferencial',
             'ano' => 2024,
             'semestre' => 2,
-            'frequencia' => null,
-            'nota' => null,
-            'creditos' => null,
-            'carga_horaria' => null,
+            'frequencia' => 92.5,
+            'nota' => 8,
+            'creditos' => 5,
+            'carga_horaria' => 90,
+            'programa' => 'Limites, derivadas e integrais.',
+            'programa_resumo' => 'Cálculo em uma variável.',
+            'objetivo' => 'Apresentar fundamentos de cálculo.',
+            'disciplina_ativa' => true,
         ]);
 
         $this->actingAs($user)
             ->get(route('equivalencias.req-show', ['group' => 12], false))
             ->assertOk()
             ->assertSee('MAT0111 - Cálculo Diferencial')
-            ->assertSee('Nenhuma ementa enviada.')
+            ->assertSee('Dados da ementa salvos a partir do Replicado.')
+            ->assertSee('IME')
+            ->assertSee('Ativa')
+            ->assertSee('Apresentar fundamentos de cálculo.')
+            ->assertSee('Cálculo em uma variável.')
+            ->assertSee('Limites, derivadas e integrais.')
             ->assertSee('Nenhum histórico escolar foi enviado.');
     }
 

@@ -32,6 +32,85 @@ class Graduacao extends GraduacaoReplicado
     }
 
     /**
+     * Busca os dados cadastrais mais recentes da disciplina no Replicado.
+     * Complementa a busca do select, retornando campos de programa, créditos e situação da disciplina.
+     * Retorna null se o código for inválido, a consulta falhar ou nenhuma disciplina compatível for encontrada.
+     */
+    public function buscarDadosDisciplina(string $code): ?array
+    {
+        $code = Str::upper(trim($code));
+
+        if (! preg_match('/^[A-Z0-9]+$/', $code)) {
+            return null;
+        }
+
+        try {
+            $disciplinas = static::obterDisciplinas([$code]) ?? [];
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        foreach ($disciplinas as $disciplina) {
+            if (! is_array($disciplina)) {
+                continue;
+            }
+
+            if (Str::upper(trim((string) ($disciplina['coddis'] ?? ''))) === $code) {
+                return $disciplina;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Localiza uma disciplina cursada no histórico escolar do aluno para um período específico.
+     * Retorna dados de nota/frequência do HISTESCOLARGR junto com ementa e créditos da DISCIPLINAGR.
+     * Retorna null se os parâmetros forem inválidos ou não houver matrícula para aluno, disciplina, ano e semestre.
+     */
+    public function buscarDisciplinaCursadaNoHistorico(int $codpes, string $coddis, int $ano, int $semestre): ?array
+    {
+        $coddis = Str::upper(trim($coddis));
+
+        if ($codpes <= 0 || ! preg_match('/^[A-Z0-9]+$/', $coddis) || ! in_array($semestre, [1, 2], true)) {
+            return null;
+        }
+
+        $query = "SELECT TOP 1
+                H.codpes,
+                H.codpgm,
+                H.coddis,
+                H.verdis,
+                H.codtur,
+                H.notfim,
+                H.notfim2,
+                H.frqfim,
+                H.rstfim,
+                D.nomdis,
+                D.creaul,
+                D.cretrb,
+                D.dtaatvdis,
+                D.dtadtvdis,
+                D.objdis,
+                D.pgmdis,
+                D.pgmrsudis
+            FROM HISTESCOLARGR H
+            INNER JOIN DISCIPLINAGR D ON H.coddis = D.coddis AND H.verdis = D.verdis
+            WHERE H.codpes = convert(int, :codpes)
+                AND H.coddis = :coddis
+                AND SUBSTRING(H.codtur, 1, 4) = :ano
+                AND SUBSTRING(H.codtur, 5, 1) = :semestre
+            ORDER BY H.codpgm DESC, H.verdis DESC, H.dtacrihst DESC";
+
+        return DB::fetch($query, [
+            'codpes' => $codpes,
+            'coddis' => $coddis,
+            'ano' => (string) $ano,
+            'semestre' => (string) $semestre,
+        ]) ?: null;
+    }
+
+    /**
      * Lista os cursos e habilitações da unidade
      *
      * Refatorado de obterCursosHabilitacoes

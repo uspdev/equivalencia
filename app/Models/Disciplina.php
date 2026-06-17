@@ -23,6 +23,10 @@ class Disciplina extends Model
         'semestre',
         'frequencia',
         'nota',
+        'programa',
+        'programa_resumo',
+        'objetivo',
+        'disciplina_ativa',
         'criado_por_id',
         'alterado_por_id',
     ];
@@ -35,6 +39,7 @@ class Disciplina extends Model
         'semestre' => 'integer',
         'frequencia' => 'decimal:2',
         'nota' => 'decimal:2',
+        'disciplina_ativa' => 'boolean',
     ];
 
     // ── Relacionamentos ─────────────────────────────────────────────
@@ -123,10 +128,14 @@ class Disciplina extends Model
 
         $dados['nomdis'] = $disciplinaReplicado['nomdis'] ?? null;
         $dados['verdis'] = $disciplinaReplicado['verdis'] ?? null;
-        $dados['creditos'] = $disciplinaReplicado['creaul'] ?? null;
-        $dados['carga_horaria'] = $disciplinaReplicado['numhor'] ?? null;
+        $dados['creditos'] = static::creditosUsp($disciplinaReplicado);
+        $dados['carga_horaria'] = static::cargaHorariaUsp($disciplinaReplicado);
         $dados['sglund'] = $disciplinaReplicado['sglund'] ?? null;
         $dados['ies'] = 'USP';
+        $dados['programa'] = $disciplinaReplicado['pgmdis'] ?? null;
+        $dados['programa_resumo'] = $disciplinaReplicado['pgmrsudis'] ?? null;
+        $dados['objetivo'] = $disciplinaReplicado['objdis'] ?? null;
+        $dados['disciplina_ativa'] = static::disciplinaAtivaNoReplicado($disciplinaReplicado);
 
         return $dados;
     }
@@ -203,8 +212,8 @@ class Disciplina extends Model
                 'coddis' => $disciplinaReplicado['coddis'] ?? $coddis,
                 'nomdis' => $disciplinaReplicado['nomdis'] ?? null,
                 'ies' => 'USP',
-                'creditos' => $disciplinaReplicado['creaul'] ?? null,
-                'carga_horaria' => $disciplinaReplicado['numhor'] ?? null,
+                'creditos' => static::creditosUsp($disciplinaReplicado),
+                'carga_horaria' => static::cargaHorariaUsp($disciplinaReplicado),
                 'verdis' => $disciplinaReplicado['verdis'] ?? null,
                 // precisa ver como vai recuperar isso do replicado
                 // do modo que está, so funciona na importação de disciplinas pelo script
@@ -213,6 +222,10 @@ class Disciplina extends Model
                 'semestre' => $dados['semestre'] ?? null,
                 'frequencia' => $dados['frequencia'] ?? null,
                 'nota' => $dados['nota'] ?? null,
+                'programa' => $disciplinaReplicado['pgmdis'] ?? null,
+                'programa_resumo' => $disciplinaReplicado['pgmrsudis'] ?? null,
+                'objetivo' => $disciplinaReplicado['objdis'] ?? null,
+                'disciplina_ativa' => static::disciplinaAtivaNoReplicado($disciplinaReplicado),
             ];
         }
 
@@ -248,6 +261,18 @@ class Disciplina extends Model
             'creditos' => $isExternal ? $dados['creditos'] : null,
             'carga_horaria' => $isExternal ? $dados['carga_horaria'] : null,
         ]);
+
+        if (! $isExternal) {
+            $courseData = array_merge(
+                $courseData,
+                static::dadosUspCursadaDoRascunho(
+                    (int) $userId,
+                    Str::upper(trim($dados['coddis'])),
+                    (int) $dados['ano'],
+                    (int) $dados['semestre']
+                )
+            );
+        }
 
         $courseData['criado_por_id'] = $userId;
         $courseData['alterado_por_id'] = $userId;
@@ -456,27 +481,119 @@ class Disciplina extends Model
     private static function buscarNoReplicado(string $coddis): ?array
     {
         try {
-            $disciplinas = Graduacao::obterDisciplinas([$coddis]) ?? [];
+            $disciplinas = app(Graduacao::class)->buscarDadosDisciplina($coddis);
         } catch (\Throwable $e) {
             return null;
         }
 
-        if (! is_iterable($disciplinas)) {
+        return is_array($disciplinas) ? $disciplinas : null;
+    }
+
+    /**
+     * Monta os dados locais de uma disciplina USP cursada salva como rascunho.
+     * Usa o histórico do aluno como fonte obrigatória e combina com os dados cadastrais da disciplina quando disponíveis.
+     * Retorna array vazio quando o usuário não tem codpes ou não há histórico compatível no Replicado.
+     */
+    private static function dadosUspCursadaDoRascunho(int $userId, string $coddis, int $ano, int $semestre): array
+    {
+        $codpes = (int) (User::query()->whereKey($userId)->value('codpes') ?? 0);
+        $historico = null;
+        $disciplina = null;
+
+        if ($codpes > 0) {
+            try {
+                $historico = app(Graduacao::class)->buscarDisciplinaCursadaNoHistorico(
+                    $codpes,
+                    $coddis,
+                    $ano,
+                    $semestre
+                );
+            } catch (\Throwable $e) {
+                $historico = null;
+            }
+        }
+
+        if (! $historico) {
+            return [];
+        }
+
+        try {
+            $disciplina = app(Graduacao::class)->buscarDadosDisciplina($coddis);
+        } catch (\Throwable $e) {
+            $disciplina = null;
+        }
+
+        $dadosReplicado = array_merge(
+            is_array($disciplina) ? $disciplina : [],
+            $historico
+        );
+
+        return [
+            'coddis' => $dadosReplicado['coddis'] ?? $coddis,
+            'nomdis' => $dadosReplicado['nomdis'] ?? null,
+            'ies' => 'USP',
+            'creditos' => static::creditosUsp($dadosReplicado),
+            'carga_horaria' => static::cargaHorariaUsp($dadosReplicado),
+            'verdis' => $dadosReplicado['verdis'] ?? null,
+            'sglund' => $dadosReplicado['sglund'] ?? null,
+            'ano' => $ano,
+            'semestre' => $semestre,
+            'frequencia' => $dadosReplicado['frqfim'] ?? null,
+            'nota' => $dadosReplicado['notfim2'] ?? $dadosReplicado['notfim'] ?? null,
+            'programa' => $dadosReplicado['pgmdis'] ?? null,
+            'programa_resumo' => $dadosReplicado['pgmrsudis'] ?? null,
+            'objetivo' => $dadosReplicado['objdis'] ?? null,
+            'disciplina_ativa' => static::disciplinaAtivaNoReplicado($dadosReplicado),
+        ];
+    }
+
+    /**
+     * Calcula os créditos USP persistidos localmente a partir dos créditos aula e trabalho.
+     * Retorna null quando o Replicado não fornece nenhum dos dois componentes.
+     */
+    private static function creditosUsp(array $dados): ?int
+    {
+        $creaul = $dados['creaul'] ?? null;
+        $cretrb = $dados['cretrb'] ?? null;
+
+        if ($creaul === null && $cretrb === null) {
             return null;
         }
 
-        foreach ($disciplinas as $disciplina) {
-            if (! is_array($disciplina)) {
-                continue;
-            }
+        return (int) $creaul + (int) $cretrb;
+    }
 
-            if (($disciplina['coddis'] ?? null) === $coddis) {
-                return $disciplina;
-            }
+    /**
+     * Calcula a carga horária USP usando o campo explícito do Replicado quando existir.
+     * Na ausência dele, aplica 15 horas por crédito aula e 30 horas por crédito trabalho.
+     * Retorna null quando não há campo explícito nem créditos suficientes para calcular.
+     */
+    private static function cargaHorariaUsp(array $dados): ?int
+    {
+        if (isset($dados['numhor'])) {
+            return (int) $dados['numhor'];
         }
 
-        $first = $disciplinas[0] ?? null;
+        $creaul = $dados['creaul'] ?? null;
+        $cretrb = $dados['cretrb'] ?? null;
 
-        return is_array($first) ? $first : null;
+        if ($creaul === null && $cretrb === null) {
+            return null;
+        }
+
+        return ((int) $creaul * 15) + ((int) $cretrb * 30);
+    }
+
+    /**
+     * Deriva a situação ativa da disciplina pelas datas de ativação e desativação.
+     * Retorna null quando esses campos não vierem no payload do Replicado.
+     */
+    private static function disciplinaAtivaNoReplicado(array $dados): ?bool
+    {
+        if (! array_key_exists('dtaatvdis', $dados) && ! array_key_exists('dtadtvdis', $dados)) {
+            return null;
+        }
+
+        return ! empty($dados['dtaatvdis']) && empty($dados['dtadtvdis']);
     }
 }

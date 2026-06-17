@@ -92,6 +92,23 @@ class SaveDraftDisciplineRequest extends FormRequest
 
                 if (! $graduacao->disciplinaExiste($this->disciplineCode())) {
                     $validator->errors()->add('coddis', 'A disciplina USP selecionada não foi encontrada.');
+                    return;
+                }
+
+                if ($validator->errors()->has('ano') || $validator->errors()->has('semestre')) {
+                    return;
+                }
+
+                if (! $graduacao->buscarDisciplinaCursadaNoHistorico(
+                    (int) $this->user()->codpes,
+                    $this->disciplineCode(),
+                    (int) $this->input('ano'),
+                    (int) $this->input('semestre')
+                )) {
+                    $validator->errors()->add(
+                        'coddis',
+                        'A disciplina USP informada não foi encontrada no seu histórico escolar para o ano e semestre selecionados.'
+                    );
                 }
             },
         ];

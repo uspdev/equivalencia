@@ -593,6 +593,11 @@ class Aproveitamento extends Model
                 'creditos' => $cursada->creditos,
                 'carga_hr' => $cursada->carga_horaria,
                 'ies' => $cursada->ies,
+                'sglund' => $cursada->sglund,
+                'programa' => $cursada->programa,
+                'programa_resumo' => $cursada->programa_resumo,
+                'objetivo' => $cursada->objetivo,
+                'disciplina_ativa' => $cursada->disciplina_ativa,
             ];
         }
 
