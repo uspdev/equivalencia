@@ -16,9 +16,16 @@
     ]" />
 
     <div class="card-body">
+      <div class="row">
+        <div class="col-lg-6">
+          @include('aproveitamentos.partials.display.disciplina-desejada')
+        </div>
 
-      @include('aproveitamentos.partials.display.disciplina-desejada')
-      @include('aproveitamentos.partials.display.disciplinas-cursadas')
+        <div class="col-lg-6">
+          @include('aproveitamentos.partials.display.disciplinas-cursadas')
+        </div>
+      </div>
+
       @include('aproveitamentos.partials.forms.form-requerimento')
     </div>
   </div>
