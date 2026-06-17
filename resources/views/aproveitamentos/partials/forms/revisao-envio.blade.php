@@ -5,7 +5,7 @@
   </div>
   <div class="card-body">
     <p class="text-muted">
-      As disciplinas são salvas no rascunho. Os históricos escolares serão salvos ao enviar o requerimento.
+      Confira as disciplinas e o histórico escolar antes de enviar o requerimento.
     </p>
     <button type="submit" class="btn btn-success" @disabled(!$canSubmit)>
       Enviar requerimento

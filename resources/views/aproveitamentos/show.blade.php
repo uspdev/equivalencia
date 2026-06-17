@@ -70,7 +70,7 @@
 
       <div class="card">
         <div class="card-header">
-          <strong>Históricos escolares</strong>
+          <strong>Histórico escolar</strong>
         </div>
         <div class="card-body">
           @forelse ($show_data['historicos'] as $arquivo)

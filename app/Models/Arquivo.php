@@ -34,6 +34,8 @@ class Arquivo extends Model
 
     public static function criarHistorico(int $grupo, array $dadosArquivo): self
     {
+        static::removerHistoricosDoGrupo($grupo);
+
         return static::create([
             'grupo' => $grupo,
             'tipo' => static::TIPO_HISTORICO,

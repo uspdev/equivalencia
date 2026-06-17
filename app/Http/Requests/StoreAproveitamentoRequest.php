@@ -19,25 +19,17 @@ class StoreAproveitamentoRequest extends FormRequest
             return [];
         }
 
-        $rules = [
-            'historico_adicional' => ['nullable', 'file', 'mimes:pdf', 'max:10240'],
+        return [
+            'historico' => [$this->draft()->temHistorico() ? 'nullable' : 'required', 'file', 'mimes:pdf', 'max:10240'],
         ];
-
-        foreach ($this->draft()->gruposDeHistorico() as $group) {
-            $rules["historicos.{$group['key']}"] = ['required', 'file', 'mimes:pdf', 'max:10240'];
-        }
-
-        return $rules;
     }
 
     public function messages(): array
     {
         return [
-            'historicos.*.required' => 'Envie um histórico escolar para cada unidade externa.',
-            'historicos.*.mimes' => 'O histórico escolar deve ser um arquivo PDF.',
-            'historicos.*.max' => 'Cada histórico escolar pode ter no máximo 10 MB.',
-            'historico_adicional.mimes' => 'O histórico escolar adicional deve ser um arquivo PDF.',
-            'historico_adicional.max' => 'O histórico escolar adicional pode ter no máximo 10 MB.',
+            'historico.required' => 'Envie o histórico escolar do requerimento.',
+            'historico.mimes' => 'O histórico escolar deve ser um arquivo PDF.',
+            'historico.max' => 'O histórico escolar pode ter no máximo 10 MB.',
         ];
     }
 

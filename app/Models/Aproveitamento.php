@@ -314,16 +314,13 @@ class Aproveitamento extends Model
     /**
      * Finaliza um requerimento manual a partir das equivalências salvas como rascunho.
      *
-     * @param array<int, array{original_name: string, stored_path: string}> $histories Históricos já armazenados.
-     *
      * @return array{group: int, name: string}
      */
     public static function criarRequerimentoDoRascunho(
         AproveitamentoRascunho $draft,
-        array $histories,
         int $userId
     ): array {
-        return DB::transaction(function () use ($draft, $histories, $userId) {
+        return DB::transaction(function () use ($draft, $userId) {
             $group = $draft->grupo();
             $requiredName = $draft->nomeDaDisciplinaRequerida() ?? $draft->requerida_coddis;
 
@@ -334,13 +331,6 @@ class Aproveitamento extends Model
                     EquivalenciaEstado::PROCESSANDO,
                     $userId
                 ));
-
-            foreach ($histories as $history) {
-                Arquivo::criarHistorico($group, [
-                    'original_name' => $history['original_name'],
-                    'stored_path' => $history['stored_path'],
-                ]);
-            }
 
             return ['group' => $group, 'name' => $requiredName];
         });

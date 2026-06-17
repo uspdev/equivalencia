@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class AproveitamentoRascunho
 {
@@ -150,42 +149,30 @@ class AproveitamentoRascunho
     }
 
     /**
-     * Agrupa disciplinas externas por unidade para exigir um histórico por instituição.
+     * Retorna o histórico escolar salvo no rascunho, quando houver.
      */
-    public function gruposDeHistorico(): Collection
+    public function historico(): ?Arquivo
     {
-        return $this->disciplinas()
-            ->where('unidade_tipo', 'OUTRA')
-            ->groupBy(fn(array $discipline) => $this->chaveDoHistorico($discipline['unidade_nome']))
-            ->map(function (Collection $group, string $key) {
-                return [
-                    'key' => $key,
-                    'unit_name' => $group->first()['unidade_nome'],
-                    'disciplines' => $group->values(),
-                ];
-            })
-            ->values();
+        return $this->grupo
+            ? Arquivo::historicosDoGrupo((int) $this->grupo)->first()
+            : null;
+    }
+
+    public function temHistorico(): bool
+    {
+        return $this->historico() !== null;
     }
 
     /**
-     * Armazena os históricos obrigatórios por grupo e o histórico adicional opcional.
+     * Salva ou substitui o histórico escolar único do requerimento no rascunho.
      */
-    public function armazenarHistoricos(array $historicos, ?UploadedFile $historicoAdicional = null): array
+    public function salvarHistorico(UploadedFile $historico): Arquivo
     {
-        $arquivos = $this->gruposDeHistorico()
-            ->map(fn(array $group) => Arquivo::armazenarUploadDoAproveitamento(
-                (int) $this->grupo,
-                $historicos[$group['key']],
-                'historicos'
-            ))
-            ->values()
-            ->all();
+        $this->garantirRequerida();
 
-        if ($historicoAdicional) {
-            $arquivos[] = Arquivo::armazenarUploadDoAproveitamento((int) $this->grupo, $historicoAdicional, 'historicos');
-        }
+        $dadosArquivo = Arquivo::armazenarUploadDoAproveitamento((int) $this->grupo, $historico, 'historicos');
 
-        return $arquivos;
+        return Arquivo::criarHistorico((int) $this->grupo, $dadosArquivo);
     }
 
     /**
@@ -330,17 +317,4 @@ class AproveitamentoRascunho
         ];
     }
 
-    /**
-     * Gera uma chave estável para agrupar históricos pela unidade externa informada.
-     */
-    private function chaveDoHistorico(string $unitName): string
-    {
-        $normalized = Str::of($unitName)
-            ->ascii()
-            ->lower()
-            ->squish()
-            ->value();
-
-        return hash('sha256', $normalized);
-    }
 }

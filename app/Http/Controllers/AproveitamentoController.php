@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\SaveDraftDisciplineRequest;
+use App\Http\Requests\SaveHistoryRequest;
 use App\Http\Requests\SaveRequiredDisciplineRequest;
 use App\Http\Requests\StoreAproveitamentoRequest;
 use App\Models\Aproveitamento;
 use App\Models\AproveitamentoRascunho;
 use App\Models\Arquivo;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -35,7 +37,7 @@ class AproveitamentoController extends Controller
             'draft' => $draft,
             'requiredDisciplineName' => $draft->nomeDaDisciplinaRequerida(),
             'disciplines' => $disciplines,
-            'transcriptGroups' => $draft->gruposDeHistorico(),
+            'history' => $draft->historico(),
         ]);
     }
 
@@ -45,7 +47,7 @@ class AproveitamentoController extends Controller
 
         return redirect()
             ->route('equivalencias.newreq-create')
-            ->with('alert-success', 'Disciplina desejada salva no rascunho.');
+            ->with('alert-success', 'Disciplina desejada salva.');
     }
 
     public function createDiscipline(): View
@@ -72,7 +74,7 @@ class AproveitamentoController extends Controller
 
         return redirect()
             ->route('equivalencias.newreq-create')
-            ->with('alert-success', 'Disciplina adicionada ao rascunho.');
+            ->with('alert-success', 'Disciplina adicionada.');
     }
 
     public function editDiscipline(string $disciplineId): View
@@ -98,7 +100,7 @@ class AproveitamentoController extends Controller
 
         return redirect()
             ->route('equivalencias.newreq-create')
-            ->with('alert-success', 'Disciplina atualizada no rascunho.');
+            ->with('alert-success', 'Disciplina atualizada.');
     }
 
     public function destroyDiscipline(string $disciplineId): RedirectResponse
@@ -107,7 +109,22 @@ class AproveitamentoController extends Controller
 
         return redirect()
             ->route('equivalencias.newreq-create')
-            ->with('alert-success', 'Disciplina removida do rascunho.');
+            ->with('alert-success', 'Disciplina removida.');
+    }
+
+    public function saveHistory(SaveHistoryRequest $request): JsonResponse|RedirectResponse
+    {
+        $history = $request->draft()->salvarHistorico($request->file('historico'));
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Histórico escolar enviado.',
+                'fileName' => $history->nome,
+            ]);
+        }
+
+        return redirect()
+            ->route('equivalencias.newreq-create');
     }
 
     /**
@@ -119,13 +136,13 @@ class AproveitamentoController extends Controller
     public function store(StoreAproveitamentoRequest $request): RedirectResponse
     {
         $draft = $request->draft();
-        $histories = $draft->armazenarHistoricos(
-            $request->file('historicos', []),
-            $request->file('historico_adicional')
-        );
+
+        if ($request->hasFile('historico')) {
+            $draft->salvarHistorico($request->file('historico'));
+        }
+
         $result = Aproveitamento::criarRequerimentoDoRascunho(
             $draft,
-            $histories,
             (int) $request->user()->id
         );
 
