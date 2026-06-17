@@ -67,9 +67,7 @@ $right_menu = [
         'key' => 'uspdev-forms',
     ],
     [
-        'text' => '<span class="text-danger">Workflows</span>',
-        'can' => 'admin',
-        'url' => 'uspdev-workflow/listdefinitions'
+        'key' => 'uspdev-workflow',
     ],
     [
         // menu utilizado para views da biblioteca senhaunica-socialite.
