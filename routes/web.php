@@ -14,59 +14,84 @@ use Illuminate\Support\Facades\Route;
 | contains the "web" middleware group. Now create something great!
 |
 */
+
+// ==========================================
+// BLOCO 1: PAGINA INICIAL
+// ==========================================
+// Direciona a raiz da aplicacao para a tela inicial do fluxo de equivalencias.
 Route::get('/', [AproveitamentoController::class, 'home'])->name('workflows.index');
 
-Route::middleware(['auth'])->prefix('equivalencias')->group(function () {
-    Route::middleware('can:equivalencias')->group(function () {
-        Route::get('/newreq', [AproveitamentoController::class, 'create'])->name('equivalencias.newreq-create');
-        Route::post('/newreq/requerida', [AproveitamentoController::class, 'saveRequiredDiscipline'])
-            ->name('equivalencias.newreq-required');
-        Route::get('/newreq/disciplinas/create', [AproveitamentoController::class, 'createDiscipline'])
-            ->name('equivalencias.newreq-discipline-create');
-        Route::post('/newreq/disciplinas', [AproveitamentoController::class, 'storeDiscipline'])
-            ->name('equivalencias.newreq-discipline-store');
-        Route::get('/newreq/disciplinas/{disciplineId}/edit', [AproveitamentoController::class, 'editDiscipline'])
-            ->name('equivalencias.newreq-discipline-edit');
-        Route::put('/newreq/disciplinas/{disciplineId}', [AproveitamentoController::class, 'updateDiscipline'])
-            ->name('equivalencias.newreq-discipline-update');
-        Route::delete('/newreq/disciplinas/{disciplineId}', [AproveitamentoController::class, 'destroyDiscipline'])
-            ->name('equivalencias.newreq-discipline-destroy');
-        Route::post('/newreq', [AproveitamentoController::class, 'store'])->name('equivalencias.newreq-store');
+// ==========================================
+// BLOCO 2: EQUIVALENCIAS
+// ==========================================
+// Agrupa as rotas protegidas por autenticacao e permissao de acesso ao modulo.
+Route::middleware(['auth', 'can:equivalencias'])
+    ->prefix('equivalencias')
+    ->name('equivalencias.')
+    ->group(function () {
 
-        Route::get('/', [AproveitamentoAutomaticoController::class, 'index'])
-            ->name('equivalencias.index');
-        Route::get('/{codcur}/{codhab}', [AproveitamentoAutomaticoController::class, 'show'])
-            ->name('equivalencias.show')
-            ->whereNumber('codcur')
-            ->whereNumber('codhab');
-        Route::post('/equivalencia/estado-edicao', [AproveitamentoAutomaticoController::class, 'saveEditModeState'])
-            ->name('equivalencias.save-edit-mode-state');
-        Route::post('/{codcur}/{codhab}', [AproveitamentoAutomaticoController::class, 'store'])
-            ->name('equivalencias.store')
-            ->whereNumber('codcur')
-            ->whereNumber('codhab');
-        Route::put('/{codcur}/{codhab}/{equivalencia}', [AproveitamentoAutomaticoController::class, 'update'])
-            ->name('equivalencias.update')->whereNumber('codcur')->whereNumber('codhab');
-        Route::delete('/{codcur}/{codhab}/{equivalencia}', [AproveitamentoAutomaticoController::class, 'destroy'])
-            ->name('equivalencias.destroy');
-        Route::post('/{codcur}/{codhab}/{equivalencia}/equivalencias', [AproveitamentoAutomaticoController::class, 'addEquivalencia'])
-            ->name('equivalencias.add-equivalencia');
-        Route::put('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [AproveitamentoAutomaticoController::class, 'updateEquivalencia'])
-            ->name('equivalencias.update-equivalencia');
-        Route::delete('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', [AproveitamentoAutomaticoController::class, 'destroyEquivalencia'])
-            ->name('equivalencias.destroy-equivalencia');
-        Route::delete('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}/grupo', [AproveitamentoAutomaticoController::class, 'destroyEquivalenciaGrupo'])
-            ->name('equivalencias.destroy-equivalencia-grupo');
+        // ==========================================
+        // BLOCO 2.1: NOVO REQUERIMENTO
+        // ==========================================
+        // Mantem o fluxo de criacao de requerimentos, disciplinas e historico.
+        Route::controller(AproveitamentoController::class)->group(function () {
+            Route::get('/newreq', 'create')->name('newreq-create');
+            Route::post('/newreq/requerida', 'saveRequiredDiscipline')->name('newreq-required');
+            Route::get('/newreq/disciplinas/create', 'createDiscipline')->name('newreq-discipline-create');
+            Route::post('/newreq/disciplinas', 'storeDiscipline')->name('newreq-discipline-store');
+            Route::get('/newreq/disciplinas/{disciplineId}/edit', 'editDiscipline')->name('newreq-discipline-edit');
+            Route::put('/newreq/disciplinas/{disciplineId}', 'updateDiscipline')->name('newreq-discipline-update');
+            Route::delete('/newreq/disciplinas/{disciplineId}', 'destroyDiscipline')->name('newreq-discipline-destroy');
+            Route::post('/newreq/historico', 'saveHistory')->name('newreq-history');
+            Route::post('/newreq', 'store')->name('newreq-store');
+        });
 
-        Route::get('/index',[AproveitamentoController::class, 'index'])->name('equivalencias.req-index');
-        Route::get('/req/show/{group}',[AproveitamentoController::class, 'show'])->name('equivalencias.req-show');
-        Route::get('/req/show/{group}/arquivos/{arquivo}', [AproveitamentoController::class, 'showFile'])
-            ->name('equivalencias.req-file');
-        Route::get('/req/destroy/{group}',[AproveitamentoController::class, 'destroy'])->name('equivalencias.req-destroy');
+        // ==========================================
+        // BLOCO 2.2: APROVEITAMENTO AUTOMATICO
+        // ==========================================
+        // Rotas de listagem, exibicao e persistencia das equivalencias automaticas.
+        Route::controller(AproveitamentoAutomaticoController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/{codcur}/{codhab}', 'show')
+                ->name('show')
+                ->whereNumber('codcur')
+                ->whereNumber('codhab');
+            Route::post('/equivalencia/estado-edicao', 'saveEditModeState')->name('save-edit-mode-state');
+            Route::post('/{codcur}/{codhab}', 'store')
+                ->name('store')
+                ->whereNumber('codcur')
+                ->whereNumber('codhab');
+            Route::put('/{codcur}/{codhab}/{equivalencia}', 'update')
+                ->name('update')
+                ->whereNumber('codcur')
+                ->whereNumber('codhab');
+            Route::delete('/{codcur}/{codhab}/{equivalencia}', 'destroy')->name('destroy');
+            Route::post('/{codcur}/{codhab}/{equivalencia}/equivalencias', 'addEquivalencia')
+                ->name('add-equivalencia');
+            Route::put('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', 'updateEquivalencia')
+                ->name('update-equivalencia');
+            Route::delete('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}', 'destroyEquivalencia')
+                ->name('destroy-equivalencia');
+            Route::delete('/{codcur}/{codhab}/{equivalencia}/equivalencias/{equivalenciaFilha}/grupo', 'destroyEquivalenciaGrupo')
+                ->name('destroy-equivalencia-grupo');
+        });
+
+        // ==========================================
+        // BLOCO 2.3: REQUERIMENTOS
+        // ==========================================
+        // Rotas de consulta, visualizacao de arquivos e remocao de requerimentos.
+        Route::controller(AproveitamentoController::class)->group(function () {
+            Route::get('/index', 'index')->name('req-index');
+            Route::get('/req/show/{group}', 'show')->name('req-show');
+            Route::get('/req/show/{group}/arquivos/{arquivo}', 'showFile')->name('req-file');
+            Route::get('/req/destroy/{group}', 'destroy')->name('req-destroy');
+        });
     });
-});
 
-// Permite usar Gate::check('user')na view 404
+// ==========================================
+// BLOCO 3: FALLBACK
+// ==========================================
+// Permite usar Gate::check('user') na view 404.
 Route::fallback(function () {
     return view('errors.404');
 });
