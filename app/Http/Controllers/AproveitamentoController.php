@@ -16,6 +16,16 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AproveitamentoController extends Controller
 {
+    public function home()
+    {
+        return view('home');
+    }
+
+    /**
+     * Exibe o formulário para criação de uma requisição de equivalência,
+     * gerando o html dinâmicamente a partir da biblioteca de formulários.
+     * @return \Illuminate\Contracts\View\View
+     */
     public function create(): View
     {
         $draft = $this->currentDraft();
