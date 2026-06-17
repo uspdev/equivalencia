@@ -8,4 +8,8 @@
       ['label' => 'Meus requerimentos', 'url' => route('equivalencias.req-index')],
       ['label' => $disciplinaRequerida],
   ]"
-/>
+>
+  <x-slot:actions>
+    <span class="badge badge-warning">{{ $show_data['estado'] ?: 'Enviado' }}</span>
+  </x-slot:actions>
+</x-page-header>

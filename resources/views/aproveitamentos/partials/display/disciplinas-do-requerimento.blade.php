@@ -1,25 +1,17 @@
-{{-- Renderiza a tabela com as disciplinas cursadas de um requerimento enviado. --}}
-<div class="card card-header card-header-sticky mb-0">
-  <div style="overflow-x: auto;">
-    <table class="table mb-0 mt-0 text-center">
-      <thead>
-        <tr>
-          <th class="text-info"><strong>Código</strong></th>
-          <th class="text-warning"><strong>Nome</strong></th>
-          <th class="text-secondary "><strong>Semestre</strong></th>
-          <th class="text-danger "><strong>Ano</strong></th>
-          <th class=""><strong>Frequência</strong></th>
-          <th class=""><strong>Nota</strong></th>
-          <th class=""><strong>Créditos</strong></th>
-          <th class=""><span class="text-nowrap"><strong>Carga horária</strong></span></th>
-          <th class=""><strong>IES</strong></th>
-        </tr>
-      </thead>
-      <tbody>
-        @foreach ($show_data['cursadas'] as $cursada)
-          @include('aproveitamentos.partials.display.disciplina-do-requerimento')
-        @endforeach
-      </tbody>
-    </table>
+{{-- Lista as disciplinas cursadas informadas no requerimento enviado. --}}
+<div class="card mb-4">
+  <div class="card-header d-flex align-items-center justify-content-between">
+    <strong>Disciplinas cursadas</strong>
+    <span class="badge badge-outline-secondary">{{ count($show_data['cursadas']) }}</span>
+  </div>
+  <div class="card-body">
+    @forelse ($show_data['cursadas'] as $cursada)
+      @include('aproveitamentos.partials.display.disciplina-do-requerimento', [
+          'position' => $loop->iteration,
+          'group' => $show_data['grupo'],
+      ])
+    @empty
+      <p class="alert alert-light border text-center mb-0">Nenhuma disciplina cursada foi informada.</p>
+    @endforelse
   </div>
 </div>

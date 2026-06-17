@@ -6,9 +6,8 @@
     </a>
   </td>
   <td class="text-center">
-    <span class="badge badge-warning">{{ $reqinfo['estado'] ?? 'PLACEHOLDERS_NULO' }}</span>
+    <span class="badge badge-warning">{{ $reqinfo['estado'] ?? 'Sem estado' }}</span>
   </td>
-  <td class="text-center">{{ $reqinfo['grupo'] }}</td>
   <td class="text-center">
     <a href="{{ route('equivalencias.req-destroy', ['group' => $reqinfo['grupo']]) }}" class="btn btn-sm btn-danger">
       Remover

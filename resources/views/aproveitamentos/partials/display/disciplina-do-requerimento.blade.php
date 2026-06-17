@@ -1,12 +1,64 @@
-{{-- Renderiza uma linha da tabela de disciplinas cursadas do requerimento. --}}
-<tr>
-  <td class="text-info ">{{ $cursada['coddis'] }}</td>
-  <td class="text-warning ">{{ $cursada['nomdis'] }}</td>
-  <td class="text-secondary ">{{ $cursada['semestre'] }}°</td>
-  <td class="text-danger ">{{ $cursada['ano'] }}</td>
-  <td class="">{{ $cursada['freq'] }}%</td>
-  <td class="">{{ $cursada['nota'] }}</td>
-  <td class="">{{ $cursada['creditos'] }}</td>
-  <td class="">{{ $cursada['carga_hr'] }}</td>
-  <td class="">{{ $cursada['ies'] }}</td>
-</tr>
+{{-- Exibe os dados de uma disciplina cursada informada no requerimento. --}}
+<div class="card border-left border-primary mb-3">
+  <div class="card-header d-flex flex-column flex-md-row justify-content-between">
+    <strong>Disciplina {{ $position }}: {{ $cursada['coddis'] }} - {{ $cursada['nomdis'] }}</strong>
+    <span class="text-muted small mt-1 mt-md-0">{{ $cursada['ies'] ?: 'Instituição não informada' }}</span>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4 mb-3">
+        @include('aproveitamentos.partials.display.show-info-item', [
+            'label' => 'Instituição',
+            'value' => $cursada['ies'],
+        ])
+      </div>
+      <div class="col-md-2 col-6 mb-3">
+        @include('aproveitamentos.partials.display.show-info-item', [
+            'label' => 'Ano',
+            'value' => $cursada['ano'],
+        ])
+      </div>
+      <div class="col-md-2 col-6 mb-3">
+        @include('aproveitamentos.partials.display.show-info-item', [
+            'label' => 'Semestre',
+            'value' => $cursada['semestre'] ? $cursada['semestre'] . 'º' : null,
+        ])
+      </div>
+      <div class="col-md-2 col-6 mb-3">
+        @include('aproveitamentos.partials.display.show-info-item', [
+            'label' => 'Frequência',
+            'value' => $cursada['freq'] !== null ? $cursada['freq'] . '%' : null,
+        ])
+      </div>
+      <div class="col-md-2 col-6 mb-3">
+        @include('aproveitamentos.partials.display.show-info-item', [
+            'label' => 'Nota',
+            'value' => $cursada['nota'],
+        ])
+      </div>
+      <div class="col-md-3 mb-3 mb-md-0">
+        @include('aproveitamentos.partials.display.show-info-item', [
+            'label' => 'Créditos',
+            'value' => $cursada['creditos'],
+        ])
+      </div>
+      <div class="col-md-3 mb-3 mb-md-0">
+        @include('aproveitamentos.partials.display.show-info-item', [
+            'label' => 'Carga horária',
+            'value' => $cursada['carga_hr'] !== null ? $cursada['carga_hr'] . ' horas' : null,
+        ])
+      </div>
+      <div class="col-md-6">
+        <span class="d-block text-muted small mb-1">Ementa</span>
+        @if ($cursada['ementa_file'])
+          @include('aproveitamentos.partials.show-arquivo', [
+              'arquivo' => $cursada['ementa_file'],
+              'group' => $group,
+          ])
+        @else
+          <span class="text-muted">Nenhuma ementa enviada.</span>
+        @endif
+      </div>
+    </div>
+  </div>
+</div>
