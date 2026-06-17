@@ -72,14 +72,10 @@ class Graduacao extends GraduacaoReplicado
     {
         $coddis = Str::upper(trim($coddis));
 
-        if ($codpes <= 0 || ! preg_match('/^[A-Z0-9]+$/', $coddis) || ! in_array($semestre, [1, 2], true)) {
-            return null;
-        }
-
         $query = "SELECT TOP 1
                 H.codpes,
                 H.codpgm,
-                H.coddis,
+                H.coddis, 
                 H.verdis,
                 H.codtur,
                 H.notfim,
