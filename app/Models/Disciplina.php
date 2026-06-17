@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Replicado\Graduacao;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Disciplina extends Model
 {
@@ -147,6 +148,29 @@ class Disciplina extends Model
     }
 
     /**
+     * Cria ou atualiza a disciplina requerida usada em um rascunho de aproveitamento.
+     */
+    public static function salvarRequeridaDoRascunho(
+        string $coddis,
+        int $userId,
+        ?Disciplina $disciplina = null
+    ): Disciplina {
+        $dados = static::dadosDaRequeridaPorCoddis($coddis);
+        $dados['nomdis'] ??= $coddis;
+        $dados['ies'] = 'USP';
+        $dados['criado_por_id'] = $userId;
+        $dados['alterado_por_id'] = $userId;
+
+        if ($disciplina) {
+            $disciplina->update($dados);
+
+            return $disciplina;
+        }
+
+        return static::create($dados);
+    }
+
+    /**
      * Garante que a disciplina requerida exista e tenha placeholder no contexto automático.
      */
     public static function garantirRequeridaAutomaticaNoContexto(
@@ -207,6 +231,31 @@ class Disciplina extends Model
     }
 
     /**
+     * Normaliza os dados validados da cursada no rascunho de aproveitamento.
+     */
+    public static function dadosDaCursadaDoRascunho(array $dados, int $userId): array
+    {
+        $isExternal = $dados['unidade_tipo'] === 'OUTRA';
+        $courseData = static::dadosDaCursadaPorFormulario([
+            'is_usp' => ! $isExternal,
+            'coddis' => Str::upper(trim($dados['coddis'])),
+            'nome_disciplina' => $isExternal ? trim($dados['nomdis']) : null,
+            'ies' => $isExternal ? trim($dados['unidade_nome']) : 'USP',
+            'ano' => $dados['ano'],
+            'semestre' => $dados['semestre'],
+            'frequencia' => $isExternal ? $dados['frequencia'] : null,
+            'nota' => $isExternal ? $dados['nota'] : null,
+            'creditos' => $isExternal ? $dados['creditos'] : null,
+            'carga_horaria' => $isExternal ? $dados['carga_horaria'] : null,
+        ]);
+
+        $courseData['criado_por_id'] = $userId;
+        $courseData['alterado_por_id'] = $userId;
+
+        return $courseData;
+    }
+
+    /**
      * Busca uma disciplina USP no Replicado pelo código informado.
      */
     public static function disciplinaUspNoReplicado(?string $coddis): ?array
@@ -229,11 +278,27 @@ class Disciplina extends Model
     }
 
     /**
+     * Cria uma disciplina cursada a partir dos dados validados do rascunho.
+     */
+    public static function criarCursadaDoRascunho(array $dados, int $userId): Disciplina
+    {
+        return static::create(static::dadosDaCursadaDoRascunho($dados, $userId));
+    }
+
+    /**
      * Atualiza esta disciplina cursada com dados normalizados do formulário.
      */
     public function atualizarCursadaPorFormulario(array $dados): void
     {
         $this->update(static::dadosDaCursadaPorFormulario($dados));
+    }
+
+    /**
+     * Atualiza esta cursada a partir dos dados validados do rascunho.
+     */
+    public function atualizarCursadaDoRascunho(array $dados, int $userId): void
+    {
+        $this->update(static::dadosDaCursadaDoRascunho($dados, $userId));
     }
 
     /**

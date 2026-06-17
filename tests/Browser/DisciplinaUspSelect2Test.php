@@ -2,7 +2,8 @@
 
 namespace Tests\Browser;
 
-use App\Models\AproveitamentoRascunho;
+use App\Enums\EquivalenciaEstado;
+use App\Models\Aproveitamento;
 use Laravel\Dusk\Browser;
 use Tests\DuskTestCase;
 
@@ -11,7 +12,9 @@ class DisciplinaUspSelect2Test extends DuskTestCase
     public function test_disciplina_usp_select_fetches_results(): void
     {
         $user = self::getUser('admin');
-        AproveitamentoRascunho::where('user_id', $user->id)->delete();
+        Aproveitamento::where('criado_por_id', $user->id)
+            ->where('estado', EquivalenciaEstado::RASCUNHO->value)
+            ->delete();
 
         $this->browse(function (Browser $browser) {
             $browser
@@ -29,7 +32,9 @@ class DisciplinaUspSelect2Test extends DuskTestCase
     public function test_disciplina_usp_select_works_inside_create_modal(): void
     {
         $user = self::getUser('admin');
-        AproveitamentoRascunho::where('user_id', $user->id)->delete();
+        Aproveitamento::where('criado_por_id', $user->id)
+            ->where('estado', EquivalenciaEstado::RASCUNHO->value)
+            ->delete();
 
         $this->browse(function (Browser $browser) use ($user) {
             $browser

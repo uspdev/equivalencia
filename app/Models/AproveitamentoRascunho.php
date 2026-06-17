@@ -2,44 +2,37 @@
 
 namespace App\Models;
 
-use App\Replicado\Graduacao;
+use App\Enums\EquivalenciaEstado;
+use App\Enums\EquivalenciaTipo;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-class AproveitamentoRascunho extends Model
+class AproveitamentoRascunho
 {
     public const LIMITE_DISCIPLINAS = 3;
 
-    protected $table = 'aproveitamento_rascunhos';
+    public ?string $requerida_coddis = null;
 
-    protected $fillable = [
-        'user_id',
-        'requerida_coddis',
-        'disciplinas',
-    ];
+    private ?int $grupo = null;
 
-    protected $casts = [
-        'disciplinas' => 'array',
-    ];
+    private ?Disciplina $requerida = null;
 
-    public function user()
+    private ?Collection $equivalencias = null;
+
+    private function __construct(private readonly int $userId)
     {
-        return $this->belongsTo(User::class);
+        $this->carregar();
     }
 
     /**
-     * Retorna o rascunho ativo do usuário ou cria um novo rascunho vazio.
+     * Retorna o rascunho ativo do usuário.
      */
     public static function atualDoUsuario(int $userId): self
     {
-        return static::firstOrCreate(
-            ['user_id' => $userId],
-            ['disciplinas' => []]
-        );
+        return new self($userId);
     }
 
     /**
@@ -47,7 +40,9 @@ class AproveitamentoRascunho extends Model
      */
     public function disciplinas(): Collection
     {
-        return collect($this->disciplinas ?? []);
+        return $this->equivalenciasReais()
+            ->map(fn(Aproveitamento $equivalencia) => $this->dadosDaEquivalencia($equivalencia))
+            ->values();
     }
 
     /**
@@ -66,10 +61,10 @@ class AproveitamentoRascunho extends Model
     public function disciplinaPorIdOrFail(string $disciplineId): array
     {
         $discipline = $this->disciplinas()
-            ->first(fn (array $item) => ($item['id'] ?? null) === $disciplineId);
+            ->first(fn(array $item) => ($item['id'] ?? null) === $disciplineId);
 
         if (! $discipline) {
-            throw (new ModelNotFoundException())->setModel(static::class, [$disciplineId]);
+            throw (new ModelNotFoundException())->setModel(Aproveitamento::class, [$disciplineId]);
         }
 
         return $discipline;
@@ -80,7 +75,25 @@ class AproveitamentoRascunho extends Model
      */
     public function salvarDisciplinaRequerida(string $coddis): void
     {
-        $this->update(['requerida_coddis' => $coddis]);
+        DB::transaction(function () use ($coddis) {
+            $oldRequired = $this->requerida;
+            $required = Disciplina::salvarRequeridaDoRascunho($coddis, $this->userId, $oldRequired);
+
+            $group = $this->grupo ?? Aproveitamento::proximoGrupo();
+            $drafts = $this->equivalenciasDoRascunho();
+
+            if ($drafts->isEmpty()) {
+                $this->criarVinculoDoRascunho($group, $required->id, $required->id);
+            } else {
+                $this->atualizarRequeridaDosVinculos($drafts, $required);
+            }
+
+            if ($oldRequired && $oldRequired->id !== $required->id) {
+                $oldRequired->removerSeOrfa();
+            }
+        });
+
+        $this->carregar();
     }
 
     /**
@@ -88,10 +101,16 @@ class AproveitamentoRascunho extends Model
      */
     public function adicionarDisciplina(array $dados, ?UploadedFile $ementa = null): void
     {
-        $disciplinas = $this->disciplinas()->all();
-        $disciplinas[] = $this->dadosDaDisciplina($dados, null, $ementa);
+        $this->garantirRequerida();
 
-        $this->update(['disciplinas' => $disciplinas]);
+        DB::transaction(function () use ($dados, $ementa) {
+            $course = Disciplina::criarCursadaDoRascunho($dados, $this->userId);
+            $equivalence = $this->criarVinculoDoRascunho($this->grupo, $this->requerida->id, $course->id);
+
+            Arquivo::salvarEmentaDaEquivalencia($equivalence, $dados['unidade_tipo'], $ementa);
+        });
+
+        $this->carregar();
     }
 
     /**
@@ -99,15 +118,20 @@ class AproveitamentoRascunho extends Model
      */
     public function atualizarDisciplina(string $disciplineId, array $dados, ?UploadedFile $ementa = null): void
     {
-        $current = $this->disciplinaPorIdOrFail($disciplineId);
-        $updated = $this->dadosDaDisciplina($dados, $current, $ementa);
+        $equivalence = $this->equivalenciaPorIdOrFail($disciplineId);
 
-        $disciplinas = $this->disciplinas()
-            ->map(fn (array $discipline) => $discipline['id'] === $disciplineId ? $updated : $discipline)
-            ->values()
-            ->all();
+        DB::transaction(function () use ($equivalence, $dados, $ementa) {
+            if (! $equivalence->cursada) {
+                throw (new ModelNotFoundException())->setModel(Disciplina::class, [$equivalence->cursada_id]);
+            }
 
-        $this->update(['disciplinas' => $disciplinas]);
+            $equivalence->cursada->atualizarCursadaDoRascunho($dados, $this->userId);
+            $equivalence->update(['alterado_por_id' => $this->userId]);
+
+            Arquivo::salvarEmentaDaEquivalencia($equivalence, $dados['unidade_tipo'], $ementa);
+        });
+
+        $this->carregar();
     }
 
     /**
@@ -115,18 +139,14 @@ class AproveitamentoRascunho extends Model
      */
     public function removerDisciplina(string $disciplineId): void
     {
-        $discipline = $this->disciplinaPorIdOrFail($disciplineId);
+        $equivalence = $this->equivalenciaPorIdOrFail($disciplineId);
 
-        if (isset($discipline['ementa']['path'])) {
-            Storage::delete($discipline['ementa']['path']);
-        }
+        DB::transaction(function () use ($equivalence) {
+            Arquivo::removerDaEquivalencia($equivalence);
+            $equivalence->removerELimparCursada();
+        });
 
-        $disciplinas = $this->disciplinas()
-            ->reject(fn (array $item) => $item['id'] === $disciplineId)
-            ->values()
-            ->all();
-
-        $this->update(['disciplinas' => $disciplinas]);
+        $this->carregar();
     }
 
     /**
@@ -136,7 +156,7 @@ class AproveitamentoRascunho extends Model
     {
         return $this->disciplinas()
             ->where('unidade_tipo', 'OUTRA')
-            ->groupBy(fn (array $discipline) => $this->chaveDoHistorico($discipline['unidade_nome']))
+            ->groupBy(fn(array $discipline) => $this->chaveDoHistorico($discipline['unidade_nome']))
             ->map(function (Collection $group, string $key) {
                 return [
                     'key' => $key,
@@ -153,7 +173,8 @@ class AproveitamentoRascunho extends Model
     public function armazenarHistoricos(array $historicos, ?UploadedFile $historicoAdicional = null): array
     {
         $arquivos = $this->gruposDeHistorico()
-            ->map(fn (array $group) => $this->armazenarArquivo(
+            ->map(fn(array $group) => Arquivo::armazenarUploadDoAproveitamento(
+                (int) $this->grupo,
                 $historicos[$group['key']],
                 'historicos'
             ))
@@ -161,7 +182,7 @@ class AproveitamentoRascunho extends Model
             ->all();
 
         if ($historicoAdicional) {
-            $arquivos[] = $this->armazenarArquivo($historicoAdicional, 'historicos');
+            $arquivos[] = Arquivo::armazenarUploadDoAproveitamento((int) $this->grupo, $historicoAdicional, 'historicos');
         }
 
         return $arquivos;
@@ -172,66 +193,140 @@ class AproveitamentoRascunho extends Model
      */
     public function nomeDaDisciplinaRequerida(): ?string
     {
-        if (! $this->requerida_coddis) {
-            return null;
-        }
-
-        return app(Graduacao::class)->buscarDisciplina($this->requerida_coddis)['nomdis'] ?? null;
+        return $this->requerida?->nomdis;
     }
 
-    /**
-     * Normaliza os dados validados de uma disciplina cursada para armazenamento no rascunho.
-     */
-    private function dadosDaDisciplina(
-        array $dados,
-        ?array $current = null,
-        ?UploadedFile $ementa = null
-    ): array {
-        $isExternal = $dados['unidade_tipo'] === 'OUTRA';
-        $code = Str::upper(trim($dados['coddis']));
-        $uspDiscipline = $isExternal ? null : app(Graduacao::class)->buscarDisciplina($code);
-
-        $discipline = [
-            'id' => $current['id'] ?? (string) Str::uuid(),
-            'unidade_tipo' => $dados['unidade_tipo'],
-            'unidade_nome' => $isExternal ? trim($dados['unidade_nome']) : 'USP',
-            'coddis' => $code,
-            'nomdis' => $isExternal
-                ? trim($dados['nomdis'])
-                : trim((string) $uspDiscipline['nomdis']),
-            'ano' => (int) $dados['ano'],
-            'semestre' => (int) $dados['semestre'],
-            'frequencia' => $isExternal ? (float) $dados['frequencia'] : null,
-            'nota' => $isExternal ? (float) $dados['nota'] : null,
-            'creditos' => $isExternal ? (int) $dados['creditos'] : null,
-            'carga_horaria' => $isExternal ? (int) $dados['carga_horaria'] : null,
-        ];
-
-        if ($isExternal && isset($current['ementa'])) {
-            $discipline['ementa'] = $current['ementa'];
-        }
-
-        if ($ementa) {
-            if (isset($current['ementa']['path'])) {
-                Storage::delete($current['ementa']['path']);
-            }
-
-            $discipline['ementa'] = $this->armazenarArquivo($ementa, 'ementas');
-        } elseif (! $isExternal && isset($current['ementa']['path'])) {
-            Storage::delete($current['ementa']['path']);
-        }
-
-        return $discipline;
-    }
-
-    /**
-     * Armazena um arquivo do rascunho e retorna os metadados usados posteriormente na persistência.
-     */
-    private function armazenarArquivo(UploadedFile $file, string $directory): array
+    public function grupo(): ?int
     {
+        return $this->grupo;
+    }
+
+    public function equivalenciasReais(): Collection
+    {
+        return $this->equivalenciasPorTipoDeVinculo(false);
+    }
+
+    public function placeholders(): Collection
+    {
+        return $this->equivalenciasPorTipoDeVinculo(true);
+    }
+
+    private function carregar(): void
+    {
+        $this->equivalencias = null;
+        $first = $this->equivalenciasDoRascunho()->first();
+        $this->grupo = $first?->grupo;
+        $this->requerida = $first?->requerida;
+        $this->requerida_coddis = $this->requerida?->coddis;
+    }
+
+    private function equivalenciasDoRascunho(): Collection
+    {
+        if ($this->equivalencias !== null) {
+            return $this->equivalencias;
+        }
+
+        $firstDraft = Aproveitamento::query()
+            ->doUsuario($this->userId)
+            ->rascunhos()
+            ->requeridas()
+            ->orderBy('grupo')
+            ->orderBy('id')
+            ->first();
+
+        if (! $firstDraft) {
+            return $this->equivalencias = new Collection();
+        }
+
+        return $this->equivalencias = Aproveitamento::query()
+            ->doUsuario($this->userId)
+            ->rascunhos()
+            ->requeridas()
+            ->doGrupo((int) $firstDraft->grupo)
+            ->with(['requerida', 'cursada', 'arquivos'])
+            ->orderBy('id')
+            ->get();
+    }
+
+    private function equivalenciaPorIdOrFail(string $disciplineId): Aproveitamento
+    {
+        $equivalence = $this->equivalenciasReais()
+            ->first(fn(Aproveitamento $item) => (string) $item->id === $disciplineId);
+
+        if (! $equivalence) {
+            throw (new ModelNotFoundException())->setModel(Aproveitamento::class, [$disciplineId]);
+        }
+
+        return $equivalence;
+    }
+
+    private function equivalenciasPorTipoDeVinculo(bool $placeholder): Collection
+    {
+        return $this->equivalenciasDoRascunho()
+            ->filter(fn(Aproveitamento $equivalencia) => $equivalencia->isPlaceholderRequerida() === $placeholder)
+            ->values();
+    }
+
+    private function garantirRequerida(): void
+    {
+        if (! $this->grupo || ! $this->requerida) {
+            throw (new ModelNotFoundException())->setModel(Disciplina::class);
+        }
+    }
+
+    private function criarVinculoDoRascunho(int $grupo, int $requeridaId, int $cursadaId): Aproveitamento
+    {
+        return Aproveitamento::criarVinculo(
+            $grupo,
+            $requeridaId,
+            $cursadaId,
+            EquivalenciaTipo::REQUERIDA,
+            EquivalenciaEstado::RASCUNHO,
+            criadoPorId: $this->userId,
+            alteradoPorId: $this->userId
+        );
+    }
+
+    private function atualizarRequeridaDosVinculos(Collection $vinculos, Disciplina $requerida): void
+    {
+        foreach ($vinculos as $equivalencia) {
+            $equivalencia->update([
+                'requerida_id' => $requerida->id,
+                'cursada_id' => $equivalencia->isPlaceholderRequerida()
+                    ? $requerida->id
+                    : $equivalencia->cursada_id,
+                'alterado_por_id' => $this->userId,
+            ]);
+        }
+    }
+
+    private function dadosDaEquivalencia(Aproveitamento $equivalencia): array
+    {
+        $course = $equivalencia->cursada;
+
+        if (! $course) {
+            throw (new ModelNotFoundException())->setModel(Disciplina::class, [$equivalencia->cursada_id]);
+        }
+
+        $syllabus = $equivalencia->arquivos->firstWhere('tipo', Arquivo::TIPO_EMENTA);
+        $isUsp = $course->ies === 'USP';
+
         return [
-            'name' => $file->getClientOriginalName(),
-            'path' => $file->store("aproveitamentos/{$this->id}/{$directory}"),
+            'id' => (string) $equivalencia->id,
+            'unidade_tipo' => $isUsp ? 'USP' : 'OUTRA',
+            'unidade_nome' => $isUsp ? 'USP' : $course->ies,
+            'coddis' => $course->coddis,
+            'nomdis' => $course->nomdis,
+            'ano' => $course->ano,
+            'semestre' => $course->semestre,
+            'frequencia' => $course->frequencia !== null ? (float) $course->frequencia : null,
+            'nota' => $course->nota !== null ? (float) $course->nota : null,
+            'creditos' => $course->creditos,
+            'carga_horaria' => $course->carga_horaria,
+            'ementa' => $syllabus ? [
+                'name' => $syllabus->nome,
+                'path' => $syllabus->path,
+            ] : null,
         ];
     }
 

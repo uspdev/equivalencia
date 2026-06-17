@@ -84,22 +84,51 @@ class Aproveitamento extends Model
         return $query->where('tipo', EquivalenciaTipo::AUTOMATICA->value);
     }
 
+    public function scopeRequeridas(Builder $query): Builder
+    {
+        return $query->where('tipo', EquivalenciaTipo::REQUERIDA->value);
+    }
+
+    public function scopeDoUsuario(Builder $query, int $userId): Builder
+    {
+        return $query->where('criado_por_id', $userId);
+    }
+
+    public function scopeDoGrupo(Builder $query, int $grupo): Builder
+    {
+        return $query->where('grupo', $grupo);
+    }
+
+    public function scopeRascunhos(Builder $query): Builder
+    {
+        return $query->where('estado', EquivalenciaEstado::RASCUNHO->value);
+    }
+
+    public function scopeNaoRascunhos(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query) {
+            $query
+                ->whereNull('estado')
+                ->orWhere('estado', '!=', EquivalenciaEstado::RASCUNHO->value);
+        });
+    }
+
     public function estadoEnum(): ?EquivalenciaEstado
     {
-        if ($this->estado instanceof EquivalenciaEstado) {
-            return $this->estado;
-        }
+        $estado = $this->getRawOriginal('estado');
 
-        if ($this->estado === null || $this->estado === '') {
+        if ($estado === null || $estado === '') {
             return null;
         }
 
-        return EquivalenciaEstado::tryFrom((string) $this->estado);
+        return EquivalenciaEstado::tryFrom((string) $estado);
     }
 
     public function estadoLabel(): ?string
     {
-        return $this->estadoEnum()?->label();
+        $estado = $this->getRawOriginal('estado');
+
+        return $this->estadoEnum()?->label() ?: ($estado ?: null);
     }
 
     public function marcarComoProcessando(): void
@@ -115,6 +144,17 @@ class Aproveitamento extends Model
     public function marcarComoNegado(): void
     {
         $this->estado = EquivalenciaEstado::NEGADO;
+    }
+
+    public function atualizarEstado(EquivalenciaEstado $estado, ?int $alteradoPorId = null): void
+    {
+        $dados = ['estado' => $estado];
+
+        if ($alteradoPorId !== null) {
+            $dados['alterado_por_id'] = $alteradoPorId;
+        }
+
+        $this->update($dados);
     }
 
     public function scopeDoContexto(Builder $query, int $codcur, int $codhab): Builder
@@ -190,18 +230,50 @@ class Aproveitamento extends Model
      */
     public static function criarPlaceholderDaRequerida(int $requeridaId, int $codcur, int $codhab): self
     {
-        return static::create([
-            'grupo' => static::proximoGrupo(),
-            'requerida_id' => $requeridaId,
-            'cursada_id' => $requeridaId,
-            'tipo' => static::TIPO_AUTOMATICA,
-            'codcur' => $codcur,
-            'codhab' => $codhab,
-        ]);
+        return static::criarVinculo(
+            static::proximoGrupo(),
+            $requeridaId,
+            $requeridaId,
+            EquivalenciaTipo::AUTOMATICA,
+            codcur: $codcur,
+            codhab: $codhab
+        );
     }
 
     /**
      * Cria um vínculo entre a disciplina requerida e uma disciplina cursada.
+     */
+    public static function criarVinculo(
+        int $grupo,
+        int $requeridaId,
+        int $cursadaId,
+        string|EquivalenciaTipo $tipo = EquivalenciaTipo::REQUERIDA,
+        ?EquivalenciaEstado $estado = null,
+        ?int $codcur = null,
+        ?int $codhab = null,
+        ?int $criadoPorId = null,
+        ?int $alteradoPorId = null
+    ): self {
+        $dados = [
+            'grupo' => $grupo,
+            'requerida_id' => $requeridaId,
+            'cursada_id' => $cursadaId,
+            'tipo' => $tipo instanceof EquivalenciaTipo ? $tipo : EquivalenciaTipo::from($tipo),
+            'codcur' => $codcur,
+            'codhab' => $codhab,
+            'criado_por_id' => $criadoPorId,
+            'alterado_por_id' => $alteradoPorId,
+        ];
+
+        if ($estado !== null) {
+            $dados['estado'] = $estado;
+        }
+
+        return static::create($dados);
+    }
+
+    /**
+     * Cria um vínculo automático entre a disciplina requerida e uma disciplina cursada.
      */
     public static function criarVinculoCursada(
         int $grupo,
@@ -211,14 +283,7 @@ class Aproveitamento extends Model
         int $codhab,
         string|EquivalenciaTipo $tipo = EquivalenciaTipo::AUTOMATICA
     ): self {
-        return static::create([
-            'grupo' => $grupo,
-            'requerida_id' => $requeridaId,
-            'cursada_id' => $cursadaId,
-            'tipo' => $tipo instanceof EquivalenciaTipo ? $tipo : EquivalenciaTipo::from($tipo),
-            'codcur' => $codcur,
-            'codhab' => $codhab,
-        ]);
+        return static::criarVinculo($grupo, $requeridaId, $cursadaId, $tipo, codcur: $codcur, codhab: $codhab);
     }
 
     /**
@@ -247,11 +312,9 @@ class Aproveitamento extends Model
     }
 
     /**
-     * Cria um requerimento manual a partir de um rascunho e dos arquivos já armazenados.
+     * Finaliza um requerimento manual a partir das equivalências salvas como rascunho.
      *
-     * @param AproveitamentoRascunho $draft Rascunho do aproveitamento usado como base.
-     * @param array<int, array{name: string, path: string}> $histories Históricos já armazenados.
-     * @param int $userId ID do usuário responsável pela criação.
+     * @param array<int, array{original_name: string, stored_path: string}> $histories Históricos já armazenados.
      *
      * @return array{group: int, name: string}
      */
@@ -261,88 +324,26 @@ class Aproveitamento extends Model
         int $userId
     ): array {
         return DB::transaction(function () use ($draft, $histories, $userId) {
-            $requiredData = Disciplina::dadosDaRequeridaPorCoddis($draft->requerida_coddis);
-            $requiredData['nomdis'] ??= $draft->requerida_coddis;
-            $requiredData['ies'] = 'USP';
-            $requiredData['criado_por_id'] = $userId;
-            $requiredData['alterado_por_id'] = $userId;
-            $required = Disciplina::create($requiredData);
-            $group = static::proximoGrupo();
+            $group = $draft->grupo();
+            $requiredName = $draft->nomeDaDisciplinaRequerida() ?? $draft->requerida_coddis;
 
-            foreach ($draft->disciplinas() as $disciplineData) {
-                $course = Disciplina::create(static::dadosDaCursadaDoRascunho($disciplineData, $userId));
+            $draft->placeholders()->each->delete();
 
-                $equivalence = static::create([
-                    'grupo' => $group,
-                    'requerida_id' => $required->id,
-                    'cursada_id' => $course->id,
-                    'estado' => EquivalenciaEstado::PROCESSANDO,
-                    'tipo' => EquivalenciaTipo::REQUERIDA,
-                    'criado_por_id' => $userId,
-                    'alterado_por_id' => $userId,
-                ]);
-
-                if (isset($disciplineData['ementa'])) {
-                    Arquivo::criarEmenta($equivalence->id, [
-                        'original_name' => $disciplineData['ementa']['name'],
-                        'stored_path' => $disciplineData['ementa']['path'],
-                    ]);
-                }
-            }
+            $draft->equivalenciasReais()
+                ->each(fn (Aproveitamento $equivalence) => $equivalence->atualizarEstado(
+                    EquivalenciaEstado::PROCESSANDO,
+                    $userId
+                ));
 
             foreach ($histories as $history) {
                 Arquivo::criarHistorico($group, [
-                    'original_name' => $history['name'],
-                    'stored_path' => $history['path'],
+                    'original_name' => $history['original_name'],
+                    'stored_path' => $history['stored_path'],
                 ]);
             }
 
-            $draft->delete();
-
-            return ['group' => $group, 'name' => $required->nomdis];
+            return ['group' => $group, 'name' => $requiredName];
         });
-    }
-
-    /**
-     * Monta os dados da disciplina cursada a partir dos dados salvos no rascunho.
-     *
-     * @param array{
-     *     unidade_tipo: string,
-     *     coddis: string,
-     *     nomdis: string,
-     *     unidade_nome: string,
-     *     ano: int|string,
-     *     semestre: int|string,
-     *     frequencia: int|float|string,
-     *     nota: int|float|string,
-     *     creditos: int|float|string,
-     *     carga_horaria: int|float|string
-     * } $disciplineData Dados da disciplina cursada no rascunho.
-     * @param int $userId ID do usuário responsável pela criação/alteração.
-     *
-     * @return array<string, mixed>
-     */
-    private static function dadosDaCursadaDoRascunho(array $disciplineData, int $userId): array
-    {
-        $courseData = Disciplina::dadosDaCursadaPorFormulario([
-            'is_usp' => $disciplineData['unidade_tipo'] === 'USP',
-            'coddis' => $disciplineData['coddis'],
-            'nome_disciplina' => $disciplineData['nomdis'],
-            'ies' => $disciplineData['unidade_tipo'] === 'USP'
-                ? 'USP'
-                : $disciplineData['unidade_nome'],
-            'ano' => $disciplineData['ano'],
-            'semestre' => $disciplineData['semestre'],
-            'frequencia' => $disciplineData['frequencia'],
-            'nota' => $disciplineData['nota'],
-            'creditos' => $disciplineData['creditos'],
-            'carga_horaria' => $disciplineData['carga_horaria'],
-        ]);
-
-        $courseData['criado_por_id'] = $userId;
-        $courseData['alterado_por_id'] = $userId;
-
-        return $courseData;
     }
 
     /**
@@ -357,7 +358,7 @@ class Aproveitamento extends Model
         return static::query()
             ->doContexto($codcur, $codhab)
             ->where('requerida_id', $requerida->id)
-            ->where('grupo', $grupo)
+            ->doGrupo($grupo)
             ->whereColumn('cursada_id', '!=', 'requerida_id')
             ->with('cursada')
             ->orderBy('id')
@@ -425,11 +426,7 @@ class Aproveitamento extends Model
             ->get();
         $grupos = $vinculos->pluck('grupo')->unique();
 
-        $cursadasParaLimpeza = $vinculos
-            ->filter(fn(Aproveitamento $item) => ! $item->isPlaceholderRequerida())
-            ->pluck('cursada_id')
-            ->unique()
-            ->values();
+        $cursadasParaLimpeza = static::idsDeCursadasReais($vinculos);
 
         static::query()
             ->whereIn('id', $vinculos->pluck('id'))
@@ -473,10 +470,7 @@ class Aproveitamento extends Model
             ->where('grupo', $vinculoReferencia->grupo)
             ->get();
 
-        $cursadasParaLimpeza = $vinculosDoGrupo
-            ->pluck('cursada_id')
-            ->unique()
-            ->values();
+        $cursadasParaLimpeza = static::idsDeCursadasReais($vinculosDoGrupo);
 
         static::query()
             ->whereIn('id', $vinculosDoGrupo->pluck('id'))
@@ -516,7 +510,8 @@ class Aproveitamento extends Model
     public static function requerimentosDoUsuario(int $userId): array
     {
         return static::query()
-            ->where('criado_por_id', $userId)
+            ->doUsuario($userId)
+            ->naoRascunhos()
             ->with('requerida')
             ->orderByDesc('created_at')
             ->get()
@@ -539,8 +534,9 @@ class Aproveitamento extends Model
     public static function equivalenciasDoRequerimentoDoUsuario(int $group, int $userId): Collection
     {
         $equivalencias = static::query()
-            ->where('grupo', $group)
-            ->where('criado_por_id', $userId)
+            ->doGrupo($group)
+            ->doUsuario($userId)
+            ->naoRascunhos()
             ->with(['requerida', 'cursada', 'arquivos'])
             ->orderBy('id')
             ->get();
@@ -661,5 +657,14 @@ class Aproveitamento extends Model
     {
         return $this->pertenceARequeridaNoContexto($requeridaId, $codcur, $codhab)
             && ! $this->isPlaceholderRequerida();
+    }
+
+    private static function idsDeCursadasReais(Collection $vinculos): Collection
+    {
+        return $vinculos
+            ->filter(fn (Aproveitamento $item) => ! $item->isPlaceholderRequerida())
+            ->pluck('cursada_id')
+            ->unique()
+            ->values();
     }
 }

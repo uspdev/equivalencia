@@ -19,8 +19,7 @@ return new class extends Migration
             // pq pode ter registros com mesmo grupo (equivalências múltiplas, 2 disciplinas cursadas equivalem a 1 requerida)
             // essa logica pode ser feita no Model
 
-            $table->string('estado')->nullable(); // deferida, negada, etc
-            // adicionar rascunho aqui como enum -> rascunho, processando, deferido, negado
+            $table->string('estado')->nullable(); // rascunho, processando, deferido, negado
 
             $table->foreignId('requerida_id')
                 ->constrained('disciplinas')

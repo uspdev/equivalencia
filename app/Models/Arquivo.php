@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 class Arquivo extends Model
@@ -42,11 +43,47 @@ class Arquivo extends Model
     }
 
     /**
+     * Armazena um upload de aproveitamento e retorna os metadados usados na persistência.
+     */
+    public static function armazenarUploadDoAproveitamento(int $grupo, UploadedFile $arquivo, string $diretorio): array
+    {
+        return [
+            'original_name' => $arquivo->getClientOriginalName(),
+            'stored_path' => $arquivo->store("aproveitamentos/{$grupo}/{$diretorio}"),
+        ];
+    }
+
+    /**
      * Cria o arquivo de ementa associado a uma equivalência.
      */
     public static function criarEmenta(int $equivalenciaId, array $dadosArquivo): self
     {
         return static::criarDoFormulario($equivalenciaId, static::TIPO_EMENTA, $dadosArquivo);
+    }
+
+    /**
+     * Cria ou atualiza a ementa de uma equivalência conforme o tipo da unidade.
+     */
+    public static function salvarEmentaDaEquivalencia(
+        Aproveitamento $equivalencia,
+        string $unidadeTipo,
+        ?UploadedFile $ementa
+    ): void {
+        $ementaAtual = $equivalencia->arquivos->firstWhere('tipo', static::TIPO_EMENTA);
+
+        if ($unidadeTipo === 'OUTRA' && $ementa) {
+            $dadosArquivo = static::armazenarUploadDoAproveitamento((int) $equivalencia->grupo, $ementa, 'ementas');
+
+            $ementaAtual
+                ? $ementaAtual->atualizarDoFormulario($dadosArquivo)
+                : static::criarEmenta($equivalencia->id, $dadosArquivo);
+
+            return;
+        }
+
+        if ($unidadeTipo !== 'OUTRA' && $ementaAtual) {
+            $ementaAtual->removerArquivoERegistro();
+        }
     }
 
     public static function historicosDoGrupo(int $grupo): Collection
@@ -94,8 +131,17 @@ class Arquivo extends Model
         $historicos = static::historicosDoGrupo($grupo);
 
         foreach ($historicos as $historico) {
-            Storage::delete($historico->path);
-            $historico->delete();
+            $historico->removerArquivoERegistro();
+        }
+    }
+
+    /**
+     * Remove todos os arquivos vinculados à equivalência.
+     */
+    public static function removerDaEquivalencia(Aproveitamento $equivalencia): void
+    {
+        foreach ($equivalencia->arquivos as $arquivo) {
+            $arquivo->removerArquivoERegistro();
         }
     }
 
@@ -112,6 +158,12 @@ class Arquivo extends Model
             'nome' => $dadosArquivo['original_name'],
             'path' => $dadosArquivo['stored_path'],
         ]);
+    }
+
+    public function removerArquivoERegistro(): void
+    {
+        Storage::delete($this->path);
+        $this->delete();
     }
 
     /**

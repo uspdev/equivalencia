@@ -6,6 +6,7 @@ use App\Models\Aproveitamento;
 use App\Models\Arquivo;
 use App\Models\Disciplina;
 use App\Models\User;
+use App\Enums\EquivalenciaEstado;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -92,12 +93,12 @@ class AproveitamentoShowTest extends TestCase
     public function test_explicit_status_is_displayed(): void
     {
         $user = $this->createAuthorizedUser(700002);
-        $this->createRequest($user, 11, ['estado' => 'Em análise']);
+        $this->createRequest($user, 11, ['estado' => EquivalenciaEstado::PROCESSANDO]);
 
         $this->actingAs($user)
             ->get(route('equivalencias.req-show', ['group' => 11], false))
             ->assertOk()
-            ->assertSee('Em análise')
+            ->assertSee('Processando')
             ->assertDontSee('Enviado');
     }
 

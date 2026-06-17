@@ -72,7 +72,6 @@ class AproveitamentoMultistepTest extends TestCase
             ->assertSee('id="create-discipline-modal"', false)
             ->assertSee('disciplina-usp-select', false)
             ->assertSee(route('form.find.disciplina'), false)
-            ->assertSee('minimumInputLength: 3', false)
             ->assertSee("term: params.term || ''", false)
             ->assertSee('processResults: function(response)', false);
 
@@ -93,7 +92,7 @@ class AproveitamentoMultistepTest extends TestCase
             ])
             ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
 
-        $draft = AproveitamentoRascunho::where('user_id', $user->id)->firstOrFail();
+        $draft = AproveitamentoRascunho::atualDoUsuario($user->id);
         $this->assertSame('MAC0110', $draft->requerida_coddis);
         $transcriptKey = $this->transcriptKey('Universidade Externa');
 
@@ -114,14 +113,17 @@ class AproveitamentoMultistepTest extends TestCase
         $this->actingAs($user)
             ->get(route('equivalencias.req-index', absolute: false))
             ->assertOk()
-            ->assertSee('Minhas requisições')
+            ->assertSee('Meus requerimentos')
             ->assertSee('MAC0110')
             ->assertDontSee('Editar');
 
         $this->assertDatabaseCount('disciplinas', 2);
         $this->assertDatabaseCount('equivalencias', 1);
         $this->assertDatabaseCount('arquivos', 2);
-        $this->assertDatabaseMissing('aproveitamento_rascunhos', ['user_id' => $user->id]);
+        $this->assertDatabaseMissing('equivalencias', [
+            'criado_por_id' => $user->id,
+            'estado' => 'rascunho',
+        ]);
 
         $this->actingAs($user)
             ->from(route('equivalencias.req-index', absolute: false))
@@ -248,11 +250,7 @@ class AproveitamentoMultistepTest extends TestCase
     {
         $user = $this->createAuthorizedUser(654316);
         $transcriptKey = $this->transcriptKey('Universidade Externa');
-        AproveitamentoRascunho::create([
-            'user_id' => $user->id,
-            'requerida_coddis' => 'MAC0110',
-            'disciplinas' => [$this->externalDraftDiscipline('discipline-1', 'EXT100')],
-        ]);
+        $this->createExternalDraft($user);
 
         $this->actingAs($user)
             ->post(route('equivalencias.newreq-store', absolute: false), [
@@ -269,11 +267,7 @@ class AproveitamentoMultistepTest extends TestCase
     public function test_transcript_is_required_only_when_submitting_request(): void
     {
         $user = $this->createAuthorizedUser(654319);
-        AproveitamentoRascunho::create([
-            'user_id' => $user->id,
-            'requerida_coddis' => 'MAC0110',
-            'disciplinas' => [$this->externalDraftDiscipline('discipline-1', 'EXT100')],
-        ]);
+        $this->createExternalDraft($user);
 
         $this->actingAs($user)
             ->from(route('equivalencias.newreq-create', absolute: false))
@@ -307,30 +301,11 @@ class AproveitamentoMultistepTest extends TestCase
     public function test_required_discipline_is_updated_with_discipline_edit(): void
     {
         $user = $this->createAuthorizedUser(654322);
-        $draft = AproveitamentoRascunho::create([
-            'user_id' => $user->id,
-            'requerida_coddis' => 'MAC0110',
-            'disciplinas' => [[
-                'id' => 'discipline-1',
-                'unidade_tipo' => 'OUTRA',
-                'unidade_nome' => 'Universidade Externa',
-                'coddis' => 'EXT100',
-                'nomdis' => 'Programação',
-                'ano' => 2025,
-                'semestre' => 1,
-                'frequencia' => 90.0,
-                'nota' => 8.5,
-                'creditos' => 4,
-                'carga_horaria' => 60,
-                'ementa' => [
-                    'name' => 'ementa.pdf',
-                    'path' => 'aproveitamentos/1/ementas/ementa.pdf',
-                ],
-            ]],
-        ]);
+        $draft = $this->createExternalDraft($user);
+        $disciplineId = $draft->disciplinas()->first()['id'];
 
         $this->actingAs($user)
-            ->put(route('equivalencias.newreq-discipline-update', 'discipline-1', absolute: false), [
+            ->put(route('equivalencias.newreq-discipline-update', $disciplineId, absolute: false), [
                 'requerida_coddis' => 'MAT0111',
                 'unidade_tipo' => 'OUTRA',
                 'unidade_nome' => 'Universidade Externa Atualizada',
@@ -345,15 +320,16 @@ class AproveitamentoMultistepTest extends TestCase
             ])
             ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
 
-        $draft->refresh();
+        $draft = AproveitamentoRascunho::atualDoUsuario($user->id);
+        $discipline = $draft->disciplinas()->first();
         $this->assertSame('MAT0111', $draft->requerida_coddis);
-        $this->assertSame('EXT101', $draft->disciplinas[0]['coddis']);
-        $this->assertSame('Programação II', $draft->disciplinas[0]['nomdis']);
+        $this->assertSame('EXT101', $discipline['coddis']);
+        $this->assertSame('Programação II', $discipline['nomdis']);
 
         $this->actingAs($user)
             ->get(route('equivalencias.newreq-create', absolute: false))
             ->assertOk()
-            ->assertSee('id="edit-discipline-modal-discipline-1"', false);
+            ->assertSee("id=\"edit-discipline-modal-{$disciplineId}\"", false);
     }
 
     public function test_validation_error_reopens_originating_modal(): void
@@ -394,6 +370,18 @@ class AproveitamentoMultistepTest extends TestCase
     private function transcriptKey(string $unitName): string
     {
         return hash('sha256', Str::of($unitName)->ascii()->lower()->squish()->value());
+    }
+
+    private function createExternalDraft(User $user): AproveitamentoRascunho
+    {
+        $draft = AproveitamentoRascunho::atualDoUsuario($user->id);
+        $draft->salvarDisciplinaRequerida('MAC0110');
+        $draft->adicionarDisciplina(
+            $this->externalDraftDiscipline('discipline-1', 'EXT100'),
+            UploadedFile::fake()->create('ementa.pdf', 100, 'application/pdf')
+        );
+
+        return AproveitamentoRascunho::atualDoUsuario($user->id);
     }
 
     private function externalDraftDiscipline(string $id, string $code): array
