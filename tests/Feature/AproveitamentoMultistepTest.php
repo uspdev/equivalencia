@@ -35,27 +35,27 @@ class AproveitamentoMultistepTest extends TestCase
         Storage::fake('local');
 
         $graduacao = Mockery::mock(Graduacao::class);
-        $graduacao->shouldReceive('buscarDisciplina')
+        $graduacao->shouldReceive('obterDadosDisciplinaAtivaPorCodigo')
             ->with('MAC0110')
             ->andReturn(['coddis' => 'MAC0110', 'nomdis' => 'Introdução à Computação'])
             ->byDefault();
-        $graduacao->shouldReceive('buscarDisciplina')
+        $graduacao->shouldReceive('obterDadosDisciplinaAtivaPorCodigo')
             ->with('MAT0111')
             ->andReturn(['coddis' => 'MAT0111', 'nomdis' => 'Cálculo Diferencial'])
             ->byDefault();
-        $graduacao->shouldReceive('disciplinaExiste')
+        $graduacao->shouldReceive('existeDisciplinaAtivaPorCodigo')
             ->with('MAC0110')
             ->andReturnTrue()
             ->byDefault();
-        $graduacao->shouldReceive('disciplinaExiste')
+        $graduacao->shouldReceive('existeDisciplinaAtivaPorCodigo')
             ->with('MAT0111')
             ->andReturnTrue()
             ->byDefault();
-        $graduacao->shouldReceive('buscarDadosDisciplina')
-            ->andReturn(null)
+        $graduacao->shouldReceive('obterDadosDisciplinaPorCodigo')
+            ->andReturn([])
             ->byDefault();
-        $graduacao->shouldReceive('buscarDisciplinaCursadaNoHistorico')
-            ->andReturn(null)
+        $graduacao->shouldReceive('obterDisciplinaCursadaPorAlunoPeriodo')
+            ->andReturn([])
             ->byDefault();
         $this->app->instance(Graduacao::class, $graduacao);
     }
@@ -520,7 +520,7 @@ class AproveitamentoMultistepTest extends TestCase
     {
         $graduacao = Mockery::mock(Graduacao::class);
         foreach (['MAC0110', 'MAT0111'] as $knownCode) {
-            $graduacao->shouldReceive('buscarDisciplina')
+            $graduacao->shouldReceive('obterDadosDisciplinaAtivaPorCodigo')
                 ->with($knownCode)
                 ->andReturn([
                     'coddis' => $knownCode,
@@ -529,15 +529,15 @@ class AproveitamentoMultistepTest extends TestCase
                         : 'Cálculo Diferencial',
                 ])
                 ->byDefault();
-            $graduacao->shouldReceive('disciplinaExiste')
+            $graduacao->shouldReceive('existeDisciplinaAtivaPorCodigo')
                 ->with($knownCode)
                 ->andReturnTrue()
                 ->byDefault();
         }
-        $graduacao->shouldReceive('buscarDadosDisciplina')
-            ->andReturn(null)
+        $graduacao->shouldReceive('obterDadosDisciplinaPorCodigo')
+            ->andReturn([])
             ->byDefault();
-        $graduacao->shouldReceive('buscarDisciplinaCursadaNoHistorico')
+        $graduacao->shouldReceive('obterDisciplinaCursadaPorAlunoPeriodo')
             ->andReturnUsing(function (int $receivedCodpes, string $receivedCoddis, int $receivedAno, int $receivedSemestre) use (
                 $codpes,
                 $coddis,
@@ -554,7 +554,7 @@ class AproveitamentoMultistepTest extends TestCase
                     return $history;
                 }
 
-                return null;
+                return [];
             })
             ->byDefault();
 

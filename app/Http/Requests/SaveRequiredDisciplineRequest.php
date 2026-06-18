@@ -37,7 +37,7 @@ class SaveRequiredDisciplineRequest extends FormRequest
                     return;
                 }
 
-                if (! app(Graduacao::class)->disciplinaExiste($this->requiredDisciplineCode())) {
+                if (! app(Graduacao::class)->existeDisciplinaAtivaPorCodigo($this->requiredDisciplineCode())) {
                     $validator->errors()->add(
                         'requerida_coddis',
                         'A disciplina USP selecionada não foi encontrada.'

@@ -204,43 +204,46 @@ class Disciplina extends Model
     {
         $coddis = isset($dados['coddis']) ? trim((string) $dados['coddis']) : null;
         $isUsp = filter_var($dados['is_usp'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        // somente tenta buscar no Replicado se for USP e tiver código de disciplina
-        $disciplinaReplicado = ($isUsp && $coddis) ? static::buscarNoReplicado($coddis) : null;
-
-        if ($isUsp && $disciplinaReplicado) {
-            return [
-                'coddis' => $disciplinaReplicado['coddis'] ?? $coddis,
-                'nomdis' => $disciplinaReplicado['nomdis'] ?? null,
-                'ies' => 'USP',
-                'creditos' => static::creditosUsp($disciplinaReplicado),
-                'carga_horaria' => static::cargaHorariaUsp($disciplinaReplicado),
-                'verdis' => $disciplinaReplicado['verdis'] ?? null,
-                // precisa ver como vai recuperar isso do replicado
-                // do modo que está, so funciona na importação de disciplinas pelo script
-                'sglund' =>  $dados['sglund'] ?? null,
-                'ano' => $dados['ano'] ?? null,
-                'semestre' => $dados['semestre'] ?? null,
-                'frequencia' => $dados['frequencia'] ?? null,
-                'nota' => $dados['nota'] ?? null,
-                'programa' => $disciplinaReplicado['pgmdis'] ?? null,
-                'programa_resumo' => $disciplinaReplicado['pgmrsudis'] ?? null,
-                'objetivo' => $disciplinaReplicado['objdis'] ?? null,
-                'disciplina_ativa' => static::disciplinaAtivaNoReplicado($disciplinaReplicado),
-            ];
-        }
-
-        return [
+        $base = [
             'coddis' => $coddis,
             'nomdis' => $dados['nome_disciplina'] ?? null,
             'ies' => $dados['ies'] ?? null,
             'creditos' => $dados['creditos'] ?? null,
             'carga_horaria' => $dados['carga_horaria'] ?? null,
             'verdis' => $dados['verdis'] ?? null,
+            'sglund' => $dados['sglund'] ?? null,
             'ano' => $dados['ano'] ?? null,
             'semestre' => $dados['semestre'] ?? null,
             'frequencia' => $dados['frequencia'] ?? null,
             'nota' => $dados['nota'] ?? null,
+            'programa' => null,
+            'programa_resumo' => null,
+            'objetivo' => null,
+            'disciplina_ativa' => null,
         ];
+
+        // somente tenta buscar no Replicado se for USP e tiver código de disciplina
+        $disciplinaReplicado = ($isUsp && $coddis) ? static::buscarNoReplicado($coddis) : null;
+
+        if (! $isUsp || ! $disciplinaReplicado) {
+            return $base;
+        }
+
+        return array_merge(
+            $base,
+            [
+                'coddis' => $disciplinaReplicado['coddis'] ?? $coddis,
+                'nomdis' => $disciplinaReplicado['nomdis'] ?? null,
+                'ies' => 'USP',
+                'creditos' => static::creditosUsp($disciplinaReplicado),
+                'carga_horaria' => static::cargaHorariaUsp($disciplinaReplicado),
+                'verdis' => $disciplinaReplicado['verdis'] ?? null,
+                'programa' => $disciplinaReplicado['pgmdis'] ?? null,
+                'programa_resumo' => $disciplinaReplicado['pgmrsudis'] ?? null,
+                'objetivo' => $disciplinaReplicado['objdis'] ?? null,
+                'disciplina_ativa' => static::disciplinaAtivaNoReplicado($disciplinaReplicado),
+            ]
+        );
     }
 
     /**
@@ -481,12 +484,12 @@ class Disciplina extends Model
     private static function buscarNoReplicado(string $coddis): ?array
     {
         try {
-            $disciplinas = app(Graduacao::class)->buscarDadosDisciplina($coddis);
+            $disciplinas = app(Graduacao::class)->obterDadosDisciplinaPorCodigo($coddis);
         } catch (\Throwable $e) {
             return null;
         }
 
-        return is_array($disciplinas) ? $disciplinas : null;
+        return ! empty($disciplinas) ? $disciplinas : null;
     }
 
     /**
@@ -497,31 +500,18 @@ class Disciplina extends Model
     private static function dadosUspCursadaDoRascunho(int $userId, string $coddis, int $ano, int $semestre): array
     {
         $codpes = (int) (User::query()->whereKey($userId)->value('codpes') ?? 0);
-        $historico = null;
-        $disciplina = null;
-
-        if ($codpes > 0) {
-            try {
-                $historico = app(Graduacao::class)->buscarDisciplinaCursadaNoHistorico(
-                    $codpes,
-                    $coddis,
-                    $ano,
-                    $semestre
-                );
-            } catch (\Throwable $e) {
-                $historico = null;
-            }
-        }
+        $historico = app(Graduacao::class)->obterDisciplinaCursadaPorAlunoEmPeriodo(
+            $codpes,
+            $coddis,
+            $ano,
+            $semestre
+        );
 
         if (! $historico) {
             return [];
         }
 
-        try {
-            $disciplina = app(Graduacao::class)->buscarDadosDisciplina($coddis);
-        } catch (\Throwable $e) {
-            $disciplina = null;
-        }
+        $disciplina = app(Graduacao::class)->obterDadosDisciplinaPorCodigo($coddis);
 
         $dadosReplicado = array_merge(
             is_array($disciplina) ? $disciplina : [],

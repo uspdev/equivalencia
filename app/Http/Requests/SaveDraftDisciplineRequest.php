@@ -78,7 +78,7 @@ class SaveDraftDisciplineRequest extends FormRequest
 
                 if (
                     ! $validator->errors()->has('requerida_coddis') &&
-                    ! $graduacao->disciplinaExiste($this->requiredDisciplineCode())
+                    ! $graduacao->existeDisciplinaAtivaPorCodigo($this->requiredDisciplineCode())
                 ) {
                     $validator->errors()->add(
                         'requerida_coddis',
@@ -90,7 +90,7 @@ class SaveDraftDisciplineRequest extends FormRequest
                     return;
                 }
 
-                if (! $graduacao->disciplinaExiste($this->disciplineCode())) {
+                if (! $graduacao->existeDisciplinaAtivaPorCodigo($this->disciplineCode())) {
                     $validator->errors()->add('coddis', 'A disciplina USP selecionada não foi encontrada.');
                     return;
                 }
@@ -99,7 +99,7 @@ class SaveDraftDisciplineRequest extends FormRequest
                     return;
                 }
 
-                if (! $graduacao->buscarDisciplinaCursadaNoHistorico(
+                if (! $graduacao->obterDisciplinaCursadaPorAlunoEmPeriodo(
                     (int) $this->user()->codpes,
                     $this->disciplineCode(),
                     (int) $this->input('ano'),

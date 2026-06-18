@@ -9,12 +9,16 @@ use Uspdev\Replicado\Graduacao as GraduacaoReplicado;
 
 class Graduacao extends GraduacaoReplicado
 {
-    public function buscarDisciplina(string $code): ?array
+    /**
+     * Obtém os dados de uma disciplina ativa.
+     * A busca por prefixo vem do uspdev/forms, mas este método só retorna correspondência exata de código.
+     */
+    public function obterDadosDisciplinaAtivaPorCodigo(string $code): array
     {
         $code = Str::upper(trim($code));
 
         if (! preg_match('/^[A-Z0-9]+$/', $code)) {
-            return null;
+            return [];
         }
 
         foreach (GraduacaoForms::procurarDisciplinas($code, 50) as $disciplina) {
@@ -23,31 +27,35 @@ class Graduacao extends GraduacaoReplicado
             }
         }
 
-        return null;
+        return [];
     }
 
-    public function disciplinaExiste(string $code): bool
+    /**
+     * Verifica se há uma disciplina ativa com o código informado.
+     * Usado nas validações para rejeitar códigos que não correspondam a uma opção USP válida.
+     */
+    public function existeDisciplinaAtivaPorCodigo(string $code): bool
     {
-        return $this->buscarDisciplina($code) !== null;
+        return ! empty($this->obterDadosDisciplinaAtivaPorCodigo($code));
     }
 
     /**
      * Busca os dados cadastrais mais recentes da disciplina no Replicado.
      * Complementa a busca do select, retornando campos de programa, créditos e situação da disciplina.
-     * Retorna null se o código for inválido, a consulta falhar ou nenhuma disciplina compatível for encontrada.
+     * Retorna array vazio se o código for inválido, a consulta falhar ou nenhuma disciplina compatível for encontrada.
      */
-    public function buscarDadosDisciplina(string $code): ?array
+    public function obterDadosDisciplinaPorCodigo(string $code): array
     {
         $code = Str::upper(trim($code));
 
         if (! preg_match('/^[A-Z0-9]+$/', $code)) {
-            return null;
+            return [];
         }
 
         try {
             $disciplinas = static::obterDisciplinas([$code]) ?? [];
         } catch (\Throwable $e) {
-            return null;
+            return [];
         }
 
         foreach ($disciplinas as $disciplina) {
@@ -60,15 +68,15 @@ class Graduacao extends GraduacaoReplicado
             }
         }
 
-        return null;
+        return [];
     }
 
     /**
      * Localiza uma disciplina cursada no histórico escolar do aluno para um período específico.
      * Retorna dados de nota/frequência do HISTESCOLARGR junto com ementa e créditos da DISCIPLINAGR.
-     * Retorna null se os parâmetros forem inválidos ou não houver matrícula para aluno, disciplina, ano e semestre.
+     * Retorna array vazio se a consulta falhar ou não houver matrícula para aluno, disciplina, ano e semestre.
      */
-    public function buscarDisciplinaCursadaNoHistorico(int $codpes, string $coddis, int $ano, int $semestre): ?array
+    public function obterDisciplinaCursadaPorAlunoEmPeriodo(int $codpes, string $coddis, int $ano, int $semestre): array
     {
         $coddis = Str::upper(trim($coddis));
 
@@ -98,12 +106,16 @@ class Graduacao extends GraduacaoReplicado
                 AND SUBSTRING(H.codtur, 5, 1) = :semestre
             ORDER BY H.codpgm DESC, H.verdis DESC, H.dtacrihst DESC";
 
-        return DB::fetch($query, [
-            'codpes' => $codpes,
-            'coddis' => $coddis,
-            'ano' => (string) $ano,
-            'semestre' => (string) $semestre,
-        ]) ?: null;
+        try {
+            return DB::fetch($query, [
+                'codpes' => $codpes,
+                'coddis' => $coddis,
+                'ano' => (string) $ano,
+                'semestre' => (string) $semestre,
+            ]) ?: [];
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     /**
