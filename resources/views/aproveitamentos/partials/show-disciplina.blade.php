@@ -9,6 +9,10 @@
         <strong>{{ $cursada['ies'] ?: 'Não informada' }}</strong>
       </div>
       <div class="col-md-2 mb-3">
+        <div class="text-muted small">Período</div>
+        <strong>{{ $cursada['codtur'] ?? 'Não informada' }}</strong>
+      </div>
+      <div class="col-md-2 mb-3">
         <div class="text-muted small">Ano</div>
         <strong>{{ $cursada['ano'] ?: 'Não informado' }}</strong>
       </div>

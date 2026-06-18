@@ -306,6 +306,7 @@ class AproveitamentoRascunho
             'nomdis' => $course->nomdis,
             'ano' => $course->ano,
             'semestre' => $course->semestre,
+            'codtur' => $course->codtur,
             'frequencia' => $course->frequencia !== null ? (float) $course->frequencia : null,
             'nota' => $course->nota !== null ? (float) $course->nota : null,
             'creditos' => $course->creditos,

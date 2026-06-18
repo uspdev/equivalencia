@@ -30,6 +30,7 @@ return new class extends Migration
             // DISCIPLINA EXTERNA
             $table->integer('ano')->nullable();
             $table->integer('semestre')->nullable();
+            $table->string('codtur', 5)->nullable();
             $table->decimal('frequencia', 5, 2)->nullable();
             $table->decimal('nota', 5, 2)->nullable();
 

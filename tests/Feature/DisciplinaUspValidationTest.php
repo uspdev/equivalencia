@@ -50,8 +50,7 @@ class DisciplinaUspValidationTest extends TestCase
             ->post(route('equivalencias.newreq-discipline-store', absolute: false), [
                 'unidade_tipo' => 'USP',
                 'coddis' => 'BAD000',
-                'ano' => 2025,
-                'semestre' => 1,
+                'codtur' => '20251',
             ])
             ->assertRedirect(route('equivalencias.newreq-discipline-create', absolute: false))
             ->assertSessionHasErrors('coddis')

@@ -15,6 +15,18 @@ class SaveDraftDisciplineRequest extends FormRequest
     {
         $this->session()->flash('discipline_modal', $this->route('disciplineId') ?: 'create');
 
+        $codtur = trim((string) $this->input('codtur', ''));
+
+        if (preg_match('/^\d{4}[12]$/', $codtur)) {
+            $this->merge([
+                'codtur' => $codtur,
+                'ano' => (int) substr($codtur, 0, 4),
+                'semestre' => (int) substr($codtur, 4, 1),
+            ]);
+        } else {
+            $this->merge(['codtur' => $codtur]);
+        }
+
         abort_if(
             ! $this->route('disciplineId') && $this->draft()->atingiuLimiteDeDisciplinas(),
             422,
@@ -43,6 +55,7 @@ class SaveDraftDisciplineRequest extends FormRequest
                     : 'regex:/^[A-Za-z0-9]{3,7}$/',
             ],
             'nomdis' => [$isExternal ? 'required' : 'nullable', 'string', 'max:240'],
+            'codtur' => ['required', 'regex:/^\d{4}[12]$/'],
             'ano' => ['required', 'integer', 'min:1900', 'max:' . date('Y')],
             'semestre' => ['required', 'integer', Rule::in([1, 2])],
             'ementa' => [$this->needsSyllabus() ? 'required' : 'nullable', 'file', 'mimes:pdf', 'max:10240'],
@@ -61,6 +74,8 @@ class SaveDraftDisciplineRequest extends FormRequest
             'nomdis.required' => 'Informe o nome da disciplina externa.',
             'ano.max' => 'Informe o ano do calendário, que não pode ser posterior ao ano atual.',
             'semestre.in' => 'O semestre deve ser 1 ou 2.',
+            'codtur.required' => 'Informe o ano e semestre em que cursou.',
+            'codtur.regex' => 'Informe o período no padrão ano e semestre com 5 dígitos. Exemplo: 20251.',
             'ementa.required' => 'Envie a ementa da disciplina externa.',
             'ementa.mimes' => 'A ementa deve ser um arquivo PDF.',
             'ementa.max' => 'A ementa pode ter no máximo 10 MB.',
@@ -95,19 +110,18 @@ class SaveDraftDisciplineRequest extends FormRequest
                     return;
                 }
 
-                if ($validator->errors()->has('ano') || $validator->errors()->has('semestre')) {
+                if ($validator->errors()->has('codtur') || $validator->errors()->has('ano') || $validator->errors()->has('semestre')) {
                     return;
                 }
 
-                if (! $graduacao->obterDisciplinaCursadaPorAlunoEmPeriodo(
+                if (! $graduacao->obterDisciplinaCursadaPorAlunoEmPeriodoCodtur(
                     (int) $this->user()->codpes,
                     $this->disciplineCode(),
-                    (int) $this->input('ano'),
-                    (int) $this->input('semestre')
+                    (string) $this->input('codtur')
                 )) {
                     $validator->errors()->add(
                         'coddis',
-                        'A disciplina USP informada não foi encontrada no seu histórico escolar para o ano e semestre selecionados.'
+                        'A disciplina USP informada não foi encontrada no seu histórico escolar para o período selecionado.'
                     );
                 }
             },

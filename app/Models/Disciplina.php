@@ -21,6 +21,7 @@ class Disciplina extends Model
         'sglund',
         'ano',
         'semestre',
+        'codtur',
         'frequencia',
         'nota',
         'programa',
@@ -214,6 +215,7 @@ class Disciplina extends Model
             'sglund' => $dados['sglund'] ?? null,
             'ano' => $dados['ano'] ?? null,
             'semestre' => $dados['semestre'] ?? null,
+            'codtur' => $dados['codtur'] ?? null,
             'frequencia' => $dados['frequencia'] ?? null,
             'nota' => $dados['nota'] ?? null,
             'programa' => null,
@@ -259,6 +261,7 @@ class Disciplina extends Model
             'ies' => $isExternal ? trim($dados['unidade_nome']) : 'USP',
             'ano' => $dados['ano'],
             'semestre' => $dados['semestre'],
+            'codtur' => $dados['codtur'],
             'frequencia' => $isExternal ? $dados['frequencia'] : null,
             'nota' => $isExternal ? $dados['nota'] : null,
             'creditos' => $isExternal ? $dados['creditos'] : null,
@@ -271,8 +274,7 @@ class Disciplina extends Model
                 static::dadosUspCursadaDoRascunho(
                     (int) $userId,
                     Str::upper(trim($dados['coddis'])),
-                    (int) $dados['ano'],
-                    (int) $dados['semestre']
+                    (string) $dados['codtur']
                 )
             );
         }
@@ -497,14 +499,13 @@ class Disciplina extends Model
      * Usa o histórico do aluno como fonte obrigatória e combina com os dados cadastrais da disciplina quando disponíveis.
      * Retorna array vazio quando o usuário não tem codpes ou não há histórico compatível no Replicado.
      */
-    private static function dadosUspCursadaDoRascunho(int $userId, string $coddis, int $ano, int $semestre): array
+    private static function dadosUspCursadaDoRascunho(int $userId, string $coddis, string $codtur): array
     {
         $codpes = (int) (User::query()->whereKey($userId)->value('codpes') ?? 0);
-        $historico = app(Graduacao::class)->obterDisciplinaCursadaPorAlunoEmPeriodo(
+        $historico = app(Graduacao::class)->obterDisciplinaCursadaPorAlunoEmPeriodoCodtur(
             $codpes,
             $coddis,
-            $ano,
-            $semestre
+            $codtur
         );
 
         if (! $historico) {
@@ -526,8 +527,9 @@ class Disciplina extends Model
             'carga_horaria' => static::cargaHorariaUsp($dadosReplicado),
             'verdis' => $dadosReplicado['verdis'] ?? null,
             'sglund' => $dadosReplicado['sglund'] ?? null,
-            'ano' => $ano,
-            'semestre' => $semestre,
+            'ano' => (int) substr($codtur, 0, 4),
+            'semestre' => (int) substr($codtur, 4, 1),
+            'codtur' => $codtur,
             'frequencia' => $dadosReplicado['frqfim'] ?? null,
             'nota' => $dadosReplicado['notfim2'] ?? $dadosReplicado['notfim'] ?? null,
             'programa' => $dadosReplicado['pgmdis'] ?? null,

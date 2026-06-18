@@ -8,10 +8,17 @@
           var uspCode = container.querySelector('.disciplina-usp-select');
           var externalCode = container.querySelector('.js-external-code');
           var code = container.querySelector('.js-discipline-code');
+          var codtur = container.querySelector('.js-codtur-mask');
           var hasSyllabus = container.dataset.hasSyllabus === 'true';
 
           if (!unit || !uspCode || !externalCode || !code) {
             return;
+          }
+
+          if (codtur) {
+            codtur.addEventListener('input', function() {
+              codtur.value = codtur.value.replace(/\D/g, '').slice(0, 5);
+            });
           }
 
           function syncCode() {

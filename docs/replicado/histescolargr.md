@@ -25,6 +25,8 @@ Abaixo está o dicionário de dados da tabela HISTESCOLARGR no formato Markdown.
 * **`codtur`** (`codigo-turma`)
 * **Tipo:** `char(7)` | **Restrições:** PK, FK, Obrigatório
 * **Comentário:** Código de identificação da turma.
+* **Formato observado no código `uspdev/replicado`:** 7 dígitos, usando os 5 primeiros como ano e semestre (`AAAAS`) e os 2 últimos como identificador da turma (`NN`). Ex.: `2025101`.
+* **Observação:** o método `Graduacao::_listarDisciplinasAlunoAnoSemestre()` do pacote `uspdev/replicado` documenta `anoSemestre` como `20211`, `20212` e consulta `codtur LIKE :anoSemestre`, confirmando `AAAAS` como prefixo de `codtur`.
 ---
 * **`dtacrihst`** (`data-criacao-historico`)
 * **Tipo:** `smalldatetime` | **Restrições:** Obrigatório

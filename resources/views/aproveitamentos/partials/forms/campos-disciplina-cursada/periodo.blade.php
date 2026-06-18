@@ -1,19 +1,16 @@
-{{-- Renderiza os campos de ano e semestre em que a disciplina foi cursada. --}}
+{{-- Renderiza o período no padrão do prefixo de codtur do Replicado. --}}
+@php
+  $codturDefault = $discipline['codtur'] ?? null;
+@endphp
+
 <div class="form-row">
   <div class="form-group col-md-6">
-    <label for="{{ $fieldId('ano') }}">Ano em que cursou <span class="text-danger">*</span></label>
-    <input type="number" class="form-control" id="{{ $fieldId('ano') }}" name="ano" min="1900"
-      max="{{ date('Y') }}" value="{{ $value('ano', $discipline['ano'] ?? '') }}" required>
-  </div>
-  <div class="form-group col-md-6">
-    <label for="{{ $fieldId('semestre') }}">Semestre em que cursou <span class="text-danger">*</span></label>
-    <select class="form-control" id="{{ $fieldId('semestre') }}" name="semestre" required>
-      <option value="">Selecione...</option>
-      <option value="1" @selected((string) $value('semestre', $discipline['semestre'] ?? '') === '1')>1º semestre</option>
-      <option value="2" @selected((string) $value('semestre', $discipline['semestre'] ?? '') === '2')>2º semestre</option>
-    </select>
+    <label for="{{ $fieldId('codtur') }}">Ano e semestre em que cursou <span class="text-danger">*</span></label>
+    <input type="text" class="form-control js-codtur-mask" id="{{ $fieldId('codtur') }}" name="codtur"
+      inputmode="numeric" autocomplete="off" maxlength="5" pattern="\d{4}[12]"
+      placeholder="20251" value="{{ $value('codtur', $codturDefault) }}" required>
   </div>
   <small class="form-text text-muted">
-    Informe o ano e o semestre do calendário, por exemplo: "2025 / 1º Semestre", e não ano e semestre do curso.
+    Informe o ano e semestre do calendário, por exemplo: "20251" para 2025/1º semestre.
   </small>
 </div>

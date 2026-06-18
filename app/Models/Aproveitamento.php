@@ -588,6 +588,7 @@ class Aproveitamento extends Model
                 ] : null,
                 'semestre' => $cursada->semestre,
                 'ano' => $cursada->ano,
+                'codtur' => $cursada->codtur,
                 'freq' => $cursada->frequencia,
                 'nota' => $cursada->nota,
                 'creditos' => $cursada->creditos,

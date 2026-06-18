@@ -54,7 +54,7 @@ class AproveitamentoMultistepTest extends TestCase
         $graduacao->shouldReceive('obterDadosDisciplinaPorCodigo')
             ->andReturn([])
             ->byDefault();
-        $graduacao->shouldReceive('obterDisciplinaCursadaPorAlunoEmPeriodo')
+        $graduacao->shouldReceive('obterDisciplinaCursadaPorAlunoEmPeriodoCodtur')
             ->andReturn([])
             ->byDefault();
         $this->app->instance(Graduacao::class, $graduacao);
@@ -88,8 +88,7 @@ class AproveitamentoMultistepTest extends TestCase
                 'unidade_nome' => 'Universidade Externa',
                 'coddis' => 'EXT100',
                 'nomdis' => 'Programação',
-                'ano' => 2025,
-                'semestre' => 1,
+                'codtur' => '20251',
                 'ementa' => UploadedFile::fake()->create('ementa.pdf', 100, 'application/pdf'),
                 'frequencia' => 90,
                 'nota' => 8.5,
@@ -148,8 +147,7 @@ class AproveitamentoMultistepTest extends TestCase
             'requerida_coddis' => 'MAC0110',
             'unidade_tipo' => 'OUTRA',
             'nomdis' => 'Programação',
-            'ano' => 2025,
-            'semestre' => 1,
+            'codtur' => '20251',
             'frequencia' => 90,
             'nota' => 8.5,
             'creditos' => 4,
@@ -214,8 +212,7 @@ class AproveitamentoMultistepTest extends TestCase
                 'unidade_nome' => 'Universidade Externa',
                 'coddis' => 'EXT100',
                 'nomdis' => 'Programação',
-                'ano' => 2025,
-                'semestre' => 1,
+                'codtur' => '20251',
                 'ementa' => UploadedFile::fake()->create('ementa.pdf', 100, 'application/pdf'),
                 'frequencia' => 90,
                 'nota' => 8.5,
@@ -317,8 +314,7 @@ class AproveitamentoMultistepTest extends TestCase
                 'unidade_nome' => 'Universidade Externa Atualizada',
                 'coddis' => 'EXT101',
                 'nomdis' => 'Programação II',
-                'ano' => 2026,
-                'semestre' => 2,
+                'codtur' => '20262',
                 'frequencia' => 95,
                 'nota' => 9,
                 'creditos' => 4,
@@ -362,8 +358,7 @@ class AproveitamentoMultistepTest extends TestCase
                 'requerida_coddis' => 'MAC0110',
                 'unidade_tipo' => 'USP',
                 'coddis' => 'MAT0111',
-                'ano' => 2024,
-                'semestre' => 2,
+                'codtur' => '20242',
             ])
             ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
 
@@ -376,6 +371,7 @@ class AproveitamentoMultistepTest extends TestCase
             'carga_horaria' => 90,
             'ano' => 2024,
             'semestre' => 2,
+            'codtur' => '20242',
             'frequencia' => 92.5,
             'nota' => 8.0,
             'programa' => 'Limites, derivadas e integrais.',
@@ -399,8 +395,7 @@ class AproveitamentoMultistepTest extends TestCase
                 'requerida_coddis' => 'MAC0110',
                 'unidade_tipo' => 'USP',
                 'coddis' => 'MAT0111',
-                'ano' => 2024,
-                'semestre' => 2,
+                'codtur' => '20242',
             ])
             ->assertRedirect(route('equivalencias.newreq-create', absolute: false))
             ->assertSessionHasErrors('coddis');
@@ -434,8 +429,7 @@ class AproveitamentoMultistepTest extends TestCase
                 'requerida_coddis' => 'MAC0110',
                 'unidade_tipo' => 'USP',
                 'coddis' => 'MAC0110',
-                'ano' => 2023,
-                'semestre' => 1,
+                'codtur' => '20231',
             ]);
 
         $draft = AproveitamentoRascunho::atualDoUsuario($user->id);
@@ -461,8 +455,7 @@ class AproveitamentoMultistepTest extends TestCase
                 'requerida_coddis' => 'MAC0110',
                 'unidade_tipo' => 'USP',
                 'coddis' => 'MAT0111',
-                'ano' => 2024,
-                'semestre' => 2,
+                'codtur' => '20242',
             ])
             ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
 
@@ -488,7 +481,7 @@ class AproveitamentoMultistepTest extends TestCase
                 'unidade_tipo' => 'OUTRA',
             ])
             ->assertRedirect($createUrl)
-            ->assertSessionHasErrors(['unidade_nome', 'coddis', 'nomdis', 'ano', 'semestre', 'ementa'])
+            ->assertSessionHasErrors(['unidade_nome', 'coddis', 'nomdis', 'codtur', 'ano', 'semestre', 'ementa'])
             ->assertSessionHas('discipline_modal', 'create');
 
         $this->actingAs($user)
@@ -518,6 +511,7 @@ class AproveitamentoMultistepTest extends TestCase
 
     private function mockGraduacaoWithUspHistory(int $codpes, string $coddis, int $ano, int $semestre, array $history): void
     {
+        $codtur = sprintf('%04d%d', $ano, $semestre);
         $graduacao = Mockery::mock(Graduacao::class);
         foreach (['MAC0110', 'MAT0111'] as $knownCode) {
             $graduacao->shouldReceive('obterDadosDisciplinaAtivaPorCodigo')
@@ -537,19 +531,17 @@ class AproveitamentoMultistepTest extends TestCase
         $graduacao->shouldReceive('obterDadosDisciplinaPorCodigo')
             ->andReturn([])
             ->byDefault();
-        $graduacao->shouldReceive('obterDisciplinaCursadaPorAlunoEmPeriodo')
-            ->andReturnUsing(function (int $receivedCodpes, string $receivedCoddis, int $receivedAno, int $receivedSemestre) use (
+        $graduacao->shouldReceive('obterDisciplinaCursadaPorAlunoEmPeriodoCodtur')
+            ->andReturnUsing(function (int $receivedCodpes, string $receivedCoddis, string $receivedCodtur) use (
                 $codpes,
                 $coddis,
-                $ano,
-                $semestre,
+                $codtur,
                 $history
             ) {
                 if (
                     $receivedCodpes === $codpes &&
                     $receivedCoddis === $coddis &&
-                    $receivedAno === $ano &&
-                    $receivedSemestre === $semestre
+                    $receivedCodtur === $codtur
                 ) {
                     return $history;
                 }
@@ -583,6 +575,7 @@ class AproveitamentoMultistepTest extends TestCase
             'nomdis' => "Disciplina {$code}",
             'ano' => 2025,
             'semestre' => 1,
+            'codtur' => '20251',
             'frequencia' => 90.0,
             'nota' => 8.5,
             'creditos' => 4,

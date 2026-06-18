@@ -14,6 +14,12 @@
       </div>
       <div class="col-md-2 col-6 mb-3">
         @include('aproveitamentos.partials.display.show-info-item', [
+            'label' => 'Período',
+            'value' => $cursada['codtur'] ?? null,
+        ])
+      </div>
+      <div class="col-md-2 col-6 mb-3">
+        @include('aproveitamentos.partials.display.show-info-item', [
             'label' => 'Ano',
             'value' => $cursada['ano'],
         ])

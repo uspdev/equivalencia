@@ -74,11 +74,12 @@ class Graduacao extends GraduacaoReplicado
     /**
      * Localiza uma disciplina cursada no histórico escolar do aluno para um período específico.
      * Retorna dados de nota/frequência do HISTESCOLARGR junto com ementa e créditos da DISCIPLINAGR.
-     * Retorna array vazio se a consulta falhar ou não houver matrícula para aluno, disciplina, ano e semestre.
+     * Retorna array vazio se a consulta falhar ou não houver matrícula para aluno, disciplina e período.
      */
-    public function obterDisciplinaCursadaPorAlunoEmPeriodo(int $codpes, string $coddis, int $ano, int $semestre): array
+    public function obterDisciplinaCursadaPorAlunoEmPeriodoCodtur(int $codpes, string $coddis, string $codtur): array
     {
         $coddis = Str::upper(trim($coddis));
+        $codtur = trim($codtur);
 
         $query = "SELECT TOP 1
                 H.codpes,
@@ -102,20 +103,30 @@ class Graduacao extends GraduacaoReplicado
             INNER JOIN DISCIPLINAGR D ON H.coddis = D.coddis AND H.verdis = D.verdis
             WHERE H.codpes = convert(int, :codpes)
                 AND H.coddis = :coddis
-                AND SUBSTRING(H.codtur, 1, 4) = :ano
-                AND SUBSTRING(H.codtur, 5, 1) = :semestre
+                AND H.codtur LIKE :codtur
             ORDER BY H.codpgm DESC, H.verdis DESC, H.dtacrihst DESC";
 
         try {
             return DB::fetch($query, [
                 'codpes' => $codpes,
                 'coddis' => $coddis,
-                'ano' => (string) $ano,
-                'semestre' => (string) $semestre,
+                'codtur' => $codtur . '%',
             ]) ?: [];
         } catch (\Throwable $e) {
             return [];
         }
+    }
+
+    /**
+     * @deprecated Use obterDisciplinaCursadaPorAlunoEmPeriodoCodtur().
+     */
+    public function obterDisciplinaCursadaPorAlunoEmPeriodo(int $codpes, string $coddis, int $ano, int $semestre): array
+    {
+        return $this->obterDisciplinaCursadaPorAlunoEmPeriodoCodtur(
+            $codpes,
+            $coddis,
+            sprintf('%04d%d', $ano, $semestre)
+        );
     }
 
     /**
