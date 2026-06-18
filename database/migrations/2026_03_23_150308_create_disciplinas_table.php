@@ -33,6 +33,11 @@ return new class extends Migration
             $table->decimal('frequencia', 5, 2)->nullable();
             $table->decimal('nota', 5, 2)->nullable();
 
+            // DADOS DO REPLICADO PARA DISCIPLINAS USP
+            $table->text('programa')->nullable();
+            $table->text('programa_resumo')->nullable();
+            $table->text('objetivo')->nullable();
+            $table->boolean('disciplina_ativa')->nullable();
 
             // Campo para vincular um pedido de equivalência a um aluno
             // seguindo a lógica aluno -> entra com cursada (c) e requerida (r) que ele quer equivalente

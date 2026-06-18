@@ -54,7 +54,7 @@ class AproveitamentoMultistepTest extends TestCase
         $graduacao->shouldReceive('obterDadosDisciplinaPorCodigo')
             ->andReturn([])
             ->byDefault();
-        $graduacao->shouldReceive('obterDisciplinaCursadaPorAlunoPeriodo')
+        $graduacao->shouldReceive('obterDisciplinaCursadaPorAlunoEmPeriodo')
             ->andReturn([])
             ->byDefault();
         $this->app->instance(Graduacao::class, $graduacao);
@@ -537,7 +537,7 @@ class AproveitamentoMultistepTest extends TestCase
         $graduacao->shouldReceive('obterDadosDisciplinaPorCodigo')
             ->andReturn([])
             ->byDefault();
-        $graduacao->shouldReceive('obterDisciplinaCursadaPorAlunoPeriodo')
+        $graduacao->shouldReceive('obterDisciplinaCursadaPorAlunoEmPeriodo')
             ->andReturnUsing(function (int $receivedCodpes, string $receivedCoddis, int $receivedAno, int $receivedSemestre) use (
                 $codpes,
                 $coddis,
