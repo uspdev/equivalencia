@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Role;
 use App\Models\Aproveitamento;
 use App\Models\Arquivo;
 use App\Models\Disciplina;
@@ -11,7 +12,6 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class AproveitamentoShowTest extends TestCase
@@ -28,6 +28,7 @@ class AproveitamentoShowTest extends TestCase
         DB::purge();
         url()->forceRootUrl('http://localhost');
         Artisan::call('migrate:fresh', ['--force' => true]);
+        $this->seedBusinessPermissions();
         Storage::fake('local');
     }
 
@@ -236,7 +237,7 @@ class AproveitamentoShowTest extends TestCase
             'codpes' => $codpes,
         ]);
         $user->criarPermissoesPadrao();
-        $user->givePermissionTo(Permission::findByName('admin', 'senhaunica'));
+        $user->assignRole(Role::ALUNO->value);
 
         return $user;
     }

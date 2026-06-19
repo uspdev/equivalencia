@@ -19,7 +19,7 @@
     ])
   </div>
 
-  @can('svgrad')
+  @can(\App\Enums\Permission::APROVEITAMENTOS_AUTOMATICOS_MANAGE->value)
     <div class="disciplina-requerida-acoes js-edit-only ml-3 d-inline-flex align-items-center">
       <div> @include('aproveitamentos_automaticos.partials.modals.modal-equivalencia', [
           'modalId' => "modalAdicionarEquivalencia{$disciplina->id}",

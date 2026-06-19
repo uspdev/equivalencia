@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Role;
 use App\Models\AproveitamentoRascunho;
 use App\Models\User;
 use App\Replicado\Graduacao;
@@ -10,7 +11,6 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 use Uspdev\Replicado\Replicado;
 use Mockery;
@@ -30,6 +30,7 @@ class AproveitamentoMultistepTest extends TestCase
         DB::purge();
         url()->forceRootUrl('http://localhost');
         Artisan::call('migrate:fresh', ['--force' => true]);
+        $this->seedBusinessPermissions();
         Replicado::setConfig(['fake' => true]);
 
         Storage::fake('local');
@@ -68,7 +69,7 @@ class AproveitamentoMultistepTest extends TestCase
             'codpes' => 123456,
         ]);
         $user->criarPermissoesPadrao();
-        $user->givePermissionTo(Permission::findByName('admin', 'senhaunica'));
+        $user->assignRole(Role::ALUNO->value);
 
         $this->actingAs($user)
             ->get(route('equivalencias.newreq-create', absolute: false))
@@ -499,7 +500,7 @@ class AproveitamentoMultistepTest extends TestCase
             'codpes' => $codpes,
         ]);
         $user->criarPermissoesPadrao();
-        $user->givePermissionTo(Permission::findByName('admin', 'senhaunica'));
+        $user->assignRole(Role::ALUNO->value);
 
         return $user;
     }

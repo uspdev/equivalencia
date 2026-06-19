@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\Permission;
+
 $admin = [
     [
         'text' => '<i class="fas fa-atom"></i>  SubItem 1',
@@ -43,12 +45,12 @@ $menu = [
     [
         'text' => 'Meus requerimentos',
         'url' => 'equivalencias/index',
-        'can' => 'user',
+        'can' => Permission::REQUERIMENTOS_VIEW_OWN->value,
     ],
     [
         'text' => 'Novo requerimento',
         'url' => 'equivalencias/newreq',
-        'can' => 'user',
+        'can' => Permission::REQUERIMENTOS_CREATE->value,
     ],
     [
         'text' => 'Atendimentos',
@@ -58,7 +60,7 @@ $menu = [
     [
         'text' => 'Aproveitamentos automáticos',
         'url' => 'equivalencias',
-        'can' => 'equivalencias',
+        'can' => Permission::APROVEITAMENTOS_AUTOMATICOS_VIEW->value,
     ],
 ];
 

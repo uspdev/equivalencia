@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\PermissionRegistrar;
 
 class WorkflowDefinitionsTableSeeder extends Seeder
 {
@@ -12,6 +13,8 @@ class WorkflowDefinitionsTableSeeder extends Seeder
      */
     public function run(): void
     {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
         DB::table('workflow_definitions')->insert([
             'name' => 'equivalencia',
             'description' => 'Workflow de equivalência de disciplinas',
@@ -68,5 +71,7 @@ class WorkflowDefinitionsTableSeeder extends Seeder
             ['permission_id' => 39, 'role_id' => 2],
             ['permission_id' => 40, 'role_id' => 1],
         ]);
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\Permission;
 use App\Models\Disciplina;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\ValidationException;
@@ -12,7 +13,7 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can(Permission::APROVEITAMENTOS_AUTOMATICOS_MANAGE->value) ?? false;
     }
 
     public function rules(): array

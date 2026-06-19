@@ -3,9 +3,6 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Database\Seeders\FormDefinitionsTableSeeder;
-use Database\Seeders\WorflowDefinitionsTableSeeder;
-
 
 class DatabaseSeeder extends Seeder
 {
@@ -16,7 +13,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-        $this->call(FormDefinitionsTableSeeder::class);
-        $this->call(WorkflowDefinitionsTableSeeder::class);
+        $this->call([
+            FormDefinitionsTableSeeder::class,
+            WorkflowDefinitionsTableSeeder::class,
+            RolesAndPermissionsSeeder::class,
+        ]);
     }
 }

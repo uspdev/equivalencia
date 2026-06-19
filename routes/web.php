@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AproveitamentoAutomaticoController;
 use App\Http\Controllers\AproveitamentoController;
+use App\Enums\Permission;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -24,8 +25,8 @@ Route::get('/', [AproveitamentoController::class, 'home'])->name('workflows.inde
 // ==========================================
 // BLOCO 2: EQUIVALENCIAS
 // ==========================================
-// Agrupa as rotas protegidas por autenticacao e permissao de acesso ao modulo.
-Route::middleware(['auth', 'can:equivalencias'])
+// Agrupa as rotas protegidas por autenticacao e permissoes de negocio.
+Route::middleware(['auth'])
     ->prefix('equivalencias')
     ->name('equivalencias.')
     ->group(function () {
@@ -34,7 +35,7 @@ Route::middleware(['auth', 'can:equivalencias'])
         // BLOCO 2.1: NOVO REQUERIMENTO
         // ==========================================
         // Mantem o fluxo de criacao de requerimentos, disciplinas e historico.
-        Route::controller(AproveitamentoController::class)->group(function () {
+        Route::middleware('can:'.Permission::REQUERIMENTOS_CREATE->value)->controller(AproveitamentoController::class)->group(function () {
             Route::get('/find/disciplinas/versoes', 'versoesDisciplina')->name('disciplina-versoes');
             Route::get('/newreq', 'create')->name('newreq-create');
             Route::post('/newreq/requerida', 'saveRequiredDiscipline')->name('newreq-required');
@@ -51,12 +52,19 @@ Route::middleware(['auth', 'can:equivalencias'])
         // BLOCO 2.2: APROVEITAMENTO AUTOMATICO
         // ==========================================
         // Rotas de listagem, exibicao e persistencia das equivalencias automaticas.
-        Route::controller(AproveitamentoAutomaticoController::class)->group(function () {
+        Route::middleware('can:'.Permission::APROVEITAMENTOS_AUTOMATICOS_VIEW->value)
+            ->controller(AproveitamentoAutomaticoController::class)
+            ->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/{codcur}/{codhab}', 'show')
                 ->name('show')
                 ->whereNumber('codcur')
                 ->whereNumber('codhab');
+        });
+
+        Route::middleware('can:'.Permission::APROVEITAMENTOS_AUTOMATICOS_MANAGE->value)
+            ->controller(AproveitamentoAutomaticoController::class)
+            ->group(function () {
             Route::post('/equivalencia/estado-edicao', 'saveEditModeState')->name('save-edit-mode-state');
             Route::post('/{codcur}/{codhab}', 'store')
                 ->name('store')
@@ -81,7 +89,7 @@ Route::middleware(['auth', 'can:equivalencias'])
         // BLOCO 2.3: REQUERIMENTOS
         // ==========================================
         // Rotas de consulta, visualizacao de arquivos e remocao de requerimentos.
-        Route::controller(AproveitamentoController::class)->group(function () {
+        Route::middleware('can:'.Permission::REQUERIMENTOS_VIEW_OWN->value)->controller(AproveitamentoController::class)->group(function () {
             Route::get('/index', 'index')->name('req-index');
             Route::get('/req/show/{group}', 'show')->name('req-show');
             Route::get('/req/show/{group}/arquivos/{arquivo}', 'showFile')->name('req-file');

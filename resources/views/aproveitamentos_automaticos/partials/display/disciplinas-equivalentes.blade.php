@@ -31,7 +31,7 @@
         @notLast('|')
       @endforeach
     </p>
-    @can('svgrad')
+    @can(\App\Enums\Permission::APROVEITAMENTOS_AUTOMATICOS_MANAGE->value)
       @if ($equivalenciaRepresentante)
         <div class="js-edit-only d-inline-flex align-items-center">
           @include('aproveitamentos_automaticos.partials.modals.modal-edit-equivalencia', [

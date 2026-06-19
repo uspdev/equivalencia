@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Role;
 use App\Models\User;
 use App\Replicado\Graduacao;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Mockery;
-use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class DisciplinaUspValidationTest extends TestCase
@@ -26,6 +26,7 @@ class DisciplinaUspValidationTest extends TestCase
         DB::purge();
         url()->forceRootUrl('http://localhost');
         Artisan::call('migrate:fresh', ['--force' => true]);
+        $this->seedBusinessPermissions();
 
         $this->authorizedUser = User::create([
             'name' => 'Usuário autorizado',
@@ -33,7 +34,7 @@ class DisciplinaUspValidationTest extends TestCase
             'codpes' => 654321,
         ]);
         $this->authorizedUser->criarPermissoesPadrao();
-        $this->authorizedUser->givePermissionTo(Permission::findByName('admin', 'senhaunica'));
+        $this->authorizedUser->assignRole(Role::ALUNO->value);
     }
 
     public function test_invalid_usp_code_is_rejected_and_preserved_as_old_input(): void

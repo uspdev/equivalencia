@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Permission;
 use App\Http\Requests\SaveDraftDisciplineRequest;
 use App\Http\Requests\SaveHistoryRequest;
 use App\Http\Requests\SaveRequiredDisciplineRequest;
@@ -15,6 +16,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -32,6 +34,8 @@ class AproveitamentoController extends Controller
      */
     public function create(): View
     {
+        Gate::authorize(Permission::REQUERIMENTOS_CREATE->value);
+
         $draft = $this->currentDraft();
         $disciplines = $draft->disciplinas();
 
@@ -45,6 +49,8 @@ class AproveitamentoController extends Controller
 
     public function saveRequiredDiscipline(SaveRequiredDisciplineRequest $request): RedirectResponse
     {
+        Gate::authorize(Permission::REQUERIMENTOS_CREATE->value);
+
         $this->currentDraft()->salvarDisciplinaRequerida(
             $request->requiredDisciplineCode(),
             $request->requiredDisciplineVersion()
@@ -57,6 +63,8 @@ class AproveitamentoController extends Controller
 
     public function createDiscipline(): View
     {
+        Gate::authorize(Permission::REQUERIMENTOS_CREATE->value);
+
         $draft = $this->currentDraft();
         abort_if($draft->atingiuLimiteDeDisciplinas(), 422, 'O limite de três disciplinas foi atingido.');
 
@@ -70,6 +78,8 @@ class AproveitamentoController extends Controller
 
     public function storeDiscipline(SaveDraftDisciplineRequest $request): RedirectResponse
     {
+        Gate::authorize(Permission::REQUERIMENTOS_CREATE->value);
+
         $draft = $request->draft();
         abort_if($draft->atingiuLimiteDeDisciplinas(), 422, 'O limite de três disciplinas foi atingido.');
 
@@ -84,6 +94,8 @@ class AproveitamentoController extends Controller
 
     public function editDiscipline(string $disciplineId): View
     {
+        Gate::authorize(Permission::REQUERIMENTOS_CREATE->value);
+
         $draft = $this->currentDraft();
         $discipline = $draft->disciplinaPorIdOrFail($disciplineId);
 
@@ -97,6 +109,8 @@ class AproveitamentoController extends Controller
 
     public function updateDiscipline(SaveDraftDisciplineRequest $request, string $disciplineId): RedirectResponse
     {
+        Gate::authorize(Permission::REQUERIMENTOS_CREATE->value);
+
         $draft = $request->draft();
 
         $draft->salvarDisciplinaRequerida($request->requiredDisciplineCode(), $request->requiredDisciplineVersion());
@@ -110,6 +124,8 @@ class AproveitamentoController extends Controller
 
     public function destroyDiscipline(string $disciplineId): RedirectResponse
     {
+        Gate::authorize(Permission::REQUERIMENTOS_CREATE->value);
+
         $this->currentDraft()->removerDisciplina($disciplineId);
 
         return redirect()
@@ -119,6 +135,8 @@ class AproveitamentoController extends Controller
 
     public function saveHistory(SaveHistoryRequest $request): JsonResponse|RedirectResponse
     {
+        Gate::authorize(Permission::REQUERIMENTOS_CREATE->value);
+
         $history = $request->draft()->salvarHistorico($request->file('historico'));
 
         if ($request->expectsJson()) {
@@ -137,6 +155,8 @@ class AproveitamentoController extends Controller
      */
     public function versoesDisciplina(Request $request): JsonResponse
     {
+        Gate::authorize(Permission::REQUERIMENTOS_CREATE->value);
+
         $coddis = trim((string) $request->query('coddis', ''));
 
         if (! preg_match('/^[A-Za-z0-9]{3,7}$/', $coddis)) {
@@ -167,6 +187,8 @@ class AproveitamentoController extends Controller
      */
     public function store(StoreAproveitamentoRequest $request): RedirectResponse
     {
+        Gate::authorize(Permission::REQUERIMENTOS_CREATE->value);
+
         $draft = $request->draft();
 
         if ($request->hasFile('historico')) {
@@ -189,6 +211,8 @@ class AproveitamentoController extends Controller
      */
     public function index(): View
     {
+        Gate::authorize(Permission::REQUERIMENTOS_VIEW_OWN->value);
+
         $requisitions = Aproveitamento::requerimentosDoUsuario(Auth::id());
 
         return view('aproveitamentos.index', ['requisicoes' => $requisitions]);
@@ -200,6 +224,8 @@ class AproveitamentoController extends Controller
      */
     public function show(int $group): View
     {
+        Gate::authorize(Permission::REQUERIMENTOS_VIEW_OWN->value);
+
         $show_data = Aproveitamento::dadosDeExibicaoDoRequerimento($group, Auth::id());
 
         return view('aproveitamentos.show', ['show_data' => $show_data]);
@@ -210,6 +236,8 @@ class AproveitamentoController extends Controller
      */
     public function showFile(int $group, int $arquivo): StreamedResponse
     {
+        Gate::authorize(Permission::REQUERIMENTOS_VIEW_OWN->value);
+
         $file = Arquivo::doRequerimentoDoUsuarioOrFail($arquivo, $group, (int) Auth::id());
 
         abort_unless(Storage::exists($file->path), 404);
@@ -229,6 +257,8 @@ class AproveitamentoController extends Controller
      */
     public function destroy(int $group): RedirectResponse
     {
+        Gate::authorize(Permission::REQUERIMENTOS_VIEW_OWN->value);
+
         $req_name = Aproveitamento::removerRequerimentoDoUsuario($group, Auth::id());
 
         return redirect()

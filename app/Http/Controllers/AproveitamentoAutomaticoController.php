@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Permission;
 use App\Http\Requests\SaveEditModeStateRequest;
 use App\Http\Requests\SaveEquivalenciaFilhaRequest;
 use App\Http\Requests\StoreEquivalenciaRequest;
@@ -11,6 +12,7 @@ use App\Models\Aproveitamento;
 use App\Replicado\Graduacao;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class AproveitamentoAutomaticoController extends Controller
@@ -21,8 +23,6 @@ class AproveitamentoAutomaticoController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('can:equivalencias');
-
         $this->middleware(function ($request, $next) {
             \UspTheme::activeUrl('equivalencias');
 
@@ -37,6 +37,8 @@ class AproveitamentoAutomaticoController extends Controller
      */
     public function index()
     {
+        Gate::authorize(Permission::APROVEITAMENTOS_AUTOMATICOS_VIEW->value);
+
         $cursos = Graduacao::listarCursosHabilitacoes();
 
         return view('aproveitamentos_automaticos.index', [
@@ -54,8 +56,10 @@ class AproveitamentoAutomaticoController extends Controller
      */
     public function show(int $codcur, int $codhab)
     {
+        Gate::authorize(Permission::APROVEITAMENTOS_AUTOMATICOS_VIEW->value);
+
         $curso = Graduacao::obterCursoHabilitacao($codcur, $codhab);
-        $canManageEquivalencias = auth()->user()?->can('svgrad') ?? false;
+        $canManageEquivalencias = auth()->user()?->can(Permission::APROVEITAMENTOS_AUTOMATICOS_MANAGE->value) ?? false;
 
         abort_unless($curso, 404);
 
@@ -82,6 +86,8 @@ class AproveitamentoAutomaticoController extends Controller
      */
     public function saveEditModeState(SaveEditModeStateRequest $request): JsonResponse
     {
+        Gate::authorize(Permission::APROVEITAMENTOS_AUTOMATICOS_MANAGE->value);
+
         $dados = $request->validated();
 
         session()->put($this->editModeSessionKey(), (bool) $dados['enabled']);
@@ -103,6 +109,8 @@ class AproveitamentoAutomaticoController extends Controller
      */
     public function store(StoreEquivalenciaRequest $request, int $codcur, int $codhab)
     {
+        Gate::authorize(Permission::APROVEITAMENTOS_AUTOMATICOS_MANAGE->value);
+
         $dados = $request->validated();
 
         Disciplina::garantirRequeridaAutomaticaNoContexto(
@@ -129,6 +137,8 @@ class AproveitamentoAutomaticoController extends Controller
      */
     public function update(UpdateEquivalenciaRequest $request, int $codcur, int $codhab, Disciplina $equivalencia)
     {
+        Gate::authorize(Permission::APROVEITAMENTOS_AUTOMATICOS_MANAGE->value);
+
         abort_unless($equivalencia->pertenceComoRequeridaAoContexto($codcur, $codhab), 404);
 
         $dados = $request->validated();
@@ -168,6 +178,8 @@ class AproveitamentoAutomaticoController extends Controller
      */
     public function destroy(int $codcur, int $codhab, Disciplina $equivalencia)
     {
+        Gate::authorize(Permission::APROVEITAMENTOS_AUTOMATICOS_MANAGE->value);
+
         abort_unless($equivalencia->pertenceComoRequeridaAoContexto($codcur, $codhab), 404);
 
         Aproveitamento::removerVinculosDaRequeridaNoContexto($equivalencia, $codcur, $codhab);
@@ -201,6 +213,8 @@ class AproveitamentoAutomaticoController extends Controller
      */
     public function addEquivalencia(SaveEquivalenciaFilhaRequest $request, int $codcur, int $codhab, Disciplina $equivalencia)
     {
+        Gate::authorize(Permission::APROVEITAMENTOS_AUTOMATICOS_MANAGE->value);
+
         abort_unless($equivalencia->pertenceComoRequeridaAoContexto($codcur, $codhab), 404);
 
         Aproveitamento::criarGrupoDeCursadas(
@@ -228,6 +242,8 @@ class AproveitamentoAutomaticoController extends Controller
      */
     public function updateEquivalencia(SaveEquivalenciaFilhaRequest $request, int $codcur, int $codhab, Disciplina $equivalencia, Aproveitamento $equivalenciaFilha)
     {
+        Gate::authorize(Permission::APROVEITAMENTOS_AUTOMATICOS_MANAGE->value);
+
         $this->abortUnlessEquivalenciaFilhaValida($equivalencia, $equivalenciaFilha, $codcur, $codhab);
 
         Aproveitamento::atualizarGrupoDeCursadas(
@@ -255,6 +271,8 @@ class AproveitamentoAutomaticoController extends Controller
      */
     public function destroyEquivalencia(int $codcur, int $codhab, Disciplina $equivalencia, Aproveitamento $equivalenciaFilha)
     {
+        Gate::authorize(Permission::APROVEITAMENTOS_AUTOMATICOS_MANAGE->value);
+
         $this->abortUnlessEquivalenciaFilhaValida($equivalencia, $equivalenciaFilha, $codcur, $codhab);
 
         $equivalenciaFilha->removerELimparCursada();
@@ -276,6 +294,8 @@ class AproveitamentoAutomaticoController extends Controller
      */
     public function destroyEquivalenciaGrupo(int $codcur, int $codhab, Disciplina $equivalencia, Aproveitamento $equivalenciaFilha)
     {
+        Gate::authorize(Permission::APROVEITAMENTOS_AUTOMATICOS_MANAGE->value);
+
         $this->abortUnlessEquivalenciaFilhaValida($equivalencia, $equivalenciaFilha, $codcur, $codhab);
 
         Aproveitamento::removerGrupoELimparDisciplinas($equivalencia, $equivalenciaFilha, $codcur, $codhab);
