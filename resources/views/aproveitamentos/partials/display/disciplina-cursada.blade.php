@@ -3,7 +3,7 @@
   <button type="button" class="btn btn-link flex-grow-1 p-0 text-left" data-toggle="modal"
     data-target="#edit-discipline-modal-{{ $discipline['id'] }}">
     <strong>{{ $discipline['unidade_nome'] }}</strong>
-    <span class="ml-2">{{ $discipline['coddis'] }}</span>
+    <span class="ml-2">{{ $discipline['coddis'] }}{{ $discipline['verdis'] ? ' v' . $discipline['verdis'] : '' }}{{ $discipline['nomdis'] ? ' - ' . $discipline['nomdis'] : '' }}</span>
   </button>
 
   <form method="POST" action="{{ route('equivalencias.newreq-discipline-destroy', $discipline['id']) }}"

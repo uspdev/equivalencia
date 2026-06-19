@@ -16,7 +16,7 @@
       }
 
       function syncRequiredDiscipline() {
-        var code = requiredDiscipline.value;
+        var code = requiredDiscipline ? requiredDiscipline.value : '';
 
         document.querySelectorAll('.js-required-discipline-code').forEach(function(field) {
           field.value = code;
@@ -30,6 +30,7 @@
       }
 
       requiredDiscipline.addEventListener('change', syncRequiredDiscipline);
+      requiredDiscipline.addEventListener('disciplina-usp:identity', syncRequiredDiscipline);
       if (window.jQuery) {
         window.jQuery(requiredDiscipline)
           .on('change.requiredDiscipline select2:select.requiredDiscipline select2:clear.requiredDiscipline',

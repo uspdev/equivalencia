@@ -23,6 +23,7 @@
       'selected' => $unitType === 'USP' ? $selectedCode : null,
       'selectedName' => $unitType === 'USP' ? $selectedName : null,
       'required' => false,
+      'showVersionSelector' => false,
   ])
 </div>
 

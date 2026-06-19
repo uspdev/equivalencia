@@ -3,6 +3,7 @@
   $method = strtoupper($method ?? 'POST');
   $formMethod = in_array($method, ['GET', 'POST'], true) ? $method : 'POST';
   $selected = old('coddis', $selected ?? null);
+  $selectedVerdis = old('verdis', $selectedVerdis ?? null);
   $selectedName = $selectedName ?? null;
 @endphp
 
@@ -24,8 +25,12 @@
 
   @include('aproveitamentos.partials.forms.campo-disciplina-usp', [
       'name' => 'coddis',
+      'verdisName' => 'verdis',
       'id' => $id ?? 'coddis',
       'label' => 'Código da disciplina',
+      'selected' => $selected,
+      'selectedVerdis' => $selectedVerdis,
+      'selectedName' => $selectedName,
       'required' => true,
   ])
 

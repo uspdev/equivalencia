@@ -34,6 +34,7 @@
               'method' => 'PUT',
               'id' => $modalId . '-coddis',
               'selected' => $disciplina->coddis,
+              'selectedVerdis' => $disciplina->verdis,
               'selectedName' => $disciplina->nome_disciplina,
           ])
         </div>

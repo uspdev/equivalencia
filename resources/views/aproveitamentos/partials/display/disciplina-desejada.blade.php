@@ -11,6 +11,7 @@
         'selected' => $selectedRequiredCode,
         'selectedName' => $requiredDisciplineName,
         'required' => true,
+        'showVersionSelector' => false,
     ])
   </div>
 </div>

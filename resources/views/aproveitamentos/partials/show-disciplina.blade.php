@@ -1,6 +1,6 @@
 <div class="card mb-4">
   <div class="card-header">
-    <strong>Disciplina {{ $position }}: {{ $cursada['coddis'] }} - {{ $cursada['nomdis'] }}</strong>
+    <strong>Disciplina {{ $position }}: {{ $cursada['coddis'] }}- {{ $cursada['nomdis'] }}</strong>
   </div>
   <div class="card-body">
     <div class="row">

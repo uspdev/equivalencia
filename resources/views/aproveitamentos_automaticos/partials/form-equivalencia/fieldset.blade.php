@@ -4,6 +4,7 @@
   $visible = $block['visible'];
   $isUsp = $block['isUsp'];
   $coddisField = 'coddis' . $suffix;
+  $verdisField = 'verdis' . $suffix;
   $nomeField = 'nome_disciplina' . $suffix;
   $iesField = 'ies' . $suffix;
   $isUspField = 'is_usp' . $suffix;
@@ -34,6 +35,7 @@
   <div class="js-equivalencia-usp-fields {{ $isUsp ? '' : 'd-none' }}">
     @include('aproveitamentos_automaticos.partials.form-equivalencia.usp-fields', [
         'coddis' => $block['coddis'],
+        'verdis' => $block['verdis'],
         'nome' => $block['nome'],
     ])
   </div>

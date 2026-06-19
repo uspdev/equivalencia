@@ -25,7 +25,8 @@
 
         <div class="modal-body">
           <h6 class="font-weight-bold mb-3">
-            {{ $disciplina->coddis }} - {{ $disciplina->nome_disciplina ?: 'Nome não informado' }}
+            {{ $disciplina->coddis }} -
+            {{ $disciplina->nome_disciplina ?: 'Nome não informado' }}
           </h6>
 
           <div class="row">

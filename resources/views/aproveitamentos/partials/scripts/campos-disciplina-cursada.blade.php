@@ -6,8 +6,10 @@
         document.querySelectorAll('.js-discipline-fields').forEach(function(container) {
           var unit = container.querySelector('.js-unit-type');
           var uspCode = container.querySelector('.disciplina-usp-select');
+          var uspVersion = container.querySelector('.js-usp-code-group .disciplina-usp-verdis-select');
           var externalCode = container.querySelector('.js-external-code');
           var code = container.querySelector('.js-discipline-code');
+          var version = container.querySelector('.js-discipline-version');
           var codtur = container.querySelector('.js-codtur-mask');
           var hasSyllabus = container.dataset.hasSyllabus === 'true';
 
@@ -23,6 +25,9 @@
 
           function syncCode() {
             code.value = unit.value === 'USP' ? uspCode.value : externalCode.value;
+            if (version) {
+              version.value = unit.value === 'USP' && uspVersion ? uspVersion.value : '';
+            }
           }
 
           function toggleFields() {
@@ -36,6 +41,10 @@
 
             uspCode.required = !isExternal;
             uspCode.disabled = isExternal;
+            if (uspVersion) {
+              uspVersion.required = !isExternal;
+              uspVersion.disabled = isExternal || !uspCode.value;
+            }
             externalCode.required = isExternal;
             externalCode.disabled = !isExternal;
             container.querySelectorAll('.js-external-field').forEach(function(field) {
@@ -47,6 +56,10 @@
 
           unit.addEventListener('change', toggleFields);
           uspCode.addEventListener('change', syncCode);
+          uspCode.addEventListener('disciplina-usp:identity', syncCode);
+          if (uspVersion) {
+            uspVersion.addEventListener('change', syncCode);
+          }
           externalCode.addEventListener('input', syncCode);
 
           if (window.jQuery) {

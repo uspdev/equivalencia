@@ -8,7 +8,7 @@
       <div class="col-12 mb-3">
         @include('aproveitamentos.partials.display.show-info-item', [
             'label' => 'Código',
-            'value' => $show_data['requerida']['coddis'],
+            'value' => $show_data['requerida']['coddis'] . (!empty($show_data['requerida']['verdis']) ? ' v' . $show_data['requerida']['verdis'] : ''),
         ])
       </div>
       <div class="col-12 mb-3">

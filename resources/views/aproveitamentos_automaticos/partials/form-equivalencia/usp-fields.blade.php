@@ -4,9 +4,11 @@
 --}}
 @include('aproveitamentos.partials.forms.campo-disciplina-usp', [
     'name' => $coddisField,
+    'verdisName' => $verdisField,
     'id' => $baseId . '-usp-coddis',
     'label' => 'Código da disciplina',
     'selected' => $isUsp ? $coddis : null,
+    'selectedVerdis' => $isUsp ? $verdis : null,
     'selectedName' => $isUsp ? $nome : null,
     'required' => $visible && $isUsp,
     'disabled' => !($visible && $isUsp),
