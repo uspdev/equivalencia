@@ -22,14 +22,23 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
             'coddis' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('')],
             'nome_disciplina' => ['nullable', 'string', 'max:240'],
             'ies' => ['nullable', 'string', 'max:255'],
+            'numero_reuniao' => ['nullable', 'integer'],
+            'data_reuniao' => ['nullable', 'date'],
+            'observacoes' => ['nullable', 'string'],
             'is_usp2' => ['nullable', 'boolean'],
             'coddis2' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('2')],
             'nome_disciplina2' => ['nullable', 'string', 'max:240'],
             'ies2' => ['nullable', 'string', 'max:255'],
+            'numero_reuniao2' => ['nullable', 'integer'],
+            'data_reuniao2' => ['nullable', 'date'],
+            'observacoes2' => ['nullable', 'string'],
             'is_usp3' => ['nullable', 'boolean'],
             'coddis3' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('3')],
             'nome_disciplina3' => ['nullable', 'string', 'max:240'],
             'ies3' => ['nullable', 'string', 'max:255'],
+            'numero_reuniao3' => ['nullable', 'integer'],
+            'data_reuniao3' => ['nullable', 'date'],
+            'observacoes3' => ['nullable', 'string'],
         ];
     }
 
@@ -54,12 +63,23 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
             $kNome = 'nome_disciplina'.$sufixo;
             $kIes = 'ies'.$sufixo;
             $kIsUsp = 'is_usp'.$sufixo;
+            $kNumeroReuniao = 'numero_reuniao'.$sufixo;
+            $kDataReuniao = 'data_reuniao'.$sufixo;
+            $kObservacoes = 'observacoes'.$sufixo;
 
             $coddis = trim((string) ($dados[$kCoddis] ?? ''));
             $nome = trim((string) ($dados[$kNome] ?? ''));
             $ies = trim((string) ($dados[$kIes] ?? ''));
+            $numeroReuniao = trim((string) ($dados[$kNumeroReuniao] ?? ''));
+            $dataReuniao = trim((string) ($dados[$kDataReuniao] ?? ''));
+            $observacoes = trim((string) ($dados[$kObservacoes] ?? ''));
             $marcadaComoUsp = $this->boolean($kIsUsp);
-            $temDadosPreenchidos = $coddis !== '' || $nome !== '' || $ies !== '';
+            $temDadosPreenchidos = $coddis !== '' ||
+                $nome !== '' ||
+                $ies !== '' ||
+                $numeroReuniao !== '' ||
+                $dataReuniao !== '' ||
+                $observacoes !== '';
 
             // Se não tem dados preenchidos, ignora o conjunto, a menos que seja o primeiro (sufixo vazio)
             // ou esteja marcado como USP
@@ -90,6 +110,9 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
                 'coddis' => $coddis,
                 'nome_disciplina' => $nome !== '' ? $nome : null,
                 'ies' => $ies !== '' ? $ies : null,
+                'numero_reuniao' => $numeroReuniao !== '' ? (int) $numeroReuniao : null,
+                'data_reuniao' => $dataReuniao !== '' ? $dataReuniao : null,
+                'observacoes' => $observacoes !== '' ? $observacoes : null,
             ];
 
             if (! $marcadaComoUsp) {

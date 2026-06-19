@@ -41,12 +41,14 @@ e limitando o número de blocos de equivalência que podem ser exibidos.
           var isUsp = Boolean(block.querySelector('.js-equivalencia-is-usp:checked'));
           var uspFields = block.querySelector('.js-equivalencia-usp-fields');
           var outraFields = block.querySelector('.js-equivalencia-outra-fields');
+          var adminFields = block.querySelector('.js-equivalencia-admin-fields');
 
           uspFields.classList.toggle('d-none', !isUsp);
           outraFields.classList.toggle('d-none', isUsp);
 
           setFieldsEnabled(uspFields, visible && isUsp, true);
           setFieldsEnabled(outraFields, visible && !isUsp, true);
+          setFieldsEnabled(adminFields, visible, false);
         }
 
         function visibleBlocks(form) {

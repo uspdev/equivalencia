@@ -399,7 +399,10 @@ class Disciplina extends Model
             // para facilitar a UX de mostrar o bloco quando o usuário começar a preencher
             return filled($fieldValue('coddis' . $suffix)) ||
                 filled($fieldValue('nome_disciplina' . $suffix)) ||
-                filled($fieldValue('ies' . $suffix));
+                filled($fieldValue('ies' . $suffix)) ||
+                filled($fieldValue('numero_reuniao' . $suffix)) ||
+                filled($fieldValue('data_reuniao' . $suffix)) ||
+                filled($fieldValue('observacoes' . $suffix));
         };
 
         $initialVisible = 1;
@@ -421,6 +424,9 @@ class Disciplina extends Model
                 'coddis' => $fieldValue('coddis' . $suffix),
                 'nome' => $fieldValue('nome_disciplina' . $suffix),
                 'ies' => $fieldValue('ies' . $suffix),
+                'numero_reuniao' => $fieldValue('numero_reuniao' . $suffix),
+                'data_reuniao' => $fieldValue('data_reuniao' . $suffix),
+                'observacoes' => $fieldValue('observacoes' . $suffix),
             ];
         }
 
@@ -452,12 +458,21 @@ class Disciplina extends Model
             'coddis' => old('coddis', $equivalenciaFilha->coddis),
             'nome_disciplina' => old('nome_disciplina', $equivalenciaFilha->nome_disciplina),
             'ies' => old('ies', $equivalenciaFilha->ies),
+            'numero_reuniao' => old('numero_reuniao', $equivalenciaFilha->numero_reuniao),
+            'data_reuniao' => old('data_reuniao', $equivalenciaFilha->data_reuniao?->format('Y-m-d')),
+            'observacoes' => old('observacoes', $equivalenciaFilha->observacoes),
             'coddis2' => old('coddis2', $equivalencia2?->coddis),
             'nome_disciplina2' => old('nome_disciplina2', $equivalencia2?->nome_disciplina),
             'ies2' => old('ies2', $equivalencia2?->ies),
+            'numero_reuniao2' => old('numero_reuniao2', $equivalencia2?->numero_reuniao),
+            'data_reuniao2' => old('data_reuniao2', $equivalencia2?->data_reuniao?->format('Y-m-d')),
+            'observacoes2' => old('observacoes2', $equivalencia2?->observacoes),
             'coddis3' => old('coddis3', $equivalencia3?->coddis),
             'nome_disciplina3' => old('nome_disciplina3', $equivalencia3?->nome_disciplina),
             'ies3' => old('ies3', $equivalencia3?->ies),
+            'numero_reuniao3' => old('numero_reuniao3', $equivalencia3?->numero_reuniao),
+            'data_reuniao3' => old('data_reuniao3', $equivalencia3?->data_reuniao?->format('Y-m-d')),
+            'observacoes3' => old('observacoes3', $equivalencia3?->observacoes),
         ];
     }
 

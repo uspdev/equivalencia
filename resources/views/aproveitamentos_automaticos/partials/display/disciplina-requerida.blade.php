@@ -1,9 +1,22 @@
 <div class="disciplina-requerida d-flex align-items-center">
   <div>
-    <p>
-      {{ $disciplina->coddis }}
-      - {{ $disciplina->nome_disciplina ?: '-' }}
+    @php
+      $modalDadosDisciplinaId = 'modalDadosDisciplinaRequerida' . $disciplina->id;
+    @endphp
+
+    <p class="mb-0">
+      <button type="button" class="btn btn-link p-0 text-left align-baseline disciplina-dados-trigger"
+        data-toggle="modal" data-target="#{{ $modalDadosDisciplinaId }}">
+        {{ $disciplina->coddis }}
+        - {{ $disciplina->nome_disciplina ?: '-' }}
+      </button>
     </p>
+
+    @include('aproveitamentos_automaticos.partials.modals.modal-disciplina-dados', [
+        'disciplina' => $disciplina,
+        'modalId' => $modalDadosDisciplinaId,
+        'titulo' => 'Dados da disciplina requerida',
+    ])
   </div>
 
   @can('svgrad')

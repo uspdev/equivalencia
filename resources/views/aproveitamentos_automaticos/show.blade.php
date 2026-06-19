@@ -52,6 +52,12 @@
       display: inline-flex !important;
     }
 
+    .disciplina-dados-trigger {
+      font: inherit;
+      line-height: inherit;
+      vertical-align: baseline;
+    }
+
     #equivalencias-table_wrapper .dataTables_filter {
       display: inline-flex;
       align-items: center;

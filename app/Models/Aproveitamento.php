@@ -34,6 +34,9 @@ class Aproveitamento extends Model
         'tipo',
         'codcur',
         'codhab',
+        'numero_reuniao',
+        'data_reuniao',
+        'observacoes',
         'criado_por_id',
         'alterado_por_id',
     ];
@@ -50,6 +53,8 @@ class Aproveitamento extends Model
         'tipo' => EquivalenciaTipo::class,
         'codcur' => 'integer',
         'codhab' => 'integer',
+        'numero_reuniao' => 'integer',
+        'data_reuniao' => 'date',
         'criado_por_id' => 'integer',
         'alterado_por_id' => 'integer',
     ];
@@ -251,6 +256,9 @@ class Aproveitamento extends Model
         ?EquivalenciaEstado $estado = null,
         ?int $codcur = null,
         ?int $codhab = null,
+        ?int $numeroReuniao = null,
+        ?string $dataReuniao = null,
+        ?string $observacoes = null,
         ?int $criadoPorId = null,
         ?int $alteradoPorId = null
     ): self {
@@ -261,6 +269,9 @@ class Aproveitamento extends Model
             'tipo' => $tipo instanceof EquivalenciaTipo ? $tipo : EquivalenciaTipo::from($tipo),
             'codcur' => $codcur,
             'codhab' => $codhab,
+            'numero_reuniao' => $numeroReuniao,
+            'data_reuniao' => $dataReuniao,
+            'observacoes' => $observacoes,
             'criado_por_id' => $criadoPorId,
             'alterado_por_id' => $alteradoPorId,
         ];
@@ -281,9 +292,22 @@ class Aproveitamento extends Model
         int $cursadaId,
         int $codcur,
         int $codhab,
-        string|EquivalenciaTipo $tipo = EquivalenciaTipo::AUTOMATICA
+        string|EquivalenciaTipo $tipo = EquivalenciaTipo::AUTOMATICA,
+        ?int $numeroReuniao = null,
+        ?string $dataReuniao = null,
+        ?string $observacoes = null
     ): self {
-        return static::criarVinculo($grupo, $requeridaId, $cursadaId, $tipo, codcur: $codcur, codhab: $codhab);
+        return static::criarVinculo(
+            $grupo,
+            $requeridaId,
+            $cursadaId,
+            $tipo,
+            codcur: $codcur,
+            codhab: $codhab,
+            numeroReuniao: $numeroReuniao,
+            dataReuniao: $dataReuniao,
+            observacoes: $observacoes
+        );
     }
 
     /**
@@ -306,7 +330,10 @@ class Aproveitamento extends Model
                 $cursada->id,
                 $codcur,
                 $codhab,
-                static::TIPO_AUTOMATICA
+                static::TIPO_AUTOMATICA,
+                $dadosCursada['numero_reuniao'] ?? null,
+                $dadosCursada['data_reuniao'] ?? null,
+                $dadosCursada['observacoes'] ?? null
             );
         }
     }
@@ -386,6 +413,7 @@ class Aproveitamento extends Model
                 }
 
                 $vinculoExistente->cursada->atualizarCursadaPorFormulario($dadosCursada);
+                $vinculoExistente->update(static::dadosAdministrativosDaCursada($dadosCursada));
 
                 continue;
             }
@@ -398,9 +426,21 @@ class Aproveitamento extends Model
                 $novaCursada->id,
                 $codcur,
                 $codhab,
-                static::TIPO_AUTOMATICA
+                static::TIPO_AUTOMATICA,
+                $dadosCursada['numero_reuniao'] ?? null,
+                $dadosCursada['data_reuniao'] ?? null,
+                $dadosCursada['observacoes'] ?? null
             );
         }
+    }
+
+    private static function dadosAdministrativosDaCursada(array $dadosCursada): array
+    {
+        return [
+            'numero_reuniao' => $dadosCursada['numero_reuniao'] ?? null,
+            'data_reuniao' => $dadosCursada['data_reuniao'] ?? null,
+            'observacoes' => $dadosCursada['observacoes'] ?? null,
+        ];
     }
 
     /**
