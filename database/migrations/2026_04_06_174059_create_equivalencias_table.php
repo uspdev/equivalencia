@@ -36,6 +36,10 @@ return new class extends Migration
             $table->integer('codcur')->nullable();
             $table->smallInteger('codhab')->nullable();
 
+            $table->integer('numero_reuniao')->nullable();
+            $table->date('data_reuniao')->nullable();
+            $table->text('observacoes')->nullable();
+
             $table->foreignId('criado_por_id')
                 ->nullable()
                 ->constrained('users')
