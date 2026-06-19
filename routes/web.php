@@ -35,6 +35,7 @@ Route::middleware(['auth', 'can:equivalencias'])
         // ==========================================
         // Mantem o fluxo de criacao de requerimentos, disciplinas e historico.
         Route::controller(AproveitamentoController::class)->group(function () {
+            Route::get('/find/disciplinas/versoes', 'versoesDisciplina')->name('disciplina-versoes');
             Route::get('/newreq', 'create')->name('newreq-create');
             Route::post('/newreq/requerida', 'saveRequiredDiscipline')->name('newreq-required');
             Route::get('/newreq/disciplinas/create', 'createDiscipline')->name('newreq-discipline-create');

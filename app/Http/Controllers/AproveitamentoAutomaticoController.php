@@ -105,12 +105,12 @@ class AproveitamentoAutomaticoController extends Controller
     {
         $dados = $request->validated();
 
-        $requerida = Disciplina::query()
-            ->where('coddis', $dados['coddis'])
-            ->where('ies', 'USP')
-            ->first();
-
-        Disciplina::garantirRequeridaAutomaticaNoContexto($dados['coddis'], $codcur, $codhab, $requerida);
+        Disciplina::garantirRequeridaAutomaticaNoContexto(
+            $dados['coddis'],
+            $dados['verdis'] ?? null,
+            $codcur,
+            $codhab
+        );
 
         return redirect()
             ->route('equivalencias.show', [$codcur, $codhab, 'filter'=> $dados['coddis']])
@@ -132,7 +132,25 @@ class AproveitamentoAutomaticoController extends Controller
         abort_unless($equivalencia->pertenceComoRequeridaAoContexto($codcur, $codhab), 404);
 
         $dados = $request->validated();
-        Disciplina::upsertRequeridaPorCoddis($dados['coddis'], $equivalencia);
+        $requerida = Disciplina::upsertRequeridaPorCoddis($dados['coddis'], $dados['verdis'] ?? null, $equivalencia);
+
+        if ((int) $requerida->id !== (int) $equivalencia->id) {
+            $vinculos = $equivalencia->equivalenciasComoRequerida()
+                ->automaticas()
+                ->doContexto($codcur, $codhab)
+                ->get();
+
+            foreach ($vinculos as $vinculo) {
+                $vinculo->update([
+                    'requerida_id' => $requerida->id,
+                    'cursada_id' => $vinculo->isPlaceholderRequerida()
+                        ? $requerida->id
+                        : $vinculo->cursada_id,
+                ]);
+            }
+
+            $equivalencia->removerSeOrfa();
+        }
 
         return redirect()
             ->back()

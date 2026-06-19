@@ -93,7 +93,10 @@ class SaveDraftDisciplineRequest extends FormRequest
 
                 if (
                     ! $validator->errors()->has('requerida_coddis') &&
-                    ! $graduacao->existeDisciplinaAtivaPorCodigo($this->requiredDisciplineCode())
+                    ! $graduacao->existeDisciplinaPorCodigoVersao(
+                        $this->requiredDisciplineCode(),
+                        $this->requiredDisciplineVersion()
+                    )
                 ) {
                     $validator->errors()->add(
                         'requerida_coddis',
@@ -105,7 +108,10 @@ class SaveDraftDisciplineRequest extends FormRequest
                     return;
                 }
 
-                if (! $graduacao->existeDisciplinaAtivaPorCodigo($this->disciplineCode())) {
+                if (! $graduacao->existeDisciplinaPorCodigoVersao(
+                    $this->disciplineCode(),
+                    $this->disciplineVersion()
+                )) {
                     $validator->errors()->add('coddis', 'A disciplina USP selecionada não foi encontrada.');
                     return;
                 }
@@ -117,7 +123,8 @@ class SaveDraftDisciplineRequest extends FormRequest
                 if (! $graduacao->obterDisciplinaCursadaPorAlunoEmPeriodoCodtur(
                     (int) $this->user()->codpes,
                     $this->disciplineCode(),
-                    (string) $this->input('codtur')
+                    (string) $this->input('codtur'),
+                    $this->disciplineVersion()
                 )) {
                     $validator->errors()->add(
                         'coddis',
@@ -168,6 +175,11 @@ class SaveDraftDisciplineRequest extends FormRequest
         return Str::upper(trim((string) $this->input('requerida_coddis')));
     }
 
+    public function requiredDisciplineVersion(): ?int
+    {
+        return null;
+    }
+
     /**
      * Retorna o código da disciplina normalizado.
      *
@@ -179,6 +191,11 @@ class SaveDraftDisciplineRequest extends FormRequest
     private function disciplineCode(): string
     {
         return Str::upper(trim((string) $this->input('coddis')));
+    }
+
+    private function disciplineVersion(): ?int
+    {
+        return null;
     }
 
     /**

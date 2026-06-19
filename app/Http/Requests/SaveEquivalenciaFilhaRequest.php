@@ -20,6 +20,7 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
         return [
             'is_usp' => ['nullable', 'boolean'],
             'coddis' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('')],
+            'verdis' => ['nullable', 'integer', 'min:1', 'max:255'],
             'nome_disciplina' => ['nullable', 'string', 'max:240'],
             'ies' => ['nullable', 'string', 'max:255'],
             'numero_reuniao' => ['nullable', 'integer'],
@@ -27,6 +28,7 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
             'observacoes' => ['nullable', 'string'],
             'is_usp2' => ['nullable', 'boolean'],
             'coddis2' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('2')],
+            'verdis2' => ['nullable', 'integer', 'min:1', 'max:255'],
             'nome_disciplina2' => ['nullable', 'string', 'max:240'],
             'ies2' => ['nullable', 'string', 'max:255'],
             'numero_reuniao2' => ['nullable', 'integer'],
@@ -34,6 +36,7 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
             'observacoes2' => ['nullable', 'string'],
             'is_usp3' => ['nullable', 'boolean'],
             'coddis3' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('3')],
+            'verdis3' => ['nullable', 'integer', 'min:1', 'max:255'],
             'nome_disciplina3' => ['nullable', 'string', 'max:240'],
             'ies3' => ['nullable', 'string', 'max:255'],
             'numero_reuniao3' => ['nullable', 'integer'],
@@ -60,6 +63,7 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
 
         foreach (self::SUFIXOS_DE_CONJUNTOS as $sufixo) {
             $kCoddis = 'coddis'.$sufixo;
+            $kVerdis = 'verdis'.$sufixo;
             $kNome = 'nome_disciplina'.$sufixo;
             $kIes = 'ies'.$sufixo;
             $kIsUsp = 'is_usp'.$sufixo;
@@ -68,6 +72,7 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
             $kObservacoes = 'observacoes'.$sufixo;
 
             $coddis = trim((string) ($dados[$kCoddis] ?? ''));
+            $verdis = trim((string) ($dados[$kVerdis] ?? ''));
             $nome = trim((string) ($dados[$kNome] ?? ''));
             $ies = trim((string) ($dados[$kIes] ?? ''));
             $numeroReuniao = trim((string) ($dados[$kNumeroReuniao] ?? ''));
@@ -75,6 +80,7 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
             $observacoes = trim((string) ($dados[$kObservacoes] ?? ''));
             $marcadaComoUsp = $this->boolean($kIsUsp);
             $temDadosPreenchidos = $coddis !== '' ||
+                $verdis !== '' ||
                 $nome !== '' ||
                 $ies !== '' ||
                 $numeroReuniao !== '' ||
@@ -96,10 +102,10 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
             }
 
             $disciplinaUsp = $marcadaComoUsp
-                ? Disciplina::disciplinaUspNoReplicado($coddis)
+                ? Disciplina::disciplinaUspNoReplicado($coddis, $verdis !== '' ? (int) $verdis : null)
                 : null;
 
-            if ($marcadaComoUsp && ! $disciplinaUsp) {
+            if ($marcadaComoUsp && (! $disciplinaUsp || ! isset($disciplinaUsp['verdis']))) {
                 $erros[$kCoddis] = 'Selecione uma disciplina USP válida.';
 
                 continue;
@@ -107,7 +113,8 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
 
             $dadosCursada = [
                 'is_usp' => $marcadaComoUsp,
-                'coddis' => $coddis,
+                'coddis' => $disciplinaUsp['coddis'] ?? $coddis,
+                'verdis' => $disciplinaUsp['verdis'] ?? ($verdis !== '' ? (int) $verdis : null),
                 'nome_disciplina' => $nome !== '' ? $nome : null,
                 'ies' => $ies !== '' ? $ies : null,
                 'numero_reuniao' => $numeroReuniao !== '' ? (int) $numeroReuniao : null,

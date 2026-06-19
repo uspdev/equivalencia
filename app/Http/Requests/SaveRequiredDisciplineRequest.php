@@ -37,7 +37,10 @@ class SaveRequiredDisciplineRequest extends FormRequest
                     return;
                 }
 
-                if (! app(Graduacao::class)->existeDisciplinaAtivaPorCodigo($this->requiredDisciplineCode())) {
+                if (! app(Graduacao::class)->existeDisciplinaPorCodigoVersao(
+                    $this->requiredDisciplineCode(),
+                    $this->requiredDisciplineVersion()
+                )) {
                     $validator->errors()->add(
                         'requerida_coddis',
                         'A disciplina USP selecionada não foi encontrada.'
@@ -50,5 +53,10 @@ class SaveRequiredDisciplineRequest extends FormRequest
     public function requiredDisciplineCode(): string
     {
         return Str::upper(trim((string) $this->input('requerida_coddis')));
+    }
+
+    public function requiredDisciplineVersion(): ?int
+    {
+        return null;
     }
 }

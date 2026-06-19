@@ -9,9 +9,11 @@ use App\Http\Requests\StoreAproveitamentoRequest;
 use App\Models\Aproveitamento;
 use App\Models\AproveitamentoRascunho;
 use App\Models\Arquivo;
+use App\Replicado\Graduacao;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -43,7 +45,10 @@ class AproveitamentoController extends Controller
 
     public function saveRequiredDiscipline(SaveRequiredDisciplineRequest $request): RedirectResponse
     {
-        $this->currentDraft()->salvarDisciplinaRequerida($request->requiredDisciplineCode());
+        $this->currentDraft()->salvarDisciplinaRequerida(
+            $request->requiredDisciplineCode(),
+            $request->requiredDisciplineVersion()
+        );
 
         return redirect()
             ->route('equivalencias.newreq-create')
@@ -68,7 +73,7 @@ class AproveitamentoController extends Controller
         $draft = $request->draft();
         abort_if($draft->atingiuLimiteDeDisciplinas(), 422, 'O limite de três disciplinas foi atingido.');
 
-        $draft->salvarDisciplinaRequerida($request->requiredDisciplineCode());
+        $draft->salvarDisciplinaRequerida($request->requiredDisciplineCode(), $request->requiredDisciplineVersion());
         $draft->adicionarDisciplina($request->validated(), $request->file('ementa'));
         $request->session()->forget('discipline_modal');
 
@@ -94,7 +99,7 @@ class AproveitamentoController extends Controller
     {
         $draft = $request->draft();
 
-        $draft->salvarDisciplinaRequerida($request->requiredDisciplineCode());
+        $draft->salvarDisciplinaRequerida($request->requiredDisciplineCode(), $request->requiredDisciplineVersion());
         $draft->atualizarDisciplina($disciplineId, $request->validated(), $request->file('ementa'));
         $request->session()->forget('discipline_modal');
 
@@ -125,6 +130,33 @@ class AproveitamentoController extends Controller
 
         return redirect()
             ->route('equivalencias.newreq-create');
+    }
+
+    /**
+     * Lista as versões disponíveis para uma disciplina USP selecionada.
+     */
+    public function versoesDisciplina(Request $request): JsonResponse
+    {
+        $coddis = trim((string) $request->query('coddis', ''));
+
+        if (! preg_match('/^[A-Za-z0-9]{3,7}$/', $coddis)) {
+            return response()->json(['results' => []]);
+        }
+
+        $results = collect(app(Graduacao::class)->listarVersoesDisciplina($coddis))
+            ->filter(fn ($disciplina) => is_array($disciplina) && isset($disciplina['verdis']))
+            ->map(function (array $disciplina) {
+                $verdis = (int) $disciplina['verdis'];
+
+                return [
+                    'id' => $verdis,
+                    'text' => "Versão {$verdis}",
+                ];
+            })
+            ->values()
+            ->all();
+
+        return response()->json(['results' => $results]);
     }
 
     /**

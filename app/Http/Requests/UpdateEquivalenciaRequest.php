@@ -22,32 +22,50 @@ class UpdateEquivalenciaRequest extends FormRequest
      */
     public function rules(): array
     {
-        $requerida = $this->route('equivalencia');
-        $requeridaId = $requerida instanceof Disciplina
-            ? $requerida->id
-            : (int) $requerida;
-        $codcur = (int) $this->route('codcur');
-        $codhab = (int) $this->route('codhab');
-
         return [
-            'coddis' => [
-                'required',
-                'string',
-                'max:7',
-                function (string $attribute, mixed $value, \Closure $fail) use ($codcur, $codhab, $requeridaId) {
-                    $jaExisteNoContexto = Disciplina::query()
-                        ->where('coddis', (string) $value)
-                        ->where('id', '!=', $requeridaId)
-                        ->whereHas('equivalenciasComoRequerida', function ($query) use ($codcur, $codhab) {
-                            $query->automaticas()->doContexto($codcur, $codhab);
-                        })
-                        ->exists();
+            'coddis' => ['required', 'string', 'max:7'],
+            'verdis' => ['nullable', 'integer', 'min:1', 'max:255'],
+        ];
+    }
 
-                    if ($jaExisteNoContexto) {
-                        $fail('A disciplina requerida informada já está cadastrada para este curso/habilitação.');
-                    }
-                },
-            ],
+    public function after(): array
+    {
+        return [
+            function ($validator) {
+                if ($validator->errors()->has('coddis') || $validator->errors()->has('verdis')) {
+                    return;
+                }
+
+                $requerida = $this->route('equivalencia');
+                $requeridaId = $requerida instanceof Disciplina
+                    ? $requerida->id
+                    : (int) $requerida;
+                $codcur = (int) $this->route('codcur');
+                $codhab = (int) $this->route('codhab');
+                $disciplina = Disciplina::disciplinaUspNoReplicado(
+                    (string) $this->input('coddis'),
+                    $this->filled('verdis') ? (int) $this->input('verdis') : null
+                );
+
+                if (! $disciplina || ! isset($disciplina['verdis'])) {
+                    $validator->errors()->add('coddis', 'Selecione uma disciplina USP válida.');
+
+                    return;
+                }
+
+                if (Disciplina::existeComoRequeridaNoContexto(
+                    (string) $disciplina['coddis'],
+                    (int) $disciplina['verdis'],
+                    $codcur,
+                    $codhab,
+                    $requeridaId
+                )) {
+                    $validator->errors()->add(
+                        'coddis',
+                        'A disciplina requerida informada já está cadastrada para este curso/habilitação nesta versão.'
+                    );
+                }
+            },
         ];
     }
 }

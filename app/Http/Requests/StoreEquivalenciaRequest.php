@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Models\Disciplina;
-use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreEquivalenciaRequest extends FormRequest
@@ -21,21 +20,45 @@ class StoreEquivalenciaRequest extends FormRequest
      */
     public function rules(): array
     {
-        $codcur = (int) $this->route('codcur');
-        $codhab = (int) $this->route('codhab');
-
         return [
-            // Valida se a disciplina já existe
-            'coddis' => [
-                'required',
-                'string',
-                'max:7',
-                function (string $attribute, mixed $value, Closure $fail) use ($codcur, $codhab) {
-                    if (Disciplina::existeComoRequeridaNoContexto($value, $codcur, $codhab)) {
-                        $fail('A disciplina requerida informada já está cadastrada para este curso/habilitação.');
-                    }
-                },
-            ],
+            'coddis' => ['required', 'string', 'max:7'],
+            'verdis' => ['nullable', 'integer', 'min:1', 'max:255'],
+        ];
+    }
+
+    public function after(): array
+    {
+        return [
+            function ($validator) {
+                if ($validator->errors()->has('coddis') || $validator->errors()->has('verdis')) {
+                    return;
+                }
+
+                $codcur = (int) $this->route('codcur');
+                $codhab = (int) $this->route('codhab');
+                $disciplina = Disciplina::disciplinaUspNoReplicado(
+                    (string) $this->input('coddis'),
+                    $this->filled('verdis') ? (int) $this->input('verdis') : null
+                );
+
+                if (! $disciplina || ! isset($disciplina['verdis'])) {
+                    $validator->errors()->add('coddis', 'Selecione uma disciplina USP válida.');
+
+                    return;
+                }
+
+                if (Disciplina::existeComoRequeridaNoContexto(
+                    (string) $disciplina['coddis'],
+                    (int) $disciplina['verdis'],
+                    $codcur,
+                    $codhab
+                )) {
+                    $validator->errors()->add(
+                        'coddis',
+                        'A disciplina requerida informada já está cadastrada para este curso/habilitação nesta versão.'
+                    );
+                }
+            },
         ];
     }
 }
