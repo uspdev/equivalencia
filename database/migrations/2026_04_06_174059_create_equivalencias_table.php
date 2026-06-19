@@ -29,12 +29,21 @@ return new class extends Migration
                 ->constrained('disciplinas')
                 ->cascadeOnDelete();
 
+            $table->boolean('placeholder_requerida')->default(false);
+
             // 'a' = automática (cadastrada pela secretaria/svgrad)
             // 'r' = solicitação do aluno
             $table->char('tipo', 1)->default('r');
 
             $table->integer('codcur')->nullable();
             $table->smallInteger('codhab')->nullable();
+
+            // Dados da ocorrência cursada usados em requerimentos normais.
+            $table->integer('ano')->nullable();
+            $table->integer('semestre')->nullable();
+            $table->string('codtur', 5)->nullable();
+            $table->decimal('frequencia', 5, 2)->nullable();
+            $table->decimal('nota', 5, 2)->nullable();
 
             $table->integer('numero_reuniao')->nullable();
             $table->date('data_reuniao')->nullable();
@@ -54,7 +63,7 @@ return new class extends Migration
             // Esse unique não impede que tenhamos a mesma disciplina cursada em grupos diferentes,
             // o que é permitido (ex: 2 equivalências diferentes, ambas com a mesma disciplina cursada, mas em grupos diferentes).
             // Ele só impede que tenhamos 2 equivalências iguais (mesmo grupo, mesma disciplina cursada).
-            $table->unique(['grupo', 'cursada_id']);
+            $table->unique(['grupo', 'cursada_id', 'placeholder_requerida']);
 
             $table->timestamps();
         });

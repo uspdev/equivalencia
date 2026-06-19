@@ -15,6 +15,8 @@ class AproveitamentoRascunho
 
     public ?string $requerida_coddis = null;
 
+    public ?int $requerida_verdis = null;
+
     private ?int $grupo = null;
 
     private ?Disciplina $requerida = null;
@@ -72,17 +74,17 @@ class AproveitamentoRascunho
     /**
      * Atualiza a disciplina USP requerida no rascunho.
      */
-    public function salvarDisciplinaRequerida(string $coddis): void
+    public function salvarDisciplinaRequerida(string $coddis, ?int $verdis = null): void
     {
-        DB::transaction(function () use ($coddis) {
+        DB::transaction(function () use ($coddis, $verdis) {
             $oldRequired = $this->requerida;
-            $required = Disciplina::salvarRequeridaDoRascunho($coddis, $this->userId, $oldRequired);
+            $required = Disciplina::salvarRequeridaDoRascunho($coddis, $verdis, $this->userId, $oldRequired);
 
             $group = $this->grupo ?? Aproveitamento::proximoGrupo();
             $drafts = $this->equivalenciasDoRascunho();
 
             if ($drafts->isEmpty()) {
-                $this->criarVinculoDoRascunho($group, $required->id, $required->id);
+                $this->criarVinculoDoRascunho($group, $required->id, $required->id, placeholderRequerida: true);
             } else {
                 $this->atualizarRequeridaDosVinculos($drafts, $required);
             }
@@ -104,7 +106,12 @@ class AproveitamentoRascunho
 
         DB::transaction(function () use ($dados, $ementa) {
             $course = Disciplina::criarCursadaDoRascunho($dados, $this->userId);
-            $equivalence = $this->criarVinculoDoRascunho($this->grupo, $this->requerida->id, $course->id);
+            $equivalence = $this->criarVinculoDoRascunho(
+                $this->grupo,
+                $this->requerida->id,
+                $course->id,
+                Disciplina::dadosDaOcorrenciaDoRascunho($dados, $this->userId)
+            );
 
             Arquivo::salvarEmentaDaEquivalencia($equivalence, $dados['unidade_tipo'], $ementa);
         });
@@ -124,8 +131,21 @@ class AproveitamentoRascunho
                 throw (new ModelNotFoundException())->setModel(Disciplina::class, [$equivalence->cursada_id]);
             }
 
-            $equivalence->cursada->atualizarCursadaDoRascunho($dados, $this->userId);
-            $equivalence->update(['alterado_por_id' => $this->userId]);
+            $cursadaAnteriorId = (int) $equivalence->cursada_id;
+            $course = $equivalence->cursada->atualizarCursadaDoRascunho($dados, $this->userId);
+
+            // Se a disciplina era um placeholder da requerida, atualiza o vínculo para apontar para a nova cursada.
+            $equivalence->update(array_merge(
+                Disciplina::dadosDaOcorrenciaDoRascunho($dados, $this->userId),
+                [
+                    'cursada_id' => $course->id,
+                    'alterado_por_id' => $this->userId,
+                ]
+            ));
+
+            if ($cursadaAnteriorId !== (int) $course->id) {
+                Disciplina::removerSeOrfaPorId($cursadaAnteriorId);
+            }
 
             Arquivo::salvarEmentaDaEquivalencia($equivalence, $dados['unidade_tipo'], $ementa);
         });
@@ -205,6 +225,7 @@ class AproveitamentoRascunho
         $this->grupo = $first?->grupo;
         $this->requerida = $first?->requerida;
         $this->requerida_coddis = $this->requerida?->coddis;
+        $this->requerida_verdis = $this->requerida?->verdis;
     }
 
     private function equivalenciasDoRascunho(): Collection
@@ -261,16 +282,27 @@ class AproveitamentoRascunho
         }
     }
 
-    private function criarVinculoDoRascunho(int $grupo, int $requeridaId, int $cursadaId): Aproveitamento
-    {
+    private function criarVinculoDoRascunho(
+        int $grupo,
+        int $requeridaId,
+        int $cursadaId,
+        array $dadosOcorrencia = [],
+        bool $placeholderRequerida = false
+    ): Aproveitamento {
         return Aproveitamento::criarVinculo(
             $grupo,
             $requeridaId,
             $cursadaId,
             EquivalenciaTipo::REQUERIDA,
             EquivalenciaEstado::RASCUNHO,
+            ano: $dadosOcorrencia['ano'] ?? null,
+            semestre: $dadosOcorrencia['semestre'] ?? null,
+            codtur: $dadosOcorrencia['codtur'] ?? null,
+            frequencia: $dadosOcorrencia['frequencia'] ?? null,
+            nota: $dadosOcorrencia['nota'] ?? null,
             criadoPorId: $this->userId,
-            alteradoPorId: $this->userId
+            alteradoPorId: $this->userId,
+            placeholderRequerida: $placeholderRequerida
         );
     }
 
@@ -303,12 +335,13 @@ class AproveitamentoRascunho
             'unidade_tipo' => $isUsp ? 'USP' : 'OUTRA',
             'unidade_nome' => $isUsp ? 'USP' : $course->ies,
             'coddis' => $course->coddis,
+            'verdis' => $course->verdis,
             'nomdis' => $course->nomdis,
-            'ano' => $course->ano,
-            'semestre' => $course->semestre,
-            'codtur' => $course->codtur,
-            'frequencia' => $course->frequencia !== null ? (float) $course->frequencia : null,
-            'nota' => $course->nota !== null ? (float) $course->nota : null,
+            'ano' => $equivalencia->ano,
+            'semestre' => $equivalencia->semestre,
+            'codtur' => $equivalencia->codtur,
+            'frequencia' => $equivalencia->frequencia !== null ? (float) $equivalencia->frequencia : null,
+            'nota' => $equivalencia->nota !== null ? (float) $equivalencia->nota : null,
             'creditos' => $course->creditos,
             'carga_horaria' => $course->carga_horaria,
             'sglund' => $course->sglund,
@@ -322,5 +355,4 @@ class AproveitamentoRascunho
             ] : null,
         ];
     }
-
 }

@@ -72,11 +72,77 @@ class Graduacao extends GraduacaoReplicado
     }
 
     /**
+     * Lista todas as versões cadastradas para uma disciplina.
+     */
+    public function listarVersoesDisciplina(string $code): array
+    {
+        $code = Str::upper(trim($code));
+
+        if (! preg_match('/^[A-Z0-9]+$/', $code)) {
+            return [];
+        }
+
+        $query = "SELECT D1.coddis, D1.verdis
+                    FROM DISCIPLINAGR D1
+                    WHERE D1.coddis = :coddis
+                    ORDER BY D1.verdis DESC";
+
+        try {
+            return DB::fetchAll($query, ['coddis' => $code]) ?: [];
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Busca os dados cadastrais de uma disciplina por código e, quando informado, versão.
+     */
+    public function obterDadosDisciplinaPorCodigoVersao(string $code, ?int $verdis = null): array
+    {
+        $code = Str::upper(trim($code));
+
+        if (! preg_match('/^[A-Z0-9]+$/', $code)) {
+            return [];
+        }
+
+        if ($verdis === null) {
+            return $this->obterDadosDisciplinaPorCodigo($code);
+        }
+
+        $query = "SELECT TOP 1 D1.*
+                    FROM DISCIPLINAGR D1
+                    WHERE D1.coddis = :coddis
+                        AND D1.verdis = convert(int, :verdis)";
+
+        try {
+            return DB::fetch($query, [
+                'coddis' => $code,
+                'verdis' => $verdis,
+            ]) ?: [];
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Verifica se há uma disciplina com o código e a versão informados.
+     */
+    public function existeDisciplinaPorCodigoVersao(string $code, ?int $verdis = null): bool
+    {
+        return ! empty($this->obterDadosDisciplinaPorCodigoVersao($code, $verdis));
+    }
+
+    /**
      * Localiza uma disciplina cursada no histórico escolar do aluno para um período específico.
      * Retorna dados de nota/frequência do HISTESCOLARGR junto com ementa e créditos da DISCIPLINAGR.
      * Retorna array vazio se a consulta falhar ou não houver matrícula para aluno, disciplina e período.
      */
-    public function obterDisciplinaCursadaPorAlunoEmPeriodoCodtur(int $codpes, string $coddis, string $codtur): array
+    public function obterDisciplinaCursadaPorAlunoEmPeriodoCodtur(
+        int $codpes,
+        string $coddis,
+        string $codtur,
+        ?int $verdis = null
+    ): array
     {
         $coddis = Str::upper(trim($coddis));
         $codtur = trim($codtur);
@@ -103,15 +169,25 @@ class Graduacao extends GraduacaoReplicado
             INNER JOIN DISCIPLINAGR D ON H.coddis = D.coddis AND H.verdis = D.verdis
             WHERE H.codpes = convert(int, :codpes)
                 AND H.coddis = :coddis
-                AND H.codtur LIKE :codtur
+                AND H.codtur LIKE :codtur";
+
+        $params = [
+            'codpes' => $codpes,
+            'coddis' => $coddis,
+            'codtur' => $codtur . '%',
+        ];
+
+        if ($verdis !== null) {
+            $query .= "
+                AND H.verdis = convert(int, :verdis)";
+            $params['verdis'] = $verdis;
+        }
+
+        $query .= "
             ORDER BY H.codpgm DESC, H.verdis DESC, H.dtacrihst DESC";
 
         try {
-            return DB::fetch($query, [
-                'codpes' => $codpes,
-                'coddis' => $coddis,
-                'codtur' => $codtur . '%',
-            ]) ?: [];
+            return DB::fetch($query, $params) ?: [];
         } catch (\Throwable $e) {
             return [];
         }

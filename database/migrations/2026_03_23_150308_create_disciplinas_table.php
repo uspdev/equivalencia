@@ -27,13 +27,6 @@ return new class extends Migration
             $table->string('ies')->nullable(); // Externa(nome) ou USP
             $table->string('sglund')->nullable(); // Sigla da unidade usp ou null
 
-            // DISCIPLINA EXTERNA
-            $table->integer('ano')->nullable();
-            $table->integer('semestre')->nullable();
-            $table->string('codtur', 5)->nullable();
-            $table->decimal('frequencia', 5, 2)->nullable();
-            $table->decimal('nota', 5, 2)->nullable();
-
             // DADOS DO REPLICADO PARA DISCIPLINAS USP
             $table->text('programa')->nullable();
             $table->text('programa_resumo')->nullable();
@@ -51,6 +44,8 @@ return new class extends Migration
                 ->nullable()
                 ->constrained('users')
                 ->cascadeOnDelete();
+
+            $table->unique(['ies', 'coddis', 'verdis']);
 
             $table->timestamps();
         });

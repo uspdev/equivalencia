@@ -19,11 +19,6 @@ class Disciplina extends Model
         'carga_horaria',
         'ies',
         'sglund',
-        'ano',
-        'semestre',
-        'codtur',
-        'frequencia',
-        'nota',
         'programa',
         'programa_resumo',
         'objetivo',
@@ -36,10 +31,6 @@ class Disciplina extends Model
         'verdis' => 'integer',
         'creditos' => 'integer',
         'carga_horaria' => 'integer',
-        'ano' => 'integer',
-        'semestre' => 'integer',
-        'frequencia' => 'decimal:2',
-        'nota' => 'decimal:2',
         'disciplina_ativa' => 'boolean',
     ];
 
@@ -61,7 +52,7 @@ class Disciplina extends Model
     public function equivalentes()
     {
         return $this->hasMany(Aproveitamento::class, 'requerida_id')
-            ->whereColumn('cursada_id', '!=', 'requerida_id');
+            ->where('placeholder_requerida', false);
     }
 
     public function criadoPor()
@@ -96,6 +87,7 @@ class Disciplina extends Model
                 $query->automaticas()->doContexto($codcur, $codhab)->with('cursada')->orderBy('id');
             }])
             ->orderBy('coddis')
+            ->orderBy('verdis')
             ->get();
 
         return $disciplinas->transform(function (Disciplina $disciplina) {
@@ -103,7 +95,12 @@ class Disciplina extends Model
                 'equivalentes',
                 $disciplina->equivalentes
                     ->sortBy(function (Aproveitamento $item) {
-                        return sprintf('%010d-%s', (int) $item->grupo, (string) ($item->coddis ?? ''));
+                        return sprintf(
+                            '%010d-%s-%03d',
+                            (int) $item->grupo,
+                            (string) ($item->coddis ?? ''),
+                            (int) ($item->cursada?->verdis ?? 0)
+                        );
                     })
                     ->values()
             );
@@ -115,13 +112,15 @@ class Disciplina extends Model
     /**
      * Monta os dados de uma disciplina requerida consultando o Replicado quando possível.
      */
-    public static function dadosDaRequeridaPorCoddis(string $coddis): array
+    public static function dadosDaRequeridaPorCoddis(string $coddis, ?int $verdis = null): array
     {
         $dados = [
-            'coddis' => $coddis,
+            'coddis' => static::normalizarCoddis($coddis),
+            'verdis' => static::normalizarVerdis($verdis),
+            'ies' => 'USP',
         ];
 
-        $disciplinaReplicado = static::buscarNoReplicado($coddis);
+        $disciplinaReplicado = static::buscarNoReplicado($dados['coddis'], $dados['verdis']);
 
         if (! $disciplinaReplicado) {
             return $dados;
@@ -142,19 +141,16 @@ class Disciplina extends Model
     }
 
     /**
-     * Cria ou atualiza uma disciplina requerida pelo código da disciplina.
+     * Resolve uma disciplina requerida pela identidade coddis + verdis.
      */
-    public static function upsertRequeridaPorCoddis(string $coddis, ?Disciplina $disciplina = null): Disciplina
-    {
-        $dados = static::dadosDaRequeridaPorCoddis($coddis);
+    public static function upsertRequeridaPorCoddis(
+        string $coddis,
+        ?int $verdis = null,
+        ?Disciplina $disciplina = null
+    ): Disciplina {
+        $dados = static::dadosDaRequeridaPorCoddis($coddis, $verdis);
 
-        if ($disciplina) {
-            $disciplina->update($dados);
-
-            return $disciplina;
-        }
-
-        return static::create($dados);
+        return static::persistirPorIdentidade($dados, $disciplina);
     }
 
     /**
@@ -162,22 +158,17 @@ class Disciplina extends Model
      */
     public static function salvarRequeridaDoRascunho(
         string $coddis,
+        ?int $verdis,
         int $userId,
         ?Disciplina $disciplina = null
     ): Disciplina {
-        $dados = static::dadosDaRequeridaPorCoddis($coddis);
+        $dados = static::dadosDaRequeridaPorCoddis($coddis, $verdis);
         $dados['nomdis'] ??= $coddis;
         $dados['ies'] = 'USP';
         $dados['criado_por_id'] = $userId;
         $dados['alterado_por_id'] = $userId;
 
-        if ($disciplina) {
-            $disciplina->update($dados);
-
-            return $disciplina;
-        }
-
-        return static::create($dados);
+        return static::persistirPorIdentidade($dados, $disciplina);
     }
 
     /**
@@ -185,11 +176,12 @@ class Disciplina extends Model
      */
     public static function garantirRequeridaAutomaticaNoContexto(
         string $coddis,
+        ?int $verdis,
         int $codcur,
         int $codhab,
         ?Disciplina $disciplina = null
     ): Disciplina {
-        $requerida = static::upsertRequeridaPorCoddis($coddis, $disciplina);
+        $requerida = static::upsertRequeridaPorCoddis($coddis, $verdis, $disciplina);
 
         if (! Aproveitamento::grupoDaRequerida($requerida->id, $codcur, $codhab)) {
             Aproveitamento::criarPlaceholderDaRequerida($requerida->id, $codcur, $codhab);
@@ -203,7 +195,8 @@ class Disciplina extends Model
      */
     public static function dadosDaCursadaPorFormulario(array $dados): array
     {
-        $coddis = isset($dados['coddis']) ? trim((string) $dados['coddis']) : null;
+        $coddis = isset($dados['coddis']) ? static::normalizarCoddis((string) $dados['coddis']) : null;
+        $verdis = static::normalizarVerdis($dados['verdis'] ?? null);
         $isUsp = filter_var($dados['is_usp'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $base = [
             'coddis' => $coddis,
@@ -211,13 +204,8 @@ class Disciplina extends Model
             'ies' => $dados['ies'] ?? null,
             'creditos' => $dados['creditos'] ?? null,
             'carga_horaria' => $dados['carga_horaria'] ?? null,
-            'verdis' => $dados['verdis'] ?? null,
+            'verdis' => $verdis,
             'sglund' => $dados['sglund'] ?? null,
-            'ano' => $dados['ano'] ?? null,
-            'semestre' => $dados['semestre'] ?? null,
-            'codtur' => $dados['codtur'] ?? null,
-            'frequencia' => $dados['frequencia'] ?? null,
-            'nota' => $dados['nota'] ?? null,
             'programa' => null,
             'programa_resumo' => null,
             'objetivo' => null,
@@ -225,7 +213,7 @@ class Disciplina extends Model
         ];
 
         // somente tenta buscar no Replicado se for USP e tiver código de disciplina
-        $disciplinaReplicado = ($isUsp && $coddis) ? static::buscarNoReplicado($coddis) : null;
+        $disciplinaReplicado = ($isUsp && $coddis) ? static::buscarNoReplicado($coddis, $verdis) : null;
 
         if (! $isUsp || ! $disciplinaReplicado) {
             return $base;
@@ -257,13 +245,9 @@ class Disciplina extends Model
         $courseData = static::dadosDaCursadaPorFormulario([
             'is_usp' => ! $isExternal,
             'coddis' => Str::upper(trim($dados['coddis'])),
+            'verdis' => $dados['verdis'] ?? null,
             'nome_disciplina' => $isExternal ? trim($dados['nomdis']) : null,
             'ies' => $isExternal ? trim($dados['unidade_nome']) : 'USP',
-            'ano' => $dados['ano'],
-            'semestre' => $dados['semestre'],
-            'codtur' => $dados['codtur'],
-            'frequencia' => $isExternal ? $dados['frequencia'] : null,
-            'nota' => $isExternal ? $dados['nota'] : null,
             'creditos' => $isExternal ? $dados['creditos'] : null,
             'carga_horaria' => $isExternal ? $dados['carga_horaria'] : null,
         ]);
@@ -274,7 +258,8 @@ class Disciplina extends Model
                 static::dadosUspCursadaDoRascunho(
                     (int) $userId,
                     Str::upper(trim($dados['coddis'])),
-                    (string) $dados['codtur']
+                    (string) $dados['codtur'],
+                    static::normalizarVerdis($dados['verdis'] ?? null)
                 )
             );
         }
@@ -286,9 +271,44 @@ class Disciplina extends Model
     }
 
     /**
+     * Normaliza os dados da ocorrência cursada que pertencem ao vínculo do requerimento.
+     */
+    public static function dadosDaOcorrenciaDoRascunho(array $dados, int $userId): array
+    {
+        $isExternal = $dados['unidade_tipo'] === 'OUTRA';
+        $base = [
+            'ano' => (int) $dados['ano'],
+            'semestre' => (int) $dados['semestre'],
+            'codtur' => (string) $dados['codtur'],
+            'frequencia' => $isExternal ? $dados['frequencia'] : null,
+            'nota' => $isExternal ? $dados['nota'] : null,
+        ];
+
+        if ($isExternal) {
+            return $base;
+        }
+
+        $historico = static::historicoUspCursadaDoRascunho(
+            (int) $userId,
+            Str::upper(trim($dados['coddis'])),
+            (string) $dados['codtur'],
+            static::normalizarVerdis($dados['verdis'] ?? null)
+        );
+
+        if (! $historico) {
+            return $base;
+        }
+
+        return array_merge($base, [
+            'frequencia' => $historico['frqfim'] ?? null,
+            'nota' => $historico['notfim2'] ?? $historico['notfim'] ?? null,
+        ]);
+    }
+
+    /**
      * Busca uma disciplina USP no Replicado pelo código informado.
      */
-    public static function disciplinaUspNoReplicado(?string $coddis): ?array
+    public static function disciplinaUspNoReplicado(?string $coddis, ?int $verdis = null): ?array
     {
         $codigo = $coddis ? trim($coddis) : '';
 
@@ -296,7 +316,7 @@ class Disciplina extends Model
             return null;
         }
 
-        return static::buscarNoReplicado($codigo);
+        return static::buscarNoReplicado($codigo, static::normalizarVerdis($verdis));
     }
 
     /**
@@ -304,7 +324,15 @@ class Disciplina extends Model
      */
     public static function criarCursadaPorFormulario(array $dados): Disciplina
     {
-        return static::create(static::dadosDaCursadaPorFormulario($dados));
+        return static::salvarCursadaPorFormulario($dados);
+    }
+
+    /**
+     * Resolve uma disciplina cursada a partir dos dados normalizados do formulário.
+     */
+    public static function salvarCursadaPorFormulario(array $dados, ?Disciplina $disciplina = null): Disciplina
+    {
+        return static::persistirPorIdentidade(static::dadosDaCursadaPorFormulario($dados), $disciplina);
     }
 
     /**
@@ -312,23 +340,34 @@ class Disciplina extends Model
      */
     public static function criarCursadaDoRascunho(array $dados, int $userId): Disciplina
     {
-        return static::create(static::dadosDaCursadaDoRascunho($dados, $userId));
+        return static::salvarCursadaDoRascunho($dados, $userId);
+    }
+
+    /**
+     * Resolve uma disciplina cursada a partir dos dados validados do rascunho.
+     */
+    public static function salvarCursadaDoRascunho(
+        array $dados,
+        int $userId,
+        ?Disciplina $disciplina = null
+    ): Disciplina {
+        return static::persistirPorIdentidade(static::dadosDaCursadaDoRascunho($dados, $userId), $disciplina);
     }
 
     /**
      * Atualiza esta disciplina cursada com dados normalizados do formulário.
      */
-    public function atualizarCursadaPorFormulario(array $dados): void
+    public function atualizarCursadaPorFormulario(array $dados): Disciplina
     {
-        $this->update(static::dadosDaCursadaPorFormulario($dados));
+        return static::salvarCursadaPorFormulario($dados, $this);
     }
 
     /**
      * Atualiza esta cursada a partir dos dados validados do rascunho.
      */
-    public function atualizarCursadaDoRascunho(array $dados, int $userId): void
+    public function atualizarCursadaDoRascunho(array $dados, int $userId): Disciplina
     {
-        $this->update(static::dadosDaCursadaDoRascunho($dados, $userId));
+        return static::salvarCursadaDoRascunho($dados, $userId, $this);
     }
 
     /**
@@ -398,6 +437,7 @@ class Disciplina extends Model
             // considera que o bloco tem valor se tiver código, nome ou IES preenchidos,
             // para facilitar a UX de mostrar o bloco quando o usuário começar a preencher
             return filled($fieldValue('coddis' . $suffix)) ||
+                filled($fieldValue('verdis' . $suffix)) ||
                 filled($fieldValue('nome_disciplina' . $suffix)) ||
                 filled($fieldValue('ies' . $suffix)) ||
                 filled($fieldValue('numero_reuniao' . $suffix)) ||
@@ -422,6 +462,7 @@ class Disciplina extends Model
                 'visible' => $number <= $initialVisible,
                 'isUsp' => $isUspValue($suffix),
                 'coddis' => $fieldValue('coddis' . $suffix),
+                'verdis' => $fieldValue('verdis' . $suffix),
                 'nome' => $fieldValue('nome_disciplina' . $suffix),
                 'ies' => $fieldValue('ies' . $suffix),
                 'numero_reuniao' => $fieldValue('numero_reuniao' . $suffix),
@@ -456,18 +497,21 @@ class Disciplina extends Model
 
         return [
             'coddis' => old('coddis', $equivalenciaFilha->coddis),
+            'verdis' => old('verdis', $equivalenciaFilha->cursada?->verdis),
             'nome_disciplina' => old('nome_disciplina', $equivalenciaFilha->nome_disciplina),
             'ies' => old('ies', $equivalenciaFilha->ies),
             'numero_reuniao' => old('numero_reuniao', $equivalenciaFilha->numero_reuniao),
             'data_reuniao' => old('data_reuniao', $equivalenciaFilha->data_reuniao?->format('Y-m-d')),
             'observacoes' => old('observacoes', $equivalenciaFilha->observacoes),
             'coddis2' => old('coddis2', $equivalencia2?->coddis),
+            'verdis2' => old('verdis2', $equivalencia2?->cursada?->verdis),
             'nome_disciplina2' => old('nome_disciplina2', $equivalencia2?->nome_disciplina),
             'ies2' => old('ies2', $equivalencia2?->ies),
             'numero_reuniao2' => old('numero_reuniao2', $equivalencia2?->numero_reuniao),
             'data_reuniao2' => old('data_reuniao2', $equivalencia2?->data_reuniao?->format('Y-m-d')),
             'observacoes2' => old('observacoes2', $equivalencia2?->observacoes),
             'coddis3' => old('coddis3', $equivalencia3?->coddis),
+            'verdis3' => old('verdis3', $equivalencia3?->cursada?->verdis),
             'nome_disciplina3' => old('nome_disciplina3', $equivalencia3?->nome_disciplina),
             'ies3' => old('ies3', $equivalencia3?->ies),
             'numero_reuniao3' => old('numero_reuniao3', $equivalencia3?->numero_reuniao),
@@ -484,24 +528,33 @@ class Disciplina extends Model
      */
     public static function existeComoRequeridaNoContexto(
         string $coddis,
+        ?int $verdis,
         int $codcur,
-        int $codhab
+        int $codhab,
+        ?int $ignorarDisciplinaId = null
     ): bool {
-        return self::query()
-            ->where('coddis', $coddis)
+        $query = self::query()
+            ->where('coddis', static::normalizarCoddis($coddis))
+            ->where('verdis', static::normalizarVerdis($verdis))
+            ->where('ies', 'USP')
             ->whereHas('equivalenciasComoRequerida', function ($query) use ($codcur, $codhab) {
                 $query->automaticas()->doContexto($codcur, $codhab);
-            })
-            ->exists();
+            });
+
+        if ($ignorarDisciplinaId !== null) {
+            $query->where('id', '!=', $ignorarDisciplinaId);
+        }
+
+        return $query->exists();
     }
 
     /**
      * Consulta o Replicado e retorna os dados da disciplina correspondente.
      */
-    private static function buscarNoReplicado(string $coddis): ?array
+    private static function buscarNoReplicado(string $coddis, ?int $verdis = null): ?array
     {
         try {
-            $disciplinas = app(Graduacao::class)->obterDadosDisciplinaPorCodigo($coddis);
+            $disciplinas = app(Graduacao::class)->obterDadosDisciplinaPorCodigoVersao($coddis, $verdis);
         } catch (\Throwable $e) {
             return null;
         }
@@ -514,20 +567,22 @@ class Disciplina extends Model
      * Usa o histórico do aluno como fonte obrigatória e combina com os dados cadastrais da disciplina quando disponíveis.
      * Retorna array vazio quando o usuário não tem codpes ou não há histórico compatível no Replicado.
      */
-    private static function dadosUspCursadaDoRascunho(int $userId, string $coddis, string $codtur): array
-    {
-        $codpes = (int) (User::query()->whereKey($userId)->value('codpes') ?? 0);
-        $historico = app(Graduacao::class)->obterDisciplinaCursadaPorAlunoEmPeriodoCodtur(
-            $codpes,
-            $coddis,
-            $codtur
-        );
+    private static function dadosUspCursadaDoRascunho(
+        int $userId,
+        string $coddis,
+        string $codtur,
+        ?int $verdis = null
+    ): array {
+        $historico = static::historicoUspCursadaDoRascunho($userId, $coddis, $codtur, $verdis);
 
         if (! $historico) {
             return [];
         }
 
-        $disciplina = app(Graduacao::class)->obterDadosDisciplinaPorCodigo($coddis);
+        $disciplina = app(Graduacao::class)->obterDadosDisciplinaPorCodigoVersao(
+            $coddis,
+            static::normalizarVerdis($historico['verdis'] ?? $verdis)
+        );
 
         $dadosReplicado = array_merge(
             is_array($disciplina) ? $disciplina : [],
@@ -542,16 +597,155 @@ class Disciplina extends Model
             'carga_horaria' => static::cargaHorariaUsp($dadosReplicado),
             'verdis' => $dadosReplicado['verdis'] ?? null,
             'sglund' => $dadosReplicado['sglund'] ?? null,
-            'ano' => (int) substr($codtur, 0, 4),
-            'semestre' => (int) substr($codtur, 4, 1),
-            'codtur' => $codtur,
-            'frequencia' => $dadosReplicado['frqfim'] ?? null,
-            'nota' => $dadosReplicado['notfim2'] ?? $dadosReplicado['notfim'] ?? null,
             'programa' => $dadosReplicado['pgmdis'] ?? null,
             'programa_resumo' => $dadosReplicado['pgmrsudis'] ?? null,
             'objetivo' => $dadosReplicado['objdis'] ?? null,
             'disciplina_ativa' => static::disciplinaAtivaNoReplicado($dadosReplicado),
         ];
+    }
+
+    /**
+     * Obtém do histórico USP os dados de uma disciplina cursada pelo aluno,
+     * usando as informações presentes no rascunho.
+     *
+     * Busca o `codpes` do usuário informado e consulta o serviço de Graduação
+     * pelo código da disciplina, código da turma e, opcionalmente, versão da
+     * disciplina.
+     *
+     * @param int $userId ID do usuário no sistema.
+     * @param string $coddis Código da disciplina.
+     * @param string $codtur Código da turma/período.
+     * @param int|null $verdis Versão da disciplina, quando disponível.
+     *
+     * @return array Dados da disciplina cursada retornados pelo serviço de Graduação.
+     */
+    private static function historicoUspCursadaDoRascunho(
+        int $userId,
+        string $coddis,
+        string $codtur,
+        ?int $verdis = null
+    ): array {
+        $codpes = (int) (User::query()->whereKey($userId)->value('codpes') ?? 0);
+
+        return app(Graduacao::class)->obterDisciplinaCursadaPorAlunoEmPeriodoCodtur(
+            $codpes,
+            $coddis,
+            $codtur,
+            $verdis
+        );
+    }
+
+    /**
+     * Persiste uma disciplina respeitando sua identidade institucional.
+     *
+     * Caso uma disciplina seja informada e possua a mesma identidade dos dados
+     * recebidos, ela é atualizada diretamente. Caso contrário, tenta localizar
+     * uma disciplina existente pela identidade. Se encontrar, atualiza; se não,
+     * cria um novo registro.
+     *
+     * @param array $dados Dados da disciplina a serem persistidos.
+     * @param Disciplina|null $disciplina Disciplina já existente, quando houver.
+     *
+     * @return Disciplina Disciplina criada ou atualizada.
+     */
+    private static function persistirPorIdentidade(array $dados, ?Disciplina $disciplina = null): Disciplina
+    {
+        if ($disciplina && static::temMesmaIdentidade($disciplina, $dados)) {
+            $disciplina->update($dados);
+
+            return $disciplina;
+        }
+
+        $existente = static::buscarPorIdentidade($dados);
+
+        if ($existente) {
+            $existente->update($dados);
+
+            return $existente;
+        }
+
+        return static::create($dados);
+    }
+
+    /**
+     * Busca uma disciplina USP existente pela sua identidade.
+     *
+     * A identidade de uma disciplina USP é composta por instituição, código da
+     * disciplina e versão da disciplina. Para disciplinas que não sejam USP ou
+     * que não possuam os dados mínimos necessários, nenhum registro é buscado.
+     *
+     * @param array $dados Dados usados para identificar a disciplina.
+     *
+     * @return Disciplina|null Disciplina encontrada ou null quando não houver correspondência.
+     */
+    private static function buscarPorIdentidade(array $dados): ?Disciplina
+    {
+        if (($dados['ies'] ?? null) !== 'USP' || empty($dados['coddis']) || empty($dados['verdis'])) {
+            return null;
+        }
+
+        return static::query()
+            ->where('ies', 'USP')
+            ->where('coddis', static::normalizarCoddis((string) $dados['coddis']))
+            ->where('verdis', static::normalizarVerdis($dados['verdis']))
+            ->first();
+    }
+
+    /**
+     * Verifica se uma disciplina possui a mesma identidade dos dados informados.
+     *
+     * Para disciplinas USP, compara instituição, código da disciplina normalizado
+     * e versão da disciplina normalizada. Para disciplinas externas, considera
+     * compatível quando a disciplina atual também não pertence à USP.
+     *
+     * @param Disciplina $disciplina Disciplina a ser comparada.
+     * @param array $dados Dados usados na comparação de identidade.
+     *
+     * @return bool True quando a identidade for a mesma; caso contrário, false.
+     */
+    private static function temMesmaIdentidade(Disciplina $disciplina, array $dados): bool
+    {
+        if (($dados['ies'] ?? null) !== 'USP') {
+            return ($disciplina->ies ?? null) !== 'USP';
+        }
+
+        return $disciplina->ies === 'USP'
+            && $disciplina->coddis === static::normalizarCoddis((string) ($dados['coddis'] ?? ''))
+            && (int) $disciplina->verdis === (int) static::normalizarVerdis($dados['verdis'] ?? null);
+    }
+
+    /**
+     * Normaliza o código da disciplina.
+     *
+     * Remove espaços em branco das extremidades e converte o código para letras
+     * maiúsculas.
+     *
+     * @param string $coddis Código da disciplina.
+     *
+     * @return string Código da disciplina normalizado.
+     */
+    private static function normalizarCoddis(string $coddis): string
+    {
+        return Str::upper(trim($coddis));
+    }
+
+    /**
+     * Normaliza a versão da disciplina.
+     *
+     * Valores nulos ou vazios são convertidos para null. Demais valores são
+     * convertidos para inteiro.
+     *
+     * @param mixed $verdis Versão da disciplina.
+     *
+     * @return int|null Versão normalizada ou null quando não informada.
+     */
+    private static function normalizarVerdis(mixed $verdis): ?int
+    {
+        if ($verdis === null || $verdis === '') {
+            return null;
+        }
+
+        return (int) $verdis;
     }
 
     /**

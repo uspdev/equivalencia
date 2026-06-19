@@ -31,9 +31,15 @@ class Aproveitamento extends Model
         'estado',
         'requerida_id',
         'cursada_id',
+        'placeholder_requerida',
         'tipo',
         'codcur',
         'codhab',
+        'ano',
+        'semestre',
+        'codtur',
+        'frequencia',
+        'nota',
         'numero_reuniao',
         'data_reuniao',
         'observacoes',
@@ -50,9 +56,14 @@ class Aproveitamento extends Model
         'estado' => EquivalenciaEstado::class,
         'requerida_id' => 'integer',
         'cursada_id' => 'integer',
+        'placeholder_requerida' => 'boolean',
         'tipo' => EquivalenciaTipo::class,
         'codcur' => 'integer',
         'codhab' => 'integer',
+        'ano' => 'integer',
+        'semestre' => 'integer',
+        'frequencia' => 'decimal:2',
+        'nota' => 'decimal:2',
         'numero_reuniao' => 'integer',
         'data_reuniao' => 'date',
         'criado_por_id' => 'integer',
@@ -174,7 +185,7 @@ class Aproveitamento extends Model
      */
     public function isPlaceholderRequerida(): bool
     {
-        return (int) $this->requerida_id === (int) $this->cursada_id;
+        return (bool) $this->placeholder_requerida;
     }
 
     // Compatibilidade com as views atuais que leem campos da cursada no vínculo.
@@ -241,7 +252,8 @@ class Aproveitamento extends Model
             $requeridaId,
             EquivalenciaTipo::AUTOMATICA,
             codcur: $codcur,
-            codhab: $codhab
+            codhab: $codhab,
+            placeholderRequerida: true
         );
     }
 
@@ -256,19 +268,31 @@ class Aproveitamento extends Model
         ?EquivalenciaEstado $estado = null,
         ?int $codcur = null,
         ?int $codhab = null,
+        ?int $ano = null,
+        ?int $semestre = null,
+        ?string $codtur = null,
+        mixed $frequencia = null,
+        mixed $nota = null,
         ?int $numeroReuniao = null,
         ?string $dataReuniao = null,
         ?string $observacoes = null,
         ?int $criadoPorId = null,
-        ?int $alteradoPorId = null
+        ?int $alteradoPorId = null,
+        bool $placeholderRequerida = false
     ): self {
         $dados = [
             'grupo' => $grupo,
             'requerida_id' => $requeridaId,
             'cursada_id' => $cursadaId,
+            'placeholder_requerida' => $placeholderRequerida,
             'tipo' => $tipo instanceof EquivalenciaTipo ? $tipo : EquivalenciaTipo::from($tipo),
             'codcur' => $codcur,
             'codhab' => $codhab,
+            'ano' => $ano,
+            'semestre' => $semestre,
+            'codtur' => $codtur,
+            'frequencia' => $frequencia,
+            'nota' => $nota,
             'numero_reuniao' => $numeroReuniao,
             'data_reuniao' => $dataReuniao,
             'observacoes' => $observacoes,
@@ -376,7 +400,7 @@ class Aproveitamento extends Model
             ->doContexto($codcur, $codhab)
             ->where('requerida_id', $requerida->id)
             ->doGrupo($grupo)
-            ->whereColumn('cursada_id', '!=', 'requerida_id')
+            ->where('placeholder_requerida', false)
             ->with('cursada')
             ->orderBy('id')
             ->get();
@@ -412,8 +436,17 @@ class Aproveitamento extends Model
                     throw new ModelNotFoundException();
                 }
 
-                $vinculoExistente->cursada->atualizarCursadaPorFormulario($dadosCursada);
-                $vinculoExistente->update(static::dadosAdministrativosDaCursada($dadosCursada));
+                $cursadaAnteriorId = (int) $vinculoExistente->cursada_id;
+                $cursada = $vinculoExistente->cursada->atualizarCursadaPorFormulario($dadosCursada);
+
+                $vinculoExistente->update(array_merge(
+                    ['cursada_id' => $cursada->id],
+                    static::dadosAdministrativosDaCursada($dadosCursada)
+                ));
+
+                if ($cursadaAnteriorId !== (int) $cursada->id) {
+                    Disciplina::removerSeOrfaPorId($cursadaAnteriorId);
+                }
 
                 continue;
             }
@@ -594,6 +627,7 @@ class Aproveitamento extends Model
         $showData = [
             'requerida' => [
                 'coddis' => $requerida->coddis,
+                'verdis' => $requerida->verdis,
                 'nomdis' => $requerida->nomdis,
                 'sglund' => $requerida->sglund,
             ],
@@ -621,16 +655,17 @@ class Aproveitamento extends Model
 
             $showData['cursadas'][] = [
                 'coddis' => $cursada->coddis,
+                'verdis' => $cursada->verdis,
                 'nomdis' => $cursada->nomdis,
                 'ementa_file' => $ementa ? [
                     'id' => $ementa->id,
                     'name' => $ementa->nome,
                 ] : null,
-                'semestre' => $cursada->semestre,
-                'ano' => $cursada->ano,
-                'codtur' => $cursada->codtur,
-                'freq' => $cursada->frequencia,
-                'nota' => $cursada->nota,
+                'semestre' => $equivalencia->semestre,
+                'ano' => $equivalencia->ano,
+                'codtur' => $equivalencia->codtur,
+                'freq' => $equivalencia->frequencia,
+                'nota' => $equivalencia->nota,
                 'creditos' => $cursada->creditos,
                 'carga_hr' => $cursada->carga_horaria,
                 'ies' => $cursada->ies,
@@ -658,14 +693,20 @@ class Aproveitamento extends Model
         }
 
         $nomeRequerida = $requerida->nomdis;
+        $requeridaId = (int) $requerida->id;
+        $cursadaIds = static::idsDeCursadasReais($equivalencias);
 
         Arquivo::removerHistoricosDoGrupo($group);
 
         foreach ($equivalencias as $equivalencia) {
-            $equivalencia->cursada?->delete();
+            $equivalencia->delete();
         }
 
-        $requerida->delete();
+        foreach ($cursadaIds as $cursadaId) {
+            Disciplina::removerSeOrfaPorId((int) $cursadaId);
+        }
+
+        Disciplina::removerSeOrfaPorId($requeridaId);
 
         return $nomeRequerida;
     }
