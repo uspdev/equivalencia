@@ -14,7 +14,7 @@
         @endphp
 
         <span title="{{ $e->cursada->nome_disciplina }}">
-          <button type="button" class="btn btn-link p-0 text-left align-baseline disciplina-dados-trigger"
+          <button type="button" class="btn p-0 text-left align-baseline disciplina-dados-trigger"
             data-toggle="modal" data-target="#{{ $modalDadosDisciplinaId }}">
             {{ $e->cursada->coddis }} -
             @limitarTexto($e->cursada->nome_disciplina)
@@ -45,3 +45,13 @@
 @empty
   -
 @endforelse
+
+@pushOnce('styles')
+  <style>
+    .disciplina-dados-trigger:hover,
+    .disciplina-dados-trigger:focus {
+      color: #495057 !important;
+      text-decoration: underline;
+    }
+  </style>
+@endpushOnce
