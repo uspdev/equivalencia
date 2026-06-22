@@ -48,7 +48,25 @@ $mesmaListaDeIds = function (array $a, array $b): bool {
     return $a === $b;
 };
 
-$obterOuCriarRequerida = function (string $codigoReq, ?array $nomeReqInfo): Disciplina {
+$obterPorIdentidade = function (array $dados): ?Disciplina {
+    if (($dados['ies'] ?? null) === null || ($dados['coddis'] ?? null) === null) {
+        return null;
+    }
+
+    $consulta = Disciplina::query()
+        ->where('ies', $dados['ies'])
+        ->where('coddis', $dados['coddis']);
+
+    if (array_key_exists('verdis', $dados) && $dados['verdis'] !== null && $dados['verdis'] !== '') {
+        $consulta->where('verdis', $dados['verdis']);
+    } else {
+        $consulta->whereNull('verdis');
+    }
+
+    return $consulta->first();
+};
+
+$obterOuCriarRequerida = function (string $codigoReq, ?array $nomeReqInfo) use ($obterPorIdentidade): Disciplina {
     $dadosReplicado = Disciplina::dadosDaRequeridaPorCoddis($codigoReq);
 
     $dados = [
@@ -61,10 +79,7 @@ $obterOuCriarRequerida = function (string $codigoReq, ?array $nomeReqInfo): Disc
         'ies' => $dadosReplicado['ies'] ?? 'USP',
     ];
 
-    $requerida = Disciplina::query()
-        ->where('coddis', $codigoReq)
-        ->where('ies', 'USP')
-        ->first();
+    $requerida = $obterPorIdentidade($dados);
 
     if (! $requerida) {
         return Disciplina::create($dados);
@@ -75,7 +90,7 @@ $obterOuCriarRequerida = function (string $codigoReq, ?array $nomeReqInfo): Disc
     return $requerida;
 };
 
-$obterOuCriarCursada = function (string $codigoCur, ?array $nomeCursadaInfo, ?int $periodo): Disciplina {
+$obterOuCriarCursada = function (string $codigoCur, ?array $nomeCursadaInfo, ?int $periodo) use ($obterPorIdentidade): Disciplina {
     $dadosFormulario = [
         'coddis' => $codigoCur,
         'nome_disciplina' => $nomeCursadaInfo['nome_disciplina'] ?? null,
@@ -86,30 +101,16 @@ $obterOuCriarCursada = function (string $codigoCur, ?array $nomeCursadaInfo, ?in
 
     $dadosNormalizados = Disciplina::dadosDaCursadaPorFormulario($dadosFormulario);
 
-    $coddis = $dadosNormalizados['coddis'] ?? $codigoCur;
-    $nomdis = $dadosNormalizados['nomdis'] ?? ($nomeCursadaInfo['nome_disciplina'] ?? null);
-    $ies = $dadosNormalizados['ies'] ?? 'USP';
-    $sglund = $dadosNormalizados['sglund'] ?? ($nomeCursadaInfo['ies'] ?? null);
-
-    $consulta = Disciplina::query()
-        ->where('coddis', $coddis)
-        ->where('ies', $ies);
-
-    if ($sglund === null) {
-        $consulta->whereNull('sglund');
-    } else {
-        $consulta->where('sglund', $sglund);
-    }
-
-    if ($nomdis === null) {
-        $consulta->whereNull('nomdis');
-    } else {
-        $consulta->where('nomdis', $nomdis);
-    }
-
-    $cursada = $consulta->first();
+    $cursada = $obterPorIdentidade($dadosNormalizados);
 
     if ($cursada) {
+        $atualizacao = array_filter(
+            $dadosNormalizados,
+            static fn ($valor) => $valor !== null && $valor !== ''
+        );
+
+        $cursada->update($atualizacao);
+
         return $cursada;
     }
 
@@ -331,4 +332,3 @@ echo "Grupos criados: {$totalGruposCriados}\n";
 echo "Grupos já existentes (ignorados): {$totalGruposJaExistentes}\n";
 echo "Vínculos cursada-requerida criados: {$totalVinculosCriados}\n";
 echo "Registros ignorados/avisos: {$ignoradas}\n";
-
