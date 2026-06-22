@@ -11,15 +11,38 @@
           var code = container.querySelector('.js-discipline-code');
           var version = container.querySelector('.js-discipline-version');
           var codtur = container.querySelector('.js-codtur-mask');
+          var codturValue = container.querySelector('.js-codtur-value');
           var hasSyllabus = container.dataset.hasSyllabus === 'true';
 
           if (!unit || !uspCode || !externalCode || !code) {
             return;
           }
 
-          if (codtur) {
+          if (codtur && codturValue) {
+            function syncCodtur() {
+              var typedSlashAfterYear = /^\d{4}\/$/.test(codtur.value);
+              var digits = codtur.value.replace(/\D/g, '').slice(0, 5);
+
+              if (digits.length > 4) {
+                digits = digits.slice(0, 4) + digits.slice(4, 5).replace(/[^12]/g, '');
+              }
+
+              codtur.value = digits.length > 4 || typedSlashAfterYear ?
+                digits.slice(0, 4) + '/' + digits.slice(4) :
+                digits;
+              codturValue.value = digits;
+            }
+
+            codtur.addEventListener('input', syncCodtur);
+            codtur.form.addEventListener('submit', syncCodtur);
+            syncCodtur();
+          } else if (codtur) {
             codtur.addEventListener('input', function() {
-              codtur.value = codtur.value.replace(/\D/g, '').slice(0, 5);
+              var typedSlashAfterYear = /^\d{4}\/$/.test(codtur.value);
+              var digits = codtur.value.replace(/\D/g, '').slice(0, 5);
+              codtur.value = digits.length > 4 || typedSlashAfterYear ?
+                digits.slice(0, 4) + '/' + digits.slice(4) :
+                digits;
             });
           }
 
