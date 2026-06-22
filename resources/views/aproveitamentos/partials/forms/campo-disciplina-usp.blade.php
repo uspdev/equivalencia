@@ -66,7 +66,8 @@
             field.focus();
           }
         }
-
+        // Dispara um evento customizado para notificar que a identidade da disciplina USP foi alterada.
+        // Serve para atualizar outros campos relacionados, como o código da versão da disciplina.
         function dispatchIdentityChanged(select) {
           select.dispatchEvent(new CustomEvent('disciplina-usp:identity', {
             bubbles: true
@@ -76,15 +77,26 @@
         function populateVersionSelect(versionSelect, versions, selectedVerdis, disabled) {
           versionSelect.innerHTML = '<option value="">Selecione uma versão...</option>';
 
+          // Mantém a versão já selecionada, quando existir; senão usa a primeira retornada.
+          var selectedValue = selectedVerdis || (versions.length ? versions[0].id : null);
+          var hasSelectedValue = false;
+
           versions.forEach(function(version) {
             var option = document.createElement('option');
             option.value = version.id;
             option.textContent = version.text;
-            if (String(version.id) === String(selectedVerdis || '')) {
+
+            if (String(version.id) === String(selectedValue || '')) {
               option.selected = true;
+              hasSelectedValue = true;
             }
+
             versionSelect.appendChild(option);
           });
+
+          if (!hasSelectedValue && versions.length) {
+            versionSelect.value = String(versions[0].id);
+          }
 
           versionSelect.disabled = Boolean(disabled) || versions.length === 0;
         }
@@ -110,6 +122,7 @@
 
           versionSelect.disabled = true;
 
+          // Busca as versões disponíveis para o código de disciplina selecionado.
           window.fetch(url, {
               headers: {
                 'Accept': 'application/json'
@@ -122,8 +135,10 @@
             })
             .then(function(response) {
               var versions = response && Array.isArray(response.results) ? response.results : [];
+
               populateVersionSelect(versionSelect, versions, selectedVerdis, select.disabled);
               versionSelect.setAttribute('data-selected-verdis', '');
+
               dispatchIdentityChanged(select);
             })
             .catch(function() {
@@ -133,6 +148,9 @@
         }
 
         function initialize() {
+          // Evita múltiplas inicializações acidentais, que podem ocorrer se o script for carregado mais de uma vez
+          // ou se a função de inicialização for agendada várias vezes antes do jQuery estar disponível.
+          // Recomendação do GPT para evitar loops infinitos de agendamento.
           attempts++;
 
           if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) {
@@ -143,18 +161,21 @@
           }
 
           var $ = window.jQuery;
+
           $('.disciplina-usp-select').each(function() {
             var $select = $(this);
+
             if ($select.data(initializedKey)) {
               return;
             }
 
-            // Remove uma inicializacao anterior que nao possua a busca AJAX.
+            // Remove uma inicialização anterior que não possua a busca AJAX.
             if ($select.data('select2')) {
               $select.select2('destroy');
             }
 
             var $modal = $select.closest('.modal');
+
             var options = {
               ajax: {
                 url: $select.attr('data-search-url'),
@@ -168,8 +189,7 @@
                 processResults: function(response) {
                   return {
                     results: response && Array.isArray(response.results) ?
-                      response.results :
-                      []
+                      response.results : []
                   };
                 },
                 cache: true
@@ -181,24 +201,33 @@
               language: 'pt-BR'
             };
 
+            // Quando o select está dentro de modal, o dropdown precisa ficar preso ao modal.
             if ($modal.length) {
               options.dropdownParent = $modal;
             }
 
+            // Configura o Select2 com as opções definidas e os handlers de eventos para carregar as versões e focar o campo de busca.
             $select
               .select2(options)
               .data(initializedKey, true)
-              .off('change.disciplinaUspVersion select2:select.disciplinaUspVersion select2:clear.disciplinaUspVersion')
-              .on('select2:select.disciplinaUspVersion select2:clear.disciplinaUspVersion change.disciplinaUspVersion',
+              .off(
+                'change.disciplinaUspVersion select2:select.disciplinaUspVersion select2:clear.disciplinaUspVersion')
+              .on(
+                'select2:select.disciplinaUspVersion select2:clear.disciplinaUspVersion change.disciplinaUspVersion',
                 function() {
                   loadVersions(this);
-                })
+                }
+              )
               .off('change.disciplinaUspVersionSelect')
+              // Cada campo de disciplina USP pode ter um seletor de versão diferente,
+              // então o evento é delegado para o select específico definido no atributo data-verdis-target.
               .each(function() {
                 var versionTarget = this.getAttribute('data-verdis-target');
                 var versionSelect = versionTarget ? document.querySelector(versionTarget) : null;
+
                 if (versionSelect) {
-                  versionSelect.removeEventListener('change', versionSelect._disciplinaUspChangeHandler || function() {});
+                  versionSelect.removeEventListener('change', versionSelect._disciplinaUspChangeHandler ||
+                    function() {});
                   versionSelect._disciplinaUspChangeHandler = dispatchIdentityChanged.bind(null, this);
                   versionSelect.addEventListener('change', versionSelect._disciplinaUspChangeHandler);
                 }
@@ -213,15 +242,17 @@
         function scheduleInitialization() {
           if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) {
             attempts++;
+
             if (attempts < maxAttempts) {
               window.setTimeout(scheduleInitialization, 100);
             }
+
             return;
           }
 
-          // O tema tambem agenda uma inicializacao global no jQuery.ready.
+          // O tema também agenda uma inicialização global no jQuery.ready.
           // Rodar depois dela evita que o span gerado pelo Select2 seja
-          // tratado como um novo campo sem configuracao AJAX.
+          // tratado como um novo campo sem configuração AJAX.
           window.jQuery(function() {
             window.setTimeout(initialize, 0);
           });
