@@ -27,10 +27,6 @@ return new class extends Migration
             $table->string('ies')->nullable(); // Externa(nome) ou USP
             $table->string('sglund')->nullable(); // Sigla da unidade usp ou null
 
-            // DADOS DO REPLICADO PARA DISCIPLINAS USP
-            $table->text('programa')->nullable();
-            $table->text('programa_resumo')->nullable();
-            $table->text('objetivo')->nullable();
             $table->boolean('disciplina_ativa')->nullable();
 
             // Campo para vincular um pedido de equivalência a um aluno

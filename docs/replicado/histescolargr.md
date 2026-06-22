@@ -1,4 +1,4 @@
-Abaixo está o dicionário de dados da tabela HISTESCOLARGR no formato Markdown. (doc incompleta, existem mais colunas do que o informado). A princípio as informações que queremos extrair são: programadisciplina, programaresumodisciplina, objetivo-disciplina
+Abaixo está o dicionário de dados da tabela HISTESCOLARGR no formato Markdown. (doc incompleta, existem mais colunas do que o informado).
 
 ### Tabela: HISTESCOLARGR
 

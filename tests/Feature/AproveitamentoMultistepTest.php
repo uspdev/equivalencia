@@ -347,9 +347,6 @@ class AproveitamentoMultistepTest extends TestCase
             'frqfim' => 92.5,
             'notfim' => 7.5,
             'notfim2' => 8.0,
-            'pgmdis' => 'Limites, derivadas e integrais.',
-            'pgmrsudis' => 'Cálculo em uma variável.',
-            'objdis' => 'Apresentar fundamentos de cálculo.',
             'dtaatvdis' => '2020-01-01 00:00:00',
             'dtadtvdis' => null,
         ]);
@@ -375,9 +372,6 @@ class AproveitamentoMultistepTest extends TestCase
             'codtur' => '20242',
             'frequencia' => 92.5,
             'nota' => 8.0,
-            'programa' => 'Limites, derivadas e integrais.',
-            'programa_resumo' => 'Cálculo em uma variável.',
-            'objetivo' => 'Apresentar fundamentos de cálculo.',
             'disciplina_ativa' => true,
         ]);
         $this->assertDatabaseHas('equivalencias', [
@@ -419,9 +413,6 @@ class AproveitamentoMultistepTest extends TestCase
             'frqfim' => 88,
             'notfim' => 7,
             'notfim2' => null,
-            'pgmdis' => 'Computação introdutória.',
-            'pgmrsudis' => 'Introdução.',
-            'objdis' => 'Introduzir computação.',
             'dtaatvdis' => '2020-01-01 00:00:00',
             'dtadtvdis' => null,
         ]);
@@ -444,9 +435,6 @@ class AproveitamentoMultistepTest extends TestCase
             'frqfim' => 95,
             'notfim' => 9,
             'notfim2' => null,
-            'pgmdis' => 'Novo programa.',
-            'pgmrsudis' => 'Novo resumo.',
-            'objdis' => 'Novo objetivo.',
             'dtaatvdis' => '2021-01-01 00:00:00',
             'dtadtvdis' => null,
         ]);
@@ -466,7 +454,7 @@ class AproveitamentoMultistepTest extends TestCase
             'verdis' => 4,
             'frequencia' => 95,
             'nota' => 9,
-            'programa' => 'Novo programa.',
+            'disciplina_ativa' => true,
         ]);
     }
 

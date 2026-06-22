@@ -345,9 +345,6 @@ class AproveitamentoRascunho
             'creditos' => $course->creditos,
             'carga_horaria' => $course->carga_horaria,
             'sglund' => $course->sglund,
-            'programa' => $course->programa,
-            'programa_resumo' => $course->programa_resumo,
-            'objetivo' => $course->objetivo,
             'disciplina_ativa' => $course->disciplina_ativa,
             'ementa' => $syllabus ? [
                 'name' => $syllabus->nome,

@@ -119,9 +119,6 @@ class AproveitamentoShowTest extends TestCase
             'nota' => 8,
             'creditos' => 5,
             'carga_horaria' => 90,
-            'programa' => 'Limites, derivadas e integrais.',
-            'programa_resumo' => 'Cálculo em uma variável.',
-            'objetivo' => 'Apresentar fundamentos de cálculo.',
             'disciplina_ativa' => true,
         ]);
 
@@ -129,12 +126,9 @@ class AproveitamentoShowTest extends TestCase
             ->get(route('equivalencias.req-show', ['group' => 12], false))
             ->assertOk()
             ->assertSee('MAT0111 - Cálculo Diferencial')
-            ->assertSee('Dados da ementa salvos a partir do Replicado.')
+            ->assertSee('Nenhuma ementa enviada.')
             ->assertSee('IME')
             ->assertSee('Ativa')
-            ->assertSee('Apresentar fundamentos de cálculo.')
-            ->assertSee('Cálculo em uma variável.')
-            ->assertSee('Limites, derivadas e integrais.')
             ->assertSee('Nenhum histórico escolar foi enviado.');
     }
 

@@ -43,8 +43,6 @@
               'arquivo' => $cursada['ementa_file'],
               'group' => $group,
           ])
-        @elseif ($cursada['programa'] || $cursada['programa_resumo'] || $cursada['objetivo'])
-          <span class="text-muted">Dados da ementa salvos a partir do Replicado.</span>
         @else
           <span class="text-muted">Nenhuma ementa enviada.</span>
         @endif
@@ -61,31 +59,6 @@
           <div class="text-muted small">Situação da disciplina</div>
           <strong>{{ $cursada['disciplina_ativa'] === null ? 'Não informada' : ($cursada['disciplina_ativa'] ? 'Ativa' : 'Inativa') }}</strong>
         </div>
-      </div>
-    @endif
-
-    @if ($cursada['objetivo'] || $cursada['programa_resumo'] || $cursada['programa'])
-      <div class="mt-3">
-        @if ($cursada['objetivo'])
-          <div class="mb-3">
-            <div class="text-muted small">Objetivo</div>
-            <div>{{ $cursada['objetivo'] }}</div>
-          </div>
-        @endif
-
-        @if ($cursada['programa_resumo'])
-          <div class="mb-3">
-            <div class="text-muted small">Resumo do programa</div>
-            <div>{{ $cursada['programa_resumo'] }}</div>
-          </div>
-        @endif
-
-        @if ($cursada['programa'])
-          <div>
-            <div class="text-muted small">Programa</div>
-            <div>{{ $cursada['programa'] }}</div>
-          </div>
-        @endif
       </div>
     @endif
   </div>

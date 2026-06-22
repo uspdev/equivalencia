@@ -92,28 +92,6 @@
               </div>
             @endif
           @endif
-
-          @if ($disciplina->objetivo || $disciplina->programa_resumo || $disciplina->programa)
-            <hr>
-            @if ($disciplina->objetivo)
-              <div class="mb-3">
-                <div class="text-muted small">Objetivo</div>
-                <div class="text-break">{{ $disciplina->objetivo }}</div>
-              </div>
-            @endif
-            @if ($disciplina->programa_resumo)
-              <div class="mb-3">
-                <div class="text-muted small">Resumo do programa</div>
-                <div class="text-break">{{ $disciplina->programa_resumo }}</div>
-              </div>
-            @endif
-            @if ($disciplina->programa)
-              <div>
-                <div class="text-muted small">Programa</div>
-                <div class="text-break">{{ $disciplina->programa }}</div>
-              </div>
-            @endif
-          @endif
         </div>
       </div>
     </div>

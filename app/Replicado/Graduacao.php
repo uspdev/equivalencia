@@ -41,7 +41,7 @@ class Graduacao extends GraduacaoReplicado
 
     /**
      * Busca os dados cadastrais mais recentes da disciplina no Replicado.
-     * Complementa a busca do select, retornando campos de programa, créditos e situação da disciplina.
+     * Complementa a busca do select, retornando créditos e situação da disciplina.
      * Retorna array vazio se o código for inválido, a consulta falhar ou nenhuma disciplina compatível for encontrada.
      */
     public function obterDadosDisciplinaPorCodigo(string $code): array
@@ -134,7 +134,7 @@ class Graduacao extends GraduacaoReplicado
 
     /**
      * Localiza uma disciplina cursada no histórico escolar do aluno para um período específico.
-     * Retorna dados de nota/frequência do HISTESCOLARGR junto com ementa e créditos da DISCIPLINAGR.
+     * Retorna dados de nota/frequência do HISTESCOLARGR junto com créditos da DISCIPLINAGR.
      * Retorna array vazio se a consulta falhar ou não houver matrícula para aluno, disciplina e período.
      */
     public function obterDisciplinaCursadaPorAlunoEmPeriodoCodtur(
@@ -161,10 +161,7 @@ class Graduacao extends GraduacaoReplicado
                 D.creaul,
                 D.cretrb,
                 D.dtaatvdis,
-                D.dtadtvdis,
-                D.objdis,
-                D.pgmdis,
-                D.pgmrsudis
+                D.dtadtvdis
             FROM HISTESCOLARGR H
             INNER JOIN DISCIPLINAGR D ON H.coddis = D.coddis AND H.verdis = D.verdis
             WHERE H.codpes = convert(int, :codpes)

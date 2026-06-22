@@ -19,9 +19,6 @@ class Disciplina extends Model
         'carga_horaria',
         'ies',
         'sglund',
-        'programa',
-        'programa_resumo',
-        'objetivo',
         'disciplina_ativa',
         'criado_por_id',
         'alterado_por_id',
@@ -132,9 +129,6 @@ class Disciplina extends Model
         $dados['carga_horaria'] = static::cargaHorariaUsp($disciplinaReplicado);
         $dados['sglund'] = $disciplinaReplicado['sglund'] ?? null;
         $dados['ies'] = 'USP';
-        $dados['programa'] = $disciplinaReplicado['pgmdis'] ?? null;
-        $dados['programa_resumo'] = $disciplinaReplicado['pgmrsudis'] ?? null;
-        $dados['objetivo'] = $disciplinaReplicado['objdis'] ?? null;
         $dados['disciplina_ativa'] = static::disciplinaAtivaNoReplicado($disciplinaReplicado);
 
         return $dados;
@@ -206,9 +200,6 @@ class Disciplina extends Model
             'carga_horaria' => $dados['carga_horaria'] ?? null,
             'verdis' => $verdis,
             'sglund' => $dados['sglund'] ?? null,
-            'programa' => null,
-            'programa_resumo' => null,
-            'objetivo' => null,
             'disciplina_ativa' => null,
         ];
 
@@ -228,9 +219,6 @@ class Disciplina extends Model
                 'creditos' => static::creditosUsp($disciplinaReplicado),
                 'carga_horaria' => static::cargaHorariaUsp($disciplinaReplicado),
                 'verdis' => $disciplinaReplicado['verdis'] ?? null,
-                'programa' => $disciplinaReplicado['pgmdis'] ?? null,
-                'programa_resumo' => $disciplinaReplicado['pgmrsudis'] ?? null,
-                'objetivo' => $disciplinaReplicado['objdis'] ?? null,
                 'disciplina_ativa' => static::disciplinaAtivaNoReplicado($disciplinaReplicado),
             ]
         );
@@ -597,9 +585,6 @@ class Disciplina extends Model
             'carga_horaria' => static::cargaHorariaUsp($dadosReplicado),
             'verdis' => $dadosReplicado['verdis'] ?? null,
             'sglund' => $dadosReplicado['sglund'] ?? null,
-            'programa' => $dadosReplicado['pgmdis'] ?? null,
-            'programa_resumo' => $dadosReplicado['pgmrsudis'] ?? null,
-            'objetivo' => $dadosReplicado['objdis'] ?? null,
             'disciplina_ativa' => static::disciplinaAtivaNoReplicado($dadosReplicado),
         ];
     }
