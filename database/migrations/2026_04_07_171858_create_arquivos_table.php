@@ -16,7 +16,7 @@ return new class extends Migration
 
             $table->foreignId('equivalencia_id')->nullable()->constrained()->cascadeOnDelete();
             $table->unsignedBigInteger('grupo')->nullable()->index();
-            $table->enum('tipo', ['historico', 'ementa']);
+            $table->string('tipo', 20);
 
             $table->string('nome');
             $table->string('path');
