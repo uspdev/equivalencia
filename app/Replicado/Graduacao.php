@@ -6,10 +6,13 @@ use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Uspdev\Forms\Replicado\Graduacao as GraduacaoForms;
 use Uspdev\Replicado\DB;
+use Uspdev\Replicado\Estrutura;
 use Uspdev\Replicado\Graduacao as GraduacaoReplicado;
 
 class Graduacao extends GraduacaoReplicado
 {
+    private array $unidadesPorCoddis = [];
+
     /**
      * Obtém os dados de uma disciplina ativa.
      * A busca por prefixo vem do uspdev/forms, mas este método só retorna correspondência exata de código.
@@ -24,7 +27,7 @@ class Graduacao extends GraduacaoReplicado
 
         foreach (GraduacaoForms::procurarDisciplinas($code, 50) as $disciplina) {
             if (Str::upper(trim((string) ($disciplina['coddis'] ?? ''))) === $code) {
-                return $disciplina;
+                return $this->adicionarUnidadeDaDisciplina($disciplina);
             }
         }
 
@@ -65,7 +68,7 @@ class Graduacao extends GraduacaoReplicado
             }
 
             if (Str::upper(trim((string) ($disciplina['coddis'] ?? ''))) === $code) {
-                return $disciplina;
+                return $this->adicionarUnidadeDaDisciplina($disciplina);
             }
         }
 
@@ -182,10 +185,10 @@ class Graduacao extends GraduacaoReplicado
                         AND D1.verdis = convert(int, :verdis)";
 
         try {
-            return DB::fetch($query, [
+            return $this->adicionarUnidadeDaDisciplina(DB::fetch($query, [
                 'coddis' => $code,
                 'verdis' => $verdis,
-            ]) ?: [];
+            ]) ?: []);
         } catch (\Throwable $e) {
             return [];
         }
@@ -197,6 +200,57 @@ class Graduacao extends GraduacaoReplicado
     public function existeDisciplinaPorCodigoVersao(string $code, ?int $verdis = null): bool
     {
         return ! empty($this->obterDadosDisciplinaPorCodigoVersao($code, $verdis));
+    }
+
+    /**
+     * Complementa os dados cadastrais da disciplina com a unidade responsável.
+     *
+     * A biblioteca já expõe Estrutura::obterUnidade($codund), mas a busca de
+     * disciplinas não retorna a unidade. Por isso obtemos o codclg no vínculo
+     * DISCIPGRCODIGO e usamos a API da própria lib para carregar a sigla.
+     */
+    private function adicionarUnidadeDaDisciplina(array $disciplina): array
+    {
+        $coddis = Str::upper(trim((string) ($disciplina['coddis'] ?? '')));
+
+        if ($coddis === '') {
+            return $disciplina;
+        }
+
+        $unidade = $this->unidadeDaDisciplina($coddis);
+
+        if (! $unidade) {
+            return $disciplina;
+        }
+        // Filtra valores nulos ou vazios para evitar sobrescrever dados válidos com informações incompletas.
+        return array_merge($disciplina, array_filter([
+            'codclg' => $unidade['codund'] ?? null,
+            'sglund' => $unidade['sglund'] ?? null,
+        ], static fn($valor) => $valor !== null && $valor !== ''));
+    }
+
+    private function unidadeDaDisciplina(string $coddis): array
+    {
+        if (array_key_exists($coddis, $this->unidadesPorCoddis)) {
+            return $this->unidadesPorCoddis[$coddis];
+        }
+
+        try {
+            $vinculo = DB::fetch(
+                'SELECT TOP 1 codclg FROM DISCIPGRCODIGO WHERE coddis = :coddis ORDER BY codclg',
+                ['coddis' => $coddis]
+            ) ?: [];
+
+            $codund = (int) ($vinculo['codclg'] ?? 0);
+
+            $this->unidadesPorCoddis[$coddis] = $codund > 0
+                ? (Estrutura::obterUnidade($codund) ?: [])
+                : [];
+        } catch (\Throwable $e) {
+            $this->unidadesPorCoddis[$coddis] = [];
+        }
+
+        return $this->unidadesPorCoddis[$coddis];
     }
 
     /**

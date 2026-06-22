@@ -12,32 +12,12 @@ if (count($arquivos) === 0) {
     throw new RuntimeException('Nenhum arquivo JSON encontrado em storage/app/TAA.');
 }
 
-// Extrai nome e IES quando houver sufixo no formato: "Nome Disciplina (FFCLRP)"
-$extrairNomeEies = function ($nomeOriginal) {
-    $nomeOriginal = is_string($nomeOriginal) ? trim($nomeOriginal) : '';
-    if ($nomeOriginal === '') {
-        return ['nome_disciplina' => null, 'ies' => null];
-    }
-
-    $nome = $nomeOriginal;
-    $ies = null;
-
-    if (preg_match('/^(.*?)\s*\(\s*([A-Za-z0-9._-]+)\s*\)\s*$/u', $nomeOriginal, $m)) {
-        $nome = trim($m[1]) !== '' ? trim($m[1]) : null;
-        $ies = trim($m[2]) !== '' ? trim($m[2]) : null;
-    }
-
-    return [
-        'nome_disciplina' => $nome !== '' ? $nome : null,
-        'ies' => $ies,
-    ];
-};
-
 $totalArquivos = 0;
 $totalRequeridas = 0;
 $totalVinculosCriados = 0;
 $totalGruposCriados = 0;
 $totalGruposJaExistentes = 0;
+$totalSemDadosReplicado = 0;
 $ignoradas = 0;
 
 // Compara duas listas de IDs sem considerar ordem.
@@ -47,74 +27,96 @@ $mesmaListaDeIds = function (array $a, array $b): bool {
 
     return $a === $b;
 };
+// Remove chaves com valores nulos ou string vazia, para evitar sobrescrever dados existentes com "vazio".
+$dadosPreenchidos = static function (array $dados): array {
+    return array_filter($dados, static fn($valor) => $valor !== null && $valor !== '');
+};
 
+// Localiza uma disciplina respeitando a identidade adotada pelo sistema:
+// ies + coddis + verdis.
+// Para disciplinas USP, versões diferentes podem representar disciplinas
+// distintas do ponto de vista do sistema de equivalências.
+// Quando uma versão é informada mas não existe cadastro correspondente,
+// tenta reutilizar um registro legado sem versão definida.
 $obterPorIdentidade = function (array $dados): ?Disciplina {
     if (($dados['ies'] ?? null) === null || ($dados['coddis'] ?? null) === null) {
         return null;
     }
 
-    $consulta = Disciplina::query()
+    $consultaBase = Disciplina::query()
         ->where('ies', $dados['ies'])
         ->where('coddis', $dados['coddis']);
 
     if (array_key_exists('verdis', $dados) && $dados['verdis'] !== null && $dados['verdis'] !== '') {
-        $consulta->where('verdis', $dados['verdis']);
-    } else {
-        $consulta->whereNull('verdis');
+        $comVersao = (clone $consultaBase)
+            ->where('verdis', $dados['verdis'])
+            ->first();
+
+        if ($comVersao) {
+            return $comVersao;
+        }
+
+        return (clone $consultaBase)
+            ->whereNull('verdis')
+            ->orderBy('id')
+            ->first();
     }
 
-    return $consulta->first();
+    return $consultaBase
+        ->whereNull('verdis')
+        ->orderBy('id')
+        ->first();
 };
 
-$obterOuCriarRequerida = function (string $codigoReq, ?array $nomeReqInfo) use ($obterPorIdentidade): Disciplina {
-    $dadosReplicado = Disciplina::dadosDaRequeridaPorCoddis($codigoReq);
+$obterOuCriarPorIdentidade = function (array $dados) use ($obterPorIdentidade, $dadosPreenchidos): Disciplina {
+    $disciplina = $obterPorIdentidade($dados);
 
-    $dados = [
-        'coddis' => $codigoReq,
-        'nomdis' => $dadosReplicado['nomdis'] ?? ($nomeReqInfo['nome_disciplina'] ?? null),
-        'verdis' => $dadosReplicado['verdis'] ?? null,
-        'creditos' => $dadosReplicado['creditos'] ?? null,
-        'carga_horaria' => $dadosReplicado['carga_horaria'] ?? null,
-        'sglund' => $dadosReplicado['sglund'] ?? ($nomeReqInfo['ies'] ?? null),
-        'ies' => $dadosReplicado['ies'] ?? 'USP',
-    ];
-
-    $requerida = $obterPorIdentidade($dados);
-
-    if (! $requerida) {
+    if (! $disciplina) {
         return Disciplina::create($dados);
     }
 
-    $requerida->update(array_filter($dados, static fn ($valor) => $valor !== null && $valor !== ''));
+    $disciplina->update($dadosPreenchidos($dados));
 
-    return $requerida;
+    return $disciplina;
 };
 
-$obterOuCriarCursada = function (string $codigoCur, ?array $nomeCursadaInfo, ?int $periodo) use ($obterPorIdentidade): Disciplina {
+$obterOuCriarRequerida = function (string $codigoReq) use ($obterOuCriarPorIdentidade, &$totalSemDadosReplicado): Disciplina {
+    $dadosReplicado = Disciplina::dadosDaRequeridaPorCoddis($codigoReq);
+
+    $dados = [
+        'coddis' => $dadosReplicado['coddis'] ?? strtoupper($codigoReq),
+        'nomdis' => $dadosReplicado['nomdis'] ?? null,
+        'verdis' => $dadosReplicado['verdis'] ?? null,
+        'creditos' => $dadosReplicado['creditos'] ?? null,
+        'carga_horaria' => $dadosReplicado['carga_horaria'] ?? null,
+        'sglund' => $dadosReplicado['sglund'] ?? null,
+        'ies' => $dadosReplicado['ies'] ?? 'USP',
+        'disciplina_ativa' => $dadosReplicado['disciplina_ativa'] ?? null,
+    ];
+
+    if (empty($dadosReplicado['nomdis'])) {
+        $totalSemDadosReplicado++;
+    }
+
+    return $obterOuCriarPorIdentidade($dados);
+};
+
+$obterOuCriarCursada = function (string $codigoCur, ?int $periodo) use ($obterOuCriarPorIdentidade, &$totalSemDadosReplicado): Disciplina {
     $dadosFormulario = [
+        'is_usp' => true,
         'coddis' => $codigoCur,
-        'nome_disciplina' => $nomeCursadaInfo['nome_disciplina'] ?? null,
+        'nome_disciplina' => null,
         'ies' => 'USP',
-        'sglund' => $nomeCursadaInfo['ies'] ?? null,
         'semestre' => $periodo,
     ];
 
     $dadosNormalizados = Disciplina::dadosDaCursadaPorFormulario($dadosFormulario);
 
-    $cursada = $obterPorIdentidade($dadosNormalizados);
-
-    if ($cursada) {
-        $atualizacao = array_filter(
-            $dadosNormalizados,
-            static fn ($valor) => $valor !== null && $valor !== ''
-        );
-
-        $cursada->update($atualizacao);
-
-        return $cursada;
+    if (empty($dadosNormalizados['nomdis'])) {
+        $totalSemDadosReplicado++;
     }
 
-    return Disciplina::create($dadosNormalizados);
+    return $obterOuCriarPorIdentidade($dadosNormalizados);
 };
 
 foreach ($arquivos as $caminho) {
@@ -128,14 +130,14 @@ foreach ($arquivos as $caminho) {
 
     $dados = json_decode($json, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
-        echo 'JSON inválido em '.basename($caminho).': '.json_last_error_msg()."\n";
+        echo 'JSON inválido em ' . basename($caminho) . ': ' . json_last_error_msg() . "\n";
         $ignoradas++;
 
         continue;
     }
 
     if (! is_array($dados) || count($dados) === 0) {
-        echo 'JSON vazio ou fora do formato esperado em '.basename($caminho)."\n";
+        echo 'JSON vazio ou fora do formato esperado em ' . basename($caminho) . "\n";
         $ignoradas++;
 
         continue;
@@ -170,14 +172,14 @@ foreach ($arquivos as $caminho) {
     }
 
     if (! is_string($cursoRaw) || trim($cursoRaw) === '') {
-        echo 'Primeiro item inválido em '.basename($caminho).": curso ausente.\n";
+        echo 'Primeiro item inválido em ' . basename($caminho) . ": curso ausente.\n";
         $ignoradas++;
 
         continue;
     }
 
     if (! preg_match('/^\s*(.*?)\s*\(\s*(\d+)\s*\/\s*(\d+)\s*\)\s*$/u', $cursoRaw, $mCurso)) {
-        echo 'Formato de curso inválido em '.basename($caminho).": {$cursoRaw}\n";
+        echo 'Formato de curso inválido em ' . basename($caminho) . ": {$cursoRaw}\n";
         $ignoradas++;
 
         continue;
@@ -192,7 +194,7 @@ foreach ($arquivos as $caminho) {
 
     foreach ($linhas as $i => $linha) {
         if (! is_array($linha)) {
-            echo 'Erro em '.basename($caminho).' (linha '.($i + 2).": formato inválido.\n";
+            echo 'Erro em ' . basename($caminho) . ' (linha ' . ($i + 2) . ": formato inválido.\n";
             $ignoradas++;
 
             continue;
@@ -212,34 +214,42 @@ foreach ($arquivos as $caminho) {
             : '';
 
         if ($codigoReq === '') {
-            echo 'Erro em '.basename($caminho).' (linha '.($i + 2).": código requerido vazio.\n";
+            echo 'Erro em ' . basename($caminho) . ' (linha ' . ($i + 2) . ": código requerido vazio.\n";
             $ignoradas++;
 
             continue;
         }
 
         if (strlen($codigoReq) > 7) {
-            echo 'Erro em '.basename($caminho).' (linha '.($i + 2).": código requerido inválido ({$codigoReq}).\n";
+            echo 'Erro em ' . basename($caminho) . ' (linha ' . ($i + 2) . ": código requerido inválido ({$codigoReq}).\n";
             $ignoradas++;
 
             continue;
         }
 
-        $nomeReqInfo = $extrairNomeEies($linha['nome_disciplina_requerida'] ?? null);
-
-        $requerida = $obterOuCriarRequerida($codigoReq, $nomeReqInfo);
+        $requerida = $obterOuCriarRequerida($codigoReq);
         $totalRequeridas++;
 
         $codigosCursadaRaw = (string) ($linha['codigo_disciplina_cursada'] ?? '');
+        // Uma mesma equivalência pode ser formada por mais de uma disciplina.
+        // Exemplos aceitos:
+        // SCC0210 + SCC0211
+        // SCC0210 e SCC0211
+        // SCC0210 ou SCC0211
+        // Todos os códigos encontrados serão associados ao mesmo grupo.
         $codigosCursada = preg_split('/\s*(?:\+|\be\b|\bou\b|\/|,|;)\s*/ui', $codigosCursadaRaw, -1, PREG_SPLIT_NO_EMPTY);
         if (! is_array($codigosCursada)) {
             $codigosCursada = [];
         }
 
-        $nomeCursadaInfo = $extrairNomeEies($linha['nome_disciplina_cursada'] ?? null);
-
         $cursadasIdsDoGrupo = [];
 
+        // Cada disciplina cursada gera um vínculo dentro do grupo.
+        // Exemplo:
+        // Grupo 10:
+        //   SCC0210 -> MAT1001
+        //   SCC0211 -> MAT1001
+        // Os registros compartilham o mesmo número de grupo.
         foreach ($codigosCursada as $codigoCur) {
             $codigoCur = preg_replace('/\s+/', '', trim((string) $codigoCur));
 
@@ -248,13 +258,13 @@ foreach ($arquivos as $caminho) {
             }
 
             if (strlen($codigoCur) > 7) {
-                echo 'Erro em '.basename($caminho).' (linha '.($i + 2).": código cursado inválido ignorado ({$codigoCur}).\n";
+                echo 'Erro em ' . basename($caminho) . ' (linha ' . ($i + 2) . ": código cursado inválido ignorado ({$codigoCur}).\n";
                 $ignoradas++;
 
                 continue;
             }
 
-            $cursada = $obterOuCriarCursada($codigoCur, $nomeCursadaInfo, $periodo);
+            $cursada = $obterOuCriarCursada($codigoCur, $periodo);
             $cursadasIdsDoGrupo[] = (int) $cursada->id;
         }
 
@@ -290,7 +300,7 @@ foreach ($arquivos as $caminho) {
                     ->where('codhab', $codhab)
                     ->where('grupo', (int) $grupoExistente)
                     ->pluck('cursada_id')
-                    ->map(static fn ($id) => (int) $id)
+                    ->map(static fn($id) => (int) $id)
                     ->unique()
                     ->values()
                     ->all();
@@ -322,7 +332,7 @@ foreach ($arquivos as $caminho) {
     }
 
     $totalArquivos++;
-    echo 'Arquivo processado: '.basename($caminho)."\n";
+    echo 'Arquivo processado: ' . basename($caminho) . "\n";
 }
 
 echo "Importação concluída.\n";
@@ -331,4 +341,5 @@ echo "Requeridas processadas: {$totalRequeridas}\n";
 echo "Grupos criados: {$totalGruposCriados}\n";
 echo "Grupos já existentes (ignorados): {$totalGruposJaExistentes}\n";
 echo "Vínculos cursada-requerida criados: {$totalVinculosCriados}\n";
+echo "Disciplinas sem dados oficiais no Replicado: {$totalSemDadosReplicado}\n";
 echo "Registros ignorados/avisos: {$ignoradas}\n";

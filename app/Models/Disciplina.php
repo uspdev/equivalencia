@@ -219,6 +219,7 @@ class Disciplina extends Model
                 'creditos' => static::creditosUsp($disciplinaReplicado),
                 'carga_horaria' => static::cargaHorariaUsp($disciplinaReplicado),
                 'verdis' => $disciplinaReplicado['verdis'] ?? null,
+                'sglund' => $disciplinaReplicado['sglund'] ?? ($base['sglund'] ?? null),
                 'disciplina_ativa' => static::disciplinaAtivaNoReplicado($disciplinaReplicado),
             ]
         );

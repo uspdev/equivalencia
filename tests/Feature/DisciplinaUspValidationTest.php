@@ -40,9 +40,9 @@ class DisciplinaUspValidationTest extends TestCase
     public function test_invalid_usp_code_is_rejected_and_preserved_as_old_input(): void
     {
         $graduacao = Mockery::mock(Graduacao::class);
-        $graduacao->shouldReceive('existeDisciplinaAtivaPorCodigo')
+        $graduacao->shouldReceive('existeDisciplinaPorCodigoVersao')
             ->once()
-            ->with('BAD000')
+            ->with('BAD000', null)
             ->andReturnFalse();
         $this->app->instance(Graduacao::class, $graduacao);
 
