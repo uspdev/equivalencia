@@ -163,20 +163,9 @@ class AproveitamentoController extends Controller
             return response()->json(['results' => []]);
         }
 
-        $results = collect(app(Graduacao::class)->listarVersoesDisciplina($coddis))
-            ->filter(fn ($disciplina) => is_array($disciplina) && isset($disciplina['verdis']))
-            ->map(function (array $disciplina) {
-                $verdis = (int) $disciplina['verdis'];
-
-                return [
-                    'id' => $verdis,
-                    'text' => "Versão {$verdis}",
-                ];
-            })
-            ->values()
-            ->all();
-
-        return response()->json(['results' => $results]);
+        return response()->json([
+            'results' => app(Graduacao::class)->listarVersoesDisciplinaParaSelect($coddis),
+        ]);
     }
 
     /**
@@ -263,7 +252,7 @@ class AproveitamentoController extends Controller
 
         return redirect()
             ->back()
-            ->with('alert-success', 'Requerimento de equivalência para '.$req_name.' removido com sucesso.');
+            ->with('alert-success', 'Requerimento de equivalência para ' . $req_name . ' removido com sucesso.');
     }
 
     private function currentDraft(): AproveitamentoRascunho

@@ -2,6 +2,7 @@
 
 namespace App\Replicado;
 
+use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Uspdev\Forms\Replicado\Graduacao as GraduacaoForms;
 use Uspdev\Replicado\DB;
@@ -73,6 +74,7 @@ class Graduacao extends GraduacaoReplicado
 
     /**
      * Lista todas as versões cadastradas para uma disciplina.
+     * Junto de sua data de ativação e desativação.
      */
     public function listarVersoesDisciplina(string $code): array
     {
@@ -82,7 +84,7 @@ class Graduacao extends GraduacaoReplicado
             return [];
         }
 
-        $query = "SELECT D1.coddis, D1.verdis
+        $query = "SELECT D1.coddis, D1.verdis, D1.dtaatvdis, D1.dtadtvdis
                     FROM DISCIPLINAGR D1
                     WHERE D1.coddis = :coddis
                     ORDER BY D1.verdis DESC";
@@ -92,6 +94,71 @@ class Graduacao extends GraduacaoReplicado
         } catch (\Throwable $e) {
             return [];
         }
+    }
+    /**
+     * Obtém as versões de uma disciplina USP e as formata para uso em campos
+     * de seleção da interface.
+     *
+     * @param string $coddis Código da disciplina USP.
+     * @return array<int, array{
+     *     id:int,
+     *     verdis:int,
+     *     data_ativacao:?string,
+     *     data_desativacao:?string,
+     *     vigencia:?string,
+     *     text:string,
+     *     label:string
+     * }>
+     */
+    public function listarVersoesDisciplinaParaSelect(string $coddis): array
+    {
+        return collect($this->listarVersoesDisciplina($coddis))
+            ->filter(fn($disciplina) => is_array($disciplina) && isset($disciplina['verdis']))
+            ->map(fn(array $disciplina) => $this->formatarVersaoDisciplinaParaSelect($disciplina))
+            ->values()
+            ->all();
+    }
+
+    private function formatarVersaoDisciplinaParaSelect(array $disciplina): array
+    {
+        $verdis = (int) $disciplina['verdis'];
+
+        $dataAtivacao = $this->formatarDataVigencia($disciplina['dtaatvdis'] ?? null);
+        $dataDesativacao = $this->formatarDataVigencia($disciplina['dtadtvdis'] ?? null);
+        $vigencia = $this->formatarVigencia($dataAtivacao, $dataDesativacao);
+        $text = $this->formatarTextoVersao($verdis, $vigencia);
+
+        return [
+            'id' => $verdis,
+            'verdis' => $verdis,
+            'data_ativacao' => $dataAtivacao,
+            'data_desativacao' => $dataDesativacao,
+            'vigencia' => $vigencia,
+            'text' => $text,
+            'label' => $text,
+        ];
+    }
+
+    private function formatarDataVigencia(mixed $data): ?string
+    {
+        return filled($data)
+            ? Carbon::parse($data)->format('d/m/Y')
+            : null;
+    }
+
+    private function formatarVigencia(?string $dataAtivacao, ?string $dataDesativacao): ?string
+    {
+        return match (true) {
+            $dataAtivacao && $dataDesativacao => "{$dataAtivacao} até {$dataDesativacao}",
+            (bool) $dataAtivacao => "desde {$dataAtivacao}",
+            (bool) $dataDesativacao => "até {$dataDesativacao}",
+            default => null,
+        };
+    }
+
+    private function formatarTextoVersao(int $verdis, ?string $vigencia): string
+    {
+        return "Versão {$verdis}" . ($vigencia ? " — {$vigencia}" : '');
     }
 
     /**
@@ -142,15 +209,14 @@ class Graduacao extends GraduacaoReplicado
         string $coddis,
         string $codtur,
         ?int $verdis = null
-    ): array
-    {
+    ): array {
         $coddis = Str::upper(trim($coddis));
         $codtur = trim($codtur);
 
         $query = "SELECT TOP 1
                 H.codpes,
                 H.codpgm,
-                H.coddis, 
+                H.coddis,
                 H.verdis,
                 H.codtur,
                 H.notfim,
@@ -219,10 +285,10 @@ class Graduacao extends GraduacaoReplicado
         $codhabs = config('equivalencia.codhabs');
         $condicaoCodhab = '';
         if (count($codhabs) == 1) {
-            $condicaoCodhab = 'H.codhab = '.$codhabs[0]; // EESC: Colocado aqui para remover os cursos de dupla formação com IAU.
+            $condicaoCodhab = 'H.codhab = ' . $codhabs[0]; // EESC: Colocado aqui para remover os cursos de dupla formação com IAU.
         } else {
             for ($i = 0; $i < count($codhabs); $i++) {
-                $condicaoCodhab .= 'RIGHT(H.codhab, 1) = '.$codhabs[$i].' OR '; // ECA: Colocado aqui para considerar outras habilitações.
+                $condicaoCodhab .= 'RIGHT(H.codhab, 1) = ' . $codhabs[$i] . ' OR '; // ECA: Colocado aqui para considerar outras habilitações.
             }
             $condicaoCodhab = substr($condicaoCodhab, 0, strlen($condicaoCodhab) - 3);
         }
