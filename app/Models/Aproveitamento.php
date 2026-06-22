@@ -5,10 +5,11 @@ namespace App\Models;
 use App\Enums\EquivalenciaEstado;
 use App\Enums\EquivalenciaTipo;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection as SupportCollection;
 
 class Aproveitamento extends Model
 {
@@ -395,7 +396,7 @@ class Aproveitamento extends Model
         int $grupo,
         int $codcur,
         int $codhab
-    ): Collection {
+    ): EloquentCollection {
         return static::query()
             ->doContexto($codcur, $codhab)
             ->where('requerida_id', $requerida->id)
@@ -551,7 +552,7 @@ class Aproveitamento extends Model
     /**
      * Monta os dados de formulário de edição para cada disciplina requerida.
      */
-    public static function dadosParaFormularioEdicaoDeEquivalencias(Collection $disciplinas): array
+    public static function dadosParaFormularioEdicaoDeEquivalencias(EloquentCollection $disciplinas): array
     {
         return $disciplinas
             ->reduce(function (array $forms, Disciplina $disciplinaUsp) {
@@ -594,7 +595,7 @@ class Aproveitamento extends Model
     /**
      * Retorna as equivalências de um requerimento do usuário ou lança exceção.
      */
-    public static function equivalenciasDoRequerimentoDoUsuario(int $group, int $userId): Collection
+    public static function equivalenciasDoRequerimentoDoUsuario(int $group, int $userId): EloquentCollection
     {
         $equivalencias = static::query()
             ->doGrupo($group)
@@ -736,7 +737,7 @@ class Aproveitamento extends Model
             && ! $this->isPlaceholderRequerida();
     }
 
-    private static function idsDeCursadasReais(Collection $vinculos): Collection
+    private static function idsDeCursadasReais(EloquentCollection $vinculos): SupportCollection
     {
         return $vinculos
             ->filter(fn (Aproveitamento $item) => ! $item->isPlaceholderRequerida())
