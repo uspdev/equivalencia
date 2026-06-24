@@ -113,11 +113,20 @@
 
           if (!code) {
             populateVersionSelect(versionSelect, [], null, true);
+            versionSelect.setAttribute('data-versions-loaded-for', '');
             dispatchIdentityChanged(select);
             return;
           }
 
           var selectedVerdis = versionSelect.getAttribute('data-selected-verdis') || versionSelect.value;
+          var loadedFor = versionSelect.getAttribute('data-versions-loaded-for') || '';
+
+          if (loadedFor === code) {
+            versionSelect.setAttribute('data-selected-verdis', '');
+            dispatchIdentityChanged(select);
+            return;
+          }
+
           var url = select.getAttribute('data-versions-url') + '?coddis=' + encodeURIComponent(code);
 
           versionSelect.disabled = true;
@@ -138,6 +147,7 @@
 
               populateVersionSelect(versionSelect, versions, selectedVerdis, select.disabled);
               versionSelect.setAttribute('data-selected-verdis', '');
+              versionSelect.setAttribute('data-versions-loaded-for', code);
 
               dispatchIdentityChanged(select);
             })
@@ -235,8 +245,20 @@
               .off('select2:open.disciplinaUsp')
               .on('select2:open.disciplinaUsp', focusSearchField);
 
-            loadVersions(this);
+            if (!$modal.length) {
+              loadVersions(this);
+            }
           });
+          // Recarrega as versões quando o modal é aberto
+          $(document)
+            .off('shown.bs.modal.disciplinaUspVersions', '.modal')
+            .on('shown.bs.modal.disciplinaUspVersions', '.modal', function() {
+              $(this)
+                .find('.disciplina-usp-select')
+                .each(function() {
+                  loadVersions(this);
+                });
+            });
         }
 
         function scheduleInitialization() {
