@@ -26,6 +26,7 @@
             'equivalencia' => $e,
             'modalId' => $modalDadosDisciplinaId,
             'titulo' => 'Dados da disciplina cursada',
+            'vigenciaVersao' => $vigenciasVersoesCursadas[$e->cursada->id] ?? null,
         ])
 
         @notLast('|')

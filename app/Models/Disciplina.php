@@ -107,6 +107,40 @@ class Disciplina extends Model
     }
 
     /**
+     * Obtém a vigência da versão de cada disciplina cursada USP exibida na tela.
+     *
+     * @return array<int, string|null> Vigências indexadas pelo ID da disciplina cursada.
+     */
+    public static function vigenciasDasVersoesDasCursadas(Collection $disciplinas): array
+    {
+        $versoesPorCodigo = [];
+        $vigencias = [];
+
+        foreach ($disciplinas->flatMap->equivalentes as $equivalencia) {
+            $cursada = $equivalencia->cursada;
+
+            if (! $cursada || $cursada->ies !== 'USP' || ! filled($cursada->verdis)) {
+                continue;
+            }
+
+            if (! array_key_exists($cursada->coddis, $versoesPorCodigo)) {
+                try {
+                    $versoesPorCodigo[$cursada->coddis] = collect(
+                        app(Graduacao::class)->listarVersoesDisciplinaParaSelect($cursada->coddis)
+                    )->keyBy('verdis');
+                } catch (\Throwable $e) {
+                    $versoesPorCodigo[$cursada->coddis] = collect();
+                }
+            }
+
+            $versao = $versoesPorCodigo[$cursada->coddis]->get($cursada->verdis);
+            $vigencias[$cursada->id] = $versao['vigencia'] ?? null;
+        }
+
+        return $vigencias;
+    }
+
+    /**
      * Monta os dados de uma disciplina requerida consultando o Replicado quando possível.
      */
     public static function dadosDaRequeridaPorCoddis(string $coddis, ?int $verdis = null): array

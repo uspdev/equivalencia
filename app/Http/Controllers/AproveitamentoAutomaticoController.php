@@ -64,6 +64,7 @@ class AproveitamentoAutomaticoController extends Controller
         abort_unless($curso, 404);
 
         $disciplinas = Disciplina::listarDisciplinasComEquivalencias($codcur, $codhab);
+        $vigenciasVersoesCursadas = Disciplina::vigenciasDasVersoesDasCursadas($disciplinas);
         $formDataEquivalenciaEdit = $canManageEquivalencias
             ? Aproveitamento::dadosParaFormularioEdicaoDeEquivalencias($disciplinas)
             : [];
@@ -76,6 +77,7 @@ class AproveitamentoAutomaticoController extends Controller
             'editModeEnabled' => $canManageEquivalencias ? (bool) session()->get($this->editModeSessionKey(), false) : false,
             'canManageEquivalencias' => $canManageEquivalencias,
             'formDataEquivalenciaEdit' => $formDataEquivalenciaEdit,
+            'vigenciasVersoesCursadas' => $vigenciasVersoesCursadas,
         ]);
     }
 

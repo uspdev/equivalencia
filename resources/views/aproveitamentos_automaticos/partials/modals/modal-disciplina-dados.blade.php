@@ -4,6 +4,7 @@
   $titulo = $titulo ?? 'Dados da disciplina';
   $equivalencia = $equivalencia ?? null;
   $exibirDadosDaEquivalencia = $equivalencia !== null;
+  $vigenciaVersao = $vigenciaVersao ?? null;
   $situacao = $disciplina->disciplina_ativa === null ? null : ($disciplina->disciplina_ativa ? 'Ativa' : 'Inativa');
 @endphp
 
@@ -32,24 +33,6 @@
                   'value' => $disciplina->coddis,
               ])
             </div>
-            <div class="col-md-3 mb-3">
-              @include('aproveitamentos.partials.display.show-info-item', [
-                  'label' => 'Versão',
-                  'value' => $disciplina->verdis,
-              ])
-            </div>
-            <div class="col-md-3 mb-3">
-              @include('aproveitamentos.partials.display.show-info-item', [
-                  'label' => 'Créditos',
-                  'value' => $disciplina->creditos,
-              ])
-            </div>
-            <div class="col-md-3 mb-3">
-              @include('aproveitamentos.partials.display.show-info-item', [
-                  'label' => 'Carga horária',
-                  'value' => $disciplina->carga_horaria ? $disciplina->carga_horaria . ' horas' : null,
-              ])
-            </div>
             <div class="col-md-4 mb-3">
               @include('aproveitamentos.partials.display.show-info-item', [
                   'label' => 'Instituição',
@@ -58,8 +41,28 @@
             </div>
             <div class="col-md-4 mb-3">
               @include('aproveitamentos.partials.display.show-info-item', [
-                  'label' => 'Unidade USP',
+                  'label' => 'Unidade',
                   'value' => $disciplina->sglund,
+              ])
+            </div>
+            <div class="col-md-3 mb-3">
+              @include('aproveitamentos.partials.display.show-info-item', [
+                  'label' => 'Créditos',
+                  'value' => $disciplina->creditos,
+              ])
+            </div>
+            <div class="col-md-4 mb-3">
+              @include('aproveitamentos.partials.display.show-info-item', [
+                  'label' => 'Carga horária',
+                  'value' => $disciplina->carga_horaria ? $disciplina->carga_horaria . ' horas' : null,
+              ])
+            </div>
+            <div class="col-md-4 mb-3">
+              @include('aproveitamentos.partials.display.show-info-item', [
+                  'label' => 'Versão',
+                  'value' => filled($disciplina->verdis)
+                      ? $disciplina->verdis . ($vigenciaVersao ? ' — ' . $vigenciaVersao : '')
+                      : null,
               ])
             </div>
           </div>
