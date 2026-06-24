@@ -40,9 +40,21 @@ class AproveitamentoAutomaticoController extends Controller
         Gate::authorize(Permission::APROVEITAMENTOS_AUTOMATICOS_VIEW->value);
 
         $cursos = Graduacao::listarCursosHabilitacoes();
+        $totaisAproveitamentos = Aproveitamento::query()
+            ->automaticas()
+            ->select(['codcur', 'codhab'])
+            ->selectRaw('COUNT(DISTINCT requerida_id) as total')
+            ->groupBy('codcur', 'codhab')
+            ->get()
+            // Mapeia os resultados para um array associativo com chave "codcur/codhab" e valor do total
+            ->mapWithKeys(fn(Aproveitamento $aproveitamento) => [
+                "{$aproveitamento->codcur}/{$aproveitamento->codhab}" => (int) $aproveitamento->total,
+            ])
+            ->all();
 
         return view('aproveitamentos_automaticos.index', [
             'cursos' => $cursos,
+            'totaisAproveitamentos' => $totaisAproveitamentos,
         ]);
     }
 
@@ -123,7 +135,7 @@ class AproveitamentoAutomaticoController extends Controller
         );
 
         return redirect()
-            ->route('equivalencias.show', [$codcur, $codhab, 'filter'=> $dados['coddis']])
+            ->route('equivalencias.show', [$codcur, $codhab, 'filter' => $dados['coddis']])
             ->with('alert-success', 'Equivalência automática criada com sucesso.');
     }
 

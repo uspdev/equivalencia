@@ -3,11 +3,7 @@
 @section('content')
 
   <div class="card">
-    <x-page-header
-      :breadcrumbs="[
-          ['label' => 'Aproveitamentos automáticos'],
-      ]"
-    />
+    <x-page-header :breadcrumbs="[['label' => 'Aproveitamentos automáticos']]" />
 
     <div class="card-body">
       @if (empty($cursos))
@@ -17,17 +13,24 @@
           <table class="table table-striped table-bordered mb-0">
             <thead>
               <tr>
-                <th>Cursos</th>
+                <th>Cursos/Habilitação</th>
               </tr>
             </thead>
             <tbody>
               @foreach ($cursos as $curso)
+                @php
+                  $totalAproveitamentos = $totaisAproveitamentos[$curso['codcur'] . '/' . $curso['codhab']] ?? 0;
+                @endphp
                 <tr>
                   <td>
                     <p> <a href="{{ route('equivalencias.show', [$curso['codcur'], $curso['codhab']]) }}">
-                        {{ $curso['nomcur'] ?? '-' }} ({{ $curso['codcur'] ?? '-' }})
+                        {{ $curso['codcur'] ?? '-' }} - {{ $curso['nomcur'] ?? '-' }}
                       </a>
-                      / {{ $curso['nomhab'] ?? '-' }} ({{ $curso['codhab'] ?? '-' }})</p>
+                      / {{ $curso['nomhab'] ?? '-' }}
+                      <span class="badge badge-outline-secondary ml-1" title="Total de aproveitamentos automáticos">
+                        {{ $totalAproveitamentos }}
+                      </span>
+                    </p>
                   </td>
                 </tr>
               @endforeach
