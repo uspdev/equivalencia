@@ -3,11 +3,7 @@
   $modalLabelId = $modalLabelId ?? $modalId . 'Label';
   $titulo = $titulo ?? 'Dados da disciplina';
   $equivalencia = $equivalencia ?? null;
-  $temDadosDaEquivalencia =
-      $equivalencia &&
-      (filled($equivalencia->numero_reuniao) ||
-          filled($equivalencia->data_reuniao) ||
-          filled($equivalencia->observacoes));
+  $exibirDadosDaEquivalencia = $equivalencia !== null;
   $situacao = $disciplina->disciplina_ativa === null ? null : ($disciplina->disciplina_ativa ? 'Ativa' : 'Inativa');
 @endphp
 
@@ -68,7 +64,7 @@
             </div>
           </div>
 
-          @if ($temDadosDaEquivalencia)
+          @if ($exibirDadosDaEquivalencia)
             <hr>
             <h6 class="font-weight-bold mb-3">Dados da equivalência</h6>
             <div class="row">
@@ -85,12 +81,12 @@
                 ])
               </div>
             </div>
-            @if (filled($equivalencia->observacoes))
-              <div class="mb-3">
-                <div class="text-muted small">Observações</div>
-                <div class="text-break">{{ $equivalencia->observacoes }}</div>
-              </div>
-            @endif
+            <div class="mb-3">
+              @include('aproveitamentos.partials.display.show-info-item', [
+                  'label' => 'Observações',
+                  'value' => $equivalencia->observacoes,
+              ])
+            </div>
           @endif
         </div>
       </div>

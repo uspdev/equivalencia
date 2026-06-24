@@ -20,7 +20,7 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
     {
         return [
             'is_usp' => ['nullable', 'boolean'],
-            'coddis' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('')],
+            'coddis' => ['nullable', 'string', 'max:'.$this->maxCoddisLength(''), 'min:3'],
             'verdis' => ['nullable', 'integer', 'min:1', 'max:255'],
             'nome_disciplina' => ['nullable', 'string', 'max:240'],
             'ies' => ['nullable', 'string', 'max:255'],
@@ -28,21 +28,15 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
             'data_reuniao' => ['nullable', 'date'],
             'observacoes' => ['nullable', 'string'],
             'is_usp2' => ['nullable', 'boolean'],
-            'coddis2' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('2')],
+            'coddis2' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('2'), 'min:3'],
             'verdis2' => ['nullable', 'integer', 'min:1', 'max:255'],
             'nome_disciplina2' => ['nullable', 'string', 'max:240'],
             'ies2' => ['nullable', 'string', 'max:255'],
-            'numero_reuniao2' => ['nullable', 'integer'],
-            'data_reuniao2' => ['nullable', 'date'],
-            'observacoes2' => ['nullable', 'string'],
             'is_usp3' => ['nullable', 'boolean'],
-            'coddis3' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('3')],
+            'coddis3' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('3'), 'min:3'],
             'verdis3' => ['nullable', 'integer', 'min:1', 'max:255'],
             'nome_disciplina3' => ['nullable', 'string', 'max:240'],
             'ies3' => ['nullable', 'string', 'max:255'],
-            'numero_reuniao3' => ['nullable', 'integer'],
-            'data_reuniao3' => ['nullable', 'date'],
-            'observacoes3' => ['nullable', 'string'],
         ];
     }
 
@@ -61,6 +55,9 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
         $dados = $this->validated();
         $conjuntos = [];
         $erros = [];
+        $numeroReuniao = trim((string) ($dados['numero_reuniao'] ?? ''));
+        $dataReuniao = trim((string) ($dados['data_reuniao'] ?? ''));
+        $observacoes = trim((string) ($dados['observacoes'] ?? ''));
 
         foreach (self::SUFIXOS_DE_CONJUNTOS as $sufixo) {
             $kCoddis = 'coddis'.$sufixo;
@@ -68,25 +65,16 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
             $kNome = 'nome_disciplina'.$sufixo;
             $kIes = 'ies'.$sufixo;
             $kIsUsp = 'is_usp'.$sufixo;
-            $kNumeroReuniao = 'numero_reuniao'.$sufixo;
-            $kDataReuniao = 'data_reuniao'.$sufixo;
-            $kObservacoes = 'observacoes'.$sufixo;
 
             $coddis = trim((string) ($dados[$kCoddis] ?? ''));
             $verdis = trim((string) ($dados[$kVerdis] ?? ''));
             $nome = trim((string) ($dados[$kNome] ?? ''));
             $ies = trim((string) ($dados[$kIes] ?? ''));
-            $numeroReuniao = trim((string) ($dados[$kNumeroReuniao] ?? ''));
-            $dataReuniao = trim((string) ($dados[$kDataReuniao] ?? ''));
-            $observacoes = trim((string) ($dados[$kObservacoes] ?? ''));
             $marcadaComoUsp = $this->boolean($kIsUsp);
             $temDadosPreenchidos = $coddis !== '' ||
                 $verdis !== '' ||
                 $nome !== '' ||
-                $ies !== '' ||
-                $numeroReuniao !== '' ||
-                $dataReuniao !== '' ||
-                $observacoes !== '';
+                $ies !== '';
 
             // Se não tem dados preenchidos, ignora o conjunto, a menos que seja o primeiro (sufixo vazio)
             // ou esteja marcado como USP

@@ -13,7 +13,7 @@
     @method($method)
   @endif
 
-  @include('aproveitamentos_automaticos.partials.form-equivalencia.errors')
+  @include('aproveitamentos_automaticos.partials.form-equivalencia.administrative-fields')
 
   @foreach ($formState['blocks'] as $block)
     @include('aproveitamentos_automaticos.partials.form-equivalencia.fieldset')

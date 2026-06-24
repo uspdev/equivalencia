@@ -8,9 +8,6 @@
   $nomeField = 'nome_disciplina' . $suffix;
   $iesField = 'ies' . $suffix;
   $isUspField = 'is_usp' . $suffix;
-  $numeroReuniaoField = 'numero_reuniao' . $suffix;
-  $dataReuniaoField = 'data_reuniao' . $suffix;
-  $observacoesField = 'observacoes' . $suffix;
   $baseId = $formId . '-disciplina-' . $number;
 @endphp
 
@@ -46,27 +43,5 @@
         'nome' => $block['nome'],
         'ies' => $block['ies'],
     ])
-  </div>
-
-  <div class="js-equivalencia-admin-fields">
-    <div class="form-row">
-      <div class="form-group col-md-6">
-        <label for="{{ $baseId }}-numero-reuniao">Número da reunião</label>
-        <input type="number" class="form-control" id="{{ $baseId }}-numero-reuniao"
-          name="{{ $numeroReuniaoField }}" value="{{ $block['numero_reuniao'] }}" step="1"
-          @disabled(!$visible)>
-      </div>
-      <div class="form-group col-md-6">
-        <label for="{{ $baseId }}-data-reuniao">Data da reunião</label>
-        <input type="date" class="form-control" id="{{ $baseId }}-data-reuniao"
-          name="{{ $dataReuniaoField }}" value="{{ $block['data_reuniao'] }}" @disabled(!$visible)>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label for="{{ $baseId }}-observacoes">Observações</label>
-      <textarea class="form-control" id="{{ $baseId }}-observacoes" name="{{ $observacoesField }}" rows="3"
-        @disabled(!$visible)>{{ $block['observacoes'] }}</textarea>
-    </div>
   </div>
 </fieldset>
