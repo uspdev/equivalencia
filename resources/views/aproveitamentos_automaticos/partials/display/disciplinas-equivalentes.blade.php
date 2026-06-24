@@ -18,6 +18,7 @@
             data-toggle="modal" data-target="#{{ $modalDadosDisciplinaId }}">
             {{ $e->cursada->coddis }} -
             @limitarTexto($e->cursada->nome_disciplina)
+            ({{ $e->cursada->sglund }})
           </button>
         </span>
 

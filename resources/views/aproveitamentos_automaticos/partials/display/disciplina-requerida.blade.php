@@ -5,10 +5,11 @@
     @endphp
 
     <p class="mb-0">
-      <button type="button" class="btn p-0 text-left align-baseline disciplina-dados-trigger"
-        data-toggle="modal" data-target="#{{ $modalDadosDisciplinaId }}">
+      <button type="button" class="btn p-0 text-left align-baseline disciplina-dados-trigger" data-toggle="modal"
+        data-target="#{{ $modalDadosDisciplinaId }}">
         {{ $disciplina->coddis }}
         - {{ $disciplina->nome_disciplina ?: '-' }}
+        ({{ $disciplina->sglund }})
       </button>
     </p>
 
