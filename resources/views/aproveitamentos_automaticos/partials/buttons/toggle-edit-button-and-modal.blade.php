@@ -3,4 +3,4 @@
   <span class="js-edit-toggle-text">Habilitar edição</span>
 </button>
 
-@include('aproveitamentos_automaticos.partials.modals.modal-create')
+@include('aproveitamentos_automaticos.partials.buttons.btn-criar-aproveitamento')

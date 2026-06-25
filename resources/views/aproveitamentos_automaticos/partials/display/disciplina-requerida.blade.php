@@ -1,32 +1,19 @@
 <div class="disciplina-requerida d-flex align-items-center">
   <div>
-    @php
-      $modalDadosDisciplinaId = 'modalDadosDisciplinaRequerida' . $disciplina->id;
-    @endphp
-
     <p class="mb-0">
       <button type="button" class="btn p-0 text-left align-baseline disciplina-dados-trigger" data-toggle="modal"
-        data-target="#{{ $modalDadosDisciplinaId }}">
+        data-target="#modalDadosDisciplina" data-modal-key="required-{{ $disciplina->id }}">
         {{ $disciplina->coddis }}
         - {{ $disciplina->nome_disciplina ?: '-' }}
         ({{ $disciplina->sglund }})
       </button>
     </p>
-
-    @include('aproveitamentos_automaticos.partials.modals.modal-disciplina-dados', [
-        'disciplina' => $disciplina,
-        'modalId' => $modalDadosDisciplinaId,
-        'titulo' => 'Dados da disciplina requerida',
-    ])
   </div>
 
   @can(\App\Enums\Permission::APROVEITAMENTOS_AUTOMATICOS_MANAGE->value)
     <div class="disciplina-requerida-acoes js-edit-only ml-3 d-inline-flex align-items-center">
-      <div> @include('aproveitamentos_automaticos.partials.modals.modal-equivalencia', [
-          'modalId' => "modalAdicionarEquivalencia{$disciplina->id}",
-          'modalLabelId' => "modalAdicionarEquivalenciaLabel{$disciplina->id}",
-      ])</div>
-      <div>@include('aproveitamentos_automaticos.partials.modals.modal-edit')</div>
+      <div>@include('aproveitamentos_automaticos.partials.buttons.btn-adicionar-equivalencia')</div>
+      <div>@include('aproveitamentos_automaticos.partials.buttons.btn-editar-disciplina-requerida')</div>
 
       <form action="{{ route('equivalencias.destroy', [$codcur, $codhab, $disciplina]) }}" method="POST" class="d-inline">
         @csrf

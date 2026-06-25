@@ -1,98 +1,64 @@
-@php
-  $modalId = $modalId ?? 'modalDadosDisciplina' . $disciplina->id;
-  $modalLabelId = $modalLabelId ?? $modalId . 'Label';
-  $titulo = $titulo ?? 'Dados da disciplina';
-  $equivalencia = $equivalencia ?? null;
-  $exibirDadosDaEquivalencia = $equivalencia !== null;
-  $vigenciaVersao = $vigenciaVersao ?? null;
-  $situacao = $disciplina->disciplina_ativa === null ? null : ($disciplina->disciplina_ativa ? 'Ativa' : 'Inativa');
-@endphp
+<div class="modal fade disciplina-dados-modal" id="modalDadosDisciplina" tabindex="-1"
+  aria-labelledby="modalDadosDisciplinaLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalDadosDisciplinaLabel">Dados da disciplina</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
 
-@push('modals')
-  <div class="modal fade disciplina-dados-modal" id="{{ $modalId }}" tabindex="-1" aria-labelledby="{{ $modalLabelId }}"
-    aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="{{ $modalLabelId }}">{{ $titulo }}</h5>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
-            <span aria-hidden="true">&times;</span>
-          </button>
+      <div class="modal-body">
+        <h6 class="font-weight-bold mb-3" data-detail-heading></h6>
+
+        {{-- Campos 'hardcoded' para ser preenchidos dinamicamente --}}
+        <div class="row">
+          <div class="col-md-3 mb-3">
+            <strong class="d-block">Código</strong>
+            <span data-detail-field="code">-</span>
+          </div>
+          <div class="col-md-4 mb-3">
+            <strong class="d-block">Instituição</strong>
+            <span data-detail-field="institution">-</span>
+          </div>
+          <div class="col-md-4 mb-3">
+            <strong class="d-block">Unidade</strong>
+            <span data-detail-field="unit">-</span>
+          </div>
+          <div class="col-md-3 mb-3">
+            <strong class="d-block">Créditos</strong>
+            <span data-detail-field="credits">-</span>
+          </div>
+          <div class="col-md-4 mb-3">
+            <strong class="d-block">Carga horária</strong>
+            <span data-detail-field="workload">-</span>
+          </div>
+          <div class="col-md-4 mb-3">
+            <strong class="d-block">Versão</strong>
+            <span data-detail-field="version">-</span>
+          </div>
         </div>
 
-        <div class="modal-body">
-          <h6 class="font-weight-bold mb-3">
-            {{ $disciplina->coddis }} -
-            {{ $disciplina->nome_disciplina ?: 'Nome não informado' }}
-          </h6>
-
+        <div class="d-none" data-equivalence-details>
+          <hr>
+          <h6 class="font-weight-bold mb-3">Dados da equivalência</h6>
           <div class="row">
-            <div class="col-md-3 mb-3">
-              @include('aproveitamentos.partials.display.show-info-item', [
-                  'label' => 'Código',
-                  'value' => $disciplina->coddis,
-              ])
+            <div class="col-md-4 mb-3">
+              <strong class="d-block">Número da reunião</strong>
+              <span data-equivalence-field="meetingNumber">-</span>
             </div>
             <div class="col-md-4 mb-3">
-              @include('aproveitamentos.partials.display.show-info-item', [
-                  'label' => 'Instituição',
-                  'value' => $disciplina->ies,
-              ])
-            </div>
-            <div class="col-md-4 mb-3">
-              @include('aproveitamentos.partials.display.show-info-item', [
-                  'label' => 'Unidade',
-                  'value' => $disciplina->sglund,
-              ])
-            </div>
-            <div class="col-md-3 mb-3">
-              @include('aproveitamentos.partials.display.show-info-item', [
-                  'label' => 'Créditos',
-                  'value' => $disciplina->creditos,
-              ])
-            </div>
-            <div class="col-md-4 mb-3">
-              @include('aproveitamentos.partials.display.show-info-item', [
-                  'label' => 'Carga horária',
-                  'value' => $disciplina->carga_horaria ? $disciplina->carga_horaria . ' horas' : null,
-              ])
-            </div>
-            <div class="col-md-4 mb-3">
-              @include('aproveitamentos.partials.display.show-info-item', [
-                  'label' => 'Versão',
-                  'value' => filled($disciplina->verdis)
-                      ? $disciplina->verdis . ($vigenciaVersao ? ' — ' . $vigenciaVersao : '')
-                      : null,
-              ])
+              <strong class="d-block">Data da reunião</strong>
+              <span data-equivalence-field="meetingDate">-</span>
             </div>
           </div>
-
-          @if ($exibirDadosDaEquivalencia)
-            <hr>
-            <h6 class="font-weight-bold mb-3">Dados da equivalência</h6>
-            <div class="row">
-              <div class="col-md-4 mb-3">
-                @include('aproveitamentos.partials.display.show-info-item', [
-                    'label' => 'Número da reunião',
-                    'value' => $equivalencia->numero_reuniao,
-                ])
-              </div>
-              <div class="col-md-4 mb-3">
-                @include('aproveitamentos.partials.display.show-info-item', [
-                    'label' => 'Data da reunião',
-                    'value' => $equivalencia->data_reuniao?->format('d/m/Y'),
-                ])
-              </div>
-            </div>
-            <div class="mb-3">
-              @include('aproveitamentos.partials.display.show-info-item', [
-                  'label' => 'Observações',
-                  'value' => $equivalencia->observacoes,
-              ])
-            </div>
-          @endif
+          <div class="mb-3">
+            <strong class="d-block">Observações</strong>
+            <span data-equivalence-field="notes">-</span>
+          </div>
         </div>
       </div>
     </div>
   </div>
-@endpush
+</div>

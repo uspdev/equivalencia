@@ -3,13 +3,20 @@
   $formMethod = in_array($method, ['GET', 'POST'], true) ? $method : 'POST';
   $values = $values ?? [];
   $formId = $formId ?? 'form-equivalencia-' . uniqid();
-  $formState = \App\Models\Disciplina::estadoFormularioEquivalencia($values);
+  $useOldInput = $useOldInput ?? true;
+  $dynamic = $dynamic ?? false;
+  // Monta o estado do formulário com base nos valores fornecidos, no número máximo de disciplinas e se deve usar os valores antigos.
+  $formState = \App\Models\Disciplina::estadoFormularioEquivalencia($values, 3, $useOldInput);
 @endphp
 
 <form id="{{ $formId }}" method="{{ $formMethod }}" action="{{ $action }}" class="equivalencia-filhas-form"
   data-max-disciplinas="{{ $formState['maxDisciplinas'] }}">
   @csrf
-  @if (!in_array($method, ['GET', 'POST'], true))
+  @if ($dynamic)
+    <input type="hidden" name="_method" value="" data-dynamic-method disabled>
+    <input type="hidden" name="_modal_type" value="equivalence">
+    <input type="hidden" name="_modal_key" value="">
+  @elseif (!in_array($method, ['GET', 'POST'], true))
     @method($method)
   @endif
 

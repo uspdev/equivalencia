@@ -3,12 +3,10 @@
 @section('content')
 
   <div class="card aproveitamentos-automaticos-edit-scope">
-    <x-page-header
-      :breadcrumbs="[
-          ['label' => 'Aproveitamentos automáticos', 'url' => route('equivalencias.index')],
-          ['label' => $nomeCurso . ' (' . $codcur . '/' . $codhab . ')'],
-      ]"
-    >
+    <x-page-header :breadcrumbs="[
+        ['label' => 'Aproveitamentos automáticos', 'url' => route('equivalencias.index')],
+        ['label' => $nomeCurso . ' (' . $codcur . '/' . $codhab . ')'],
+    ]">
       <x-slot:actions>
         {{-- Include when não funciona na extensão de ir para o arquivo --}}
         @if ($canManageEquivalencias)
@@ -21,7 +19,8 @@
       @if ($disciplinas->isEmpty())
         <p class="mb-0">Nenhuma disciplina requerida cadastrada.</p>
       @else
-        <table id="equivalencias-table" class="table table-striped table-bordered datatable-simples dt-state-save dt-buttons">
+        <table id="equivalencias-table"
+          class="table table-striped table-bordered datatable-simples dt-state-save dt-buttons">
           <thead>
             <tr>
               <th>Disciplina requerida</th>
@@ -40,7 +39,18 @@
       @endif
     </div>
   </div>
+
+  @include('aproveitamentos_automaticos.partials.scripts.modais-compartilhados')
 @endsection
+
+@push('modals')
+  @include('aproveitamentos_automaticos.partials.modals.modal-disciplina-dados')
+
+  @if ($canManageEquivalencias)
+    @include('aproveitamentos_automaticos.partials.modals.modal-form-disciplina-requerida')
+    @include('aproveitamentos_automaticos.partials.modals.modal-form-equivalencia')
+  @endif
+@endpush
 
 @push('styles')
   <style>

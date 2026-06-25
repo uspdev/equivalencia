@@ -68,6 +68,10 @@ e limitando o número de blocos de equivalência que podem ser exibidos.
 
         function initializeForm(form) {
           syncForm(form);
+          // Re-suncroniza o formulário quando um evento de refresh é disparado
+          form.addEventListener('equivalencia:refresh', function() {
+            syncForm(form);
+          });
 
           form.addEventListener('change', function(event) {
             if (event.target.classList.contains('js-equivalencia-is-usp')) {

@@ -1,26 +1,25 @@
-{{-- Renderiza o formulário para criar ou editar uma disciplina requerida automática. --}}
+{{-- Formulário compartilhado para criar ou editar uma disciplina requerida automática. --}}
 @php
   $method = strtoupper($method ?? 'POST');
   $formMethod = in_array($method, ['GET', 'POST'], true) ? $method : 'POST';
-  $selected = old('coddis', $selected ?? null);
-  $selectedVerdis = old('verdis', $selectedVerdis ?? null);
+  $useOldInput = $useOldInput ?? true;
+  $dynamic = $dynamic ?? false;
+  $selected = $useOldInput ? old('coddis', $selected ?? null) : $selected ?? null;
+  $selectedVerdis = $useOldInput ? old('verdis', $selectedVerdis ?? null) : $selectedVerdis ?? null;
   $selectedName = $selectedName ?? null;
 @endphp
 
-<form method="{{ $formMethod }}" action="{{ $action }}">
+<form method="{{ $formMethod }}" action="{{ $action }}"
+  @if (isset($formId)) id="{{ $formId }}" @endif @class(['modal-dynamic-form' => $dynamic])>
   @csrf
-  @if (!in_array($method, ['GET', 'POST'], true))
-    @method($method)
-  @endif
 
-  @if ($errors->any())
-    <div class="alert alert-danger">
-      <ul class="mb-0">
-        @foreach ($errors->all() as $error)
-          <li>{{ $error }}</li>
-        @endforeach
-      </ul>
-    </div>
+  {{-- Nos modais compartilhados, o JavaScript define a rota, o método e o registro selecionado. --}}
+  @if ($dynamic)
+    <input type="hidden" name="_method" value="" data-dynamic-method disabled>
+    <input type="hidden" name="_modal_type" value="required">
+    <input type="hidden" name="_modal_key" value="">
+  @elseif (!in_array($method, ['GET', 'POST'], true))
+    @method($method)
   @endif
 
   @include('aproveitamentos.partials.forms.campo-disciplina-usp', [
