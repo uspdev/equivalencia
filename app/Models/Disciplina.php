@@ -430,17 +430,22 @@ class Disciplina extends Model
      * O formulário suporta até 3 disciplinas cursadas por grupo de equivalência, e esse método monta os dados
      * para preencher os campos e controlar a visibilidade dos blocos de acordo com os valores
      */
-    public static function estadoFormularioEquivalencia(array $values = [], int $maxDisciplinas = 3): array
-    {
+    public static function estadoFormularioEquivalencia(
+        array $values = [],
+        int $maxDisciplinas = 3,
+        bool $useOldInput = true
+    ): array {
         $fieldSuffixes = ['', '2', '3'];
 
-        $fieldValue = function (string $field) use ($values) {
-            return old($field, $values[$field] ?? null);
+        $fieldValue = function (string $field) use ($values, $useOldInput) {
+            return $useOldInput
+                ? old($field, $values[$field] ?? null)
+                : ($values[$field] ?? null);
         };
 
-        $isUspValue = function (string $suffix) use ($fieldValue) {
+        $isUspValue = function (string $suffix) use ($fieldValue, $useOldInput) {
             $field = 'is_usp' . $suffix;
-            $old = old($field);
+            $old = $useOldInput ? old($field) : null;
 
             if ($old !== null) {
                 return (bool) $old;
@@ -503,8 +508,10 @@ class Disciplina extends Model
     /**
      * Monta os valores padrão da edição de um grupo de equivalências automáticas.
      */
-    public function defaultsParaFormularioEdicaoDeGrupo(Aproveitamento $equivalenciaFilha): array
-    {
+    public function defaultsParaFormularioEdicaoDeGrupo(
+        Aproveitamento $equivalenciaFilha,
+        bool $useOldInput = true
+    ): array {
         $equivalentesDoMesmoGrupo = $this->equivalentes
             ->where('grupo', $equivalenciaFilha->grupo)
             ->sortBy('id')
@@ -517,22 +524,24 @@ class Disciplina extends Model
         $equivalencia2 = $outrosDoGrupo->get(0);
         $equivalencia3 = $outrosDoGrupo->get(1);
 
+        $value = fn(string $field, $default) => $useOldInput ? old($field, $default) : $default;
+
         return [
-            'coddis' => old('coddis', $equivalenciaFilha->coddis),
-            'verdis' => old('verdis', $equivalenciaFilha->cursada?->verdis),
-            'nome_disciplina' => old('nome_disciplina', $equivalenciaFilha->nome_disciplina),
-            'ies' => old('ies', $equivalenciaFilha->ies),
-            'numero_reuniao' => old('numero_reuniao', $equivalenciaFilha->numero_reuniao),
-            'data_reuniao' => old('data_reuniao', $equivalenciaFilha->data_reuniao?->format('Y-m-d')),
-            'observacoes' => old('observacoes', $equivalenciaFilha->observacoes),
-            'coddis2' => old('coddis2', $equivalencia2?->coddis),
-            'verdis2' => old('verdis2', $equivalencia2?->cursada?->verdis),
-            'nome_disciplina2' => old('nome_disciplina2', $equivalencia2?->nome_disciplina),
-            'ies2' => old('ies2', $equivalencia2?->ies),
-            'coddis3' => old('coddis3', $equivalencia3?->coddis),
-            'verdis3' => old('verdis3', $equivalencia3?->cursada?->verdis),
-            'nome_disciplina3' => old('nome_disciplina3', $equivalencia3?->nome_disciplina),
-            'ies3' => old('ies3', $equivalencia3?->ies),
+            'coddis' => $value('coddis', $equivalenciaFilha->coddis),
+            'verdis' => $value('verdis', $equivalenciaFilha->cursada?->verdis),
+            'nome_disciplina' => $value('nome_disciplina', $equivalenciaFilha->nome_disciplina),
+            'ies' => $value('ies', $equivalenciaFilha->ies),
+            'numero_reuniao' => $value('numero_reuniao', $equivalenciaFilha->numero_reuniao),
+            'data_reuniao' => $value('data_reuniao', $equivalenciaFilha->data_reuniao?->format('Y-m-d')),
+            'observacoes' => $value('observacoes', $equivalenciaFilha->observacoes),
+            'coddis2' => $value('coddis2', $equivalencia2?->coddis),
+            'verdis2' => $value('verdis2', $equivalencia2?->cursada?->verdis),
+            'nome_disciplina2' => $value('nome_disciplina2', $equivalencia2?->nome_disciplina),
+            'ies2' => $value('ies2', $equivalencia2?->ies),
+            'coddis3' => $value('coddis3', $equivalencia3?->coddis),
+            'verdis3' => $value('verdis3', $equivalencia3?->cursada?->verdis),
+            'nome_disciplina3' => $value('nome_disciplina3', $equivalencia3?->nome_disciplina),
+            'ies3' => $value('ies3', $equivalencia3?->ies),
         ];
     }
 

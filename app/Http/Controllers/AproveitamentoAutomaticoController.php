@@ -7,9 +7,10 @@ use App\Http\Requests\SaveEditModeStateRequest;
 use App\Http\Requests\SaveEquivalenciaFilhaRequest;
 use App\Http\Requests\StoreEquivalenciaRequest;
 use App\Http\Requests\UpdateEquivalenciaRequest;
-use App\Models\Disciplina;
 use App\Models\Aproveitamento;
+use App\Models\Disciplina;
 use App\Replicado\Graduacao;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
@@ -78,8 +79,16 @@ class AproveitamentoAutomaticoController extends Controller
         $disciplinas = Disciplina::listarDisciplinasComEquivalencias($codcur, $codhab);
         $vigenciasVersoesCursadas = Disciplina::vigenciasDasVersoesDasCursadas($disciplinas);
         $formDataEquivalenciaEdit = $canManageEquivalencias
-            ? Aproveitamento::dadosParaFormularioEdicaoDeEquivalencias($disciplinas)
+            ? Aproveitamento::dadosParaFormularioEdicaoDeEquivalencias($disciplinas, false)
             : [];
+        $modalData = $this->modalData(
+            $disciplinas,
+            $codcur,
+            $codhab,
+            $vigenciasVersoesCursadas,
+            $formDataEquivalenciaEdit,
+            $canManageEquivalencias
+        );
 
         return view('aproveitamentos_automaticos.show', [
             'disciplinas' => $disciplinas,
@@ -90,7 +99,127 @@ class AproveitamentoAutomaticoController extends Controller
             'canManageEquivalencias' => $canManageEquivalencias,
             'formDataEquivalenciaEdit' => $formDataEquivalenciaEdit,
             'vigenciasVersoesCursadas' => $vigenciasVersoesCursadas,
+            'modalData' => $modalData,
         ]);
+    }
+
+    /**
+     * Monta o payload usado pelos modais compartilhados da página.
+     */
+    private function modalData(
+        Collection $disciplinas,
+        int $codcur,
+        int $codhab,
+        array $vigenciasVersoesCursadas,
+        array $formDataEquivalenciaEdit,
+        bool $canManageEquivalencias
+    ): array {
+        $data = [
+            'details' => [],
+            'requiredForms' => [],
+            'equivalenceForms' => [],
+        ];
+
+        if ($canManageEquivalencias) {
+            $data['requiredForms']['create'] = [
+                'title' => 'Nova disciplina requerida',
+                'action' => route('equivalencias.store', [$codcur, $codhab]),
+                'method' => 'POST',
+                'values' => [],
+            ];
+        }
+
+        foreach ($disciplinas as $disciplina) {
+            $requiredKey = 'required-'.$disciplina->id;
+            $data['details'][$requiredKey] = $this->disciplineDetails(
+                $disciplina,
+                'Dados da disciplina requerida'
+            );
+
+            if ($canManageEquivalencias) {
+                $data['requiredForms'][(string) $disciplina->id] = [
+                    'title' => 'Editar disciplina requerida',
+                    'action' => route('equivalencias.update', [$codcur, $codhab, $disciplina]),
+                    'method' => 'PUT',
+                    'values' => [
+                        'coddis' => $disciplina->coddis,
+                        'verdis' => $disciplina->verdis,
+                        'nome_disciplina' => $disciplina->nome_disciplina,
+                    ],
+                ];
+
+                $data['equivalenceForms']['add-'.$disciplina->id] = [
+                    'title' => 'Adicionar disciplina cursada equivalente',
+                    'action' => route('equivalencias.add-equivalencia', [$codcur, $codhab, $disciplina]),
+                    'method' => 'POST',
+                    'values' => [],
+                ];
+            }
+
+            foreach ($disciplina->equivalentes as $equivalencia) {
+                $detailsKey = 'equivalence-'.$equivalencia->id;
+                $data['details'][$detailsKey] = $this->disciplineDetails(
+                    $equivalencia->cursada,
+                    'Dados da disciplina cursada',
+                    $vigenciasVersoesCursadas[$equivalencia->cursada->id] ?? null,
+                    $equivalencia
+                );
+            }
+
+            if (! $canManageEquivalencias) {
+                continue;
+            }
+
+            foreach ($disciplina->equivalentes->groupBy('grupo') as $equivalenciasDoGrupo) {
+                $representante = $equivalenciasDoGrupo->first();
+
+                if (! $representante) {
+                    continue;
+                }
+
+                $data['equivalenceForms']['edit-'.$representante->id] = [
+                    'title' => 'Editar disciplina cursada equivalente',
+                    'action' => route('equivalencias.update-equivalencia', [
+                        $codcur,
+                        $codhab,
+                        $disciplina,
+                        $representante,
+                    ]),
+                    'method' => 'PUT',
+                    'values' => $formDataEquivalenciaEdit[$representante->id] ?? [],
+                ];
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Normaliza os dados de uma disciplina para o modal de consulta.
+     */
+    private function disciplineDetails(
+        Disciplina $disciplina,
+        string $title,
+        ?string $vigenciaVersao = null,
+        ?Aproveitamento $equivalencia = null
+    ): array {
+        return [
+            'title' => $title,
+            'heading' => $disciplina->coddis.' - '.($disciplina->nome_disciplina ?: 'Nome não informado'),
+            'code' => $disciplina->coddis,
+            'institution' => $disciplina->ies,
+            'unit' => $disciplina->sglund,
+            'credits' => $disciplina->creditos,
+            'workload' => $disciplina->carga_horaria ? $disciplina->carga_horaria.' horas' : null,
+            'version' => filled($disciplina->verdis)
+                ? $disciplina->verdis.($vigenciaVersao ? ' — '.$vigenciaVersao : '')
+                : null,
+            'equivalence' => $equivalencia ? [
+                'meetingNumber' => $equivalencia->numero_reuniao,
+                'meetingDate' => $equivalencia->data_reuniao?->format('d/m/Y'),
+                'notes' => $equivalencia->observacoes,
+            ] : null,
+        ];
     }
 
     /**

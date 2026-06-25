@@ -379,7 +379,7 @@ class Aproveitamento extends Model
             $draft->placeholders()->each->delete();
 
             $draft->equivalenciasReais()
-                ->each(fn (Aproveitamento $equivalence) => $equivalence->atualizarEstado(
+                ->each(fn(Aproveitamento $equivalence) => $equivalence->atualizarEstado(
                     EquivalenciaEstado::PROCESSANDO,
                     $userId
                 ));
@@ -552,14 +552,20 @@ class Aproveitamento extends Model
     /**
      * Monta os dados de formulário de edição para cada disciplina requerida.
      */
-    public static function dadosParaFormularioEdicaoDeEquivalencias(EloquentCollection $disciplinas): array
-    {
+    public static function dadosParaFormularioEdicaoDeEquivalencias(
+        EloquentCollection $disciplinas,
+        bool $useOldInput = true
+    ): array {
         return $disciplinas
-            ->reduce(function (array $forms, Disciplina $disciplinaUsp) {
+            // Reduz os dados de cada disciplina requerida em um array associativo de formulários
+            ->reduce(function (array $forms, Disciplina $disciplinaUsp) use ($useOldInput) {
                 $formsDaDisciplina = $disciplinaUsp->equivalentes
-                    ->mapWithKeys(function (Aproveitamento $equivalenciaFilha) use ($disciplinaUsp) {
+                    ->mapWithKeys(function (Aproveitamento $equivalenciaFilha) use ($disciplinaUsp, $useOldInput) {
                         return [
-                            $equivalenciaFilha->id => $disciplinaUsp->defaultsParaFormularioEdicaoDeGrupo($equivalenciaFilha),
+                            $equivalenciaFilha->id => $disciplinaUsp->defaultsParaFormularioEdicaoDeGrupo(
+                                $equivalenciaFilha,
+                                $useOldInput
+                            ),
                         ];
                     })
                     ->all();
@@ -637,7 +643,7 @@ class Aproveitamento extends Model
             'created_at' => $equivalencias->min('created_at'),
             'cursadas' => [],
             'historicos' => Arquivo::historicosDoGrupo($group)
-                ->map(fn (Arquivo $arquivo) => [
+                ->map(fn(Arquivo $arquivo) => [
                     'id' => $arquivo->id,
                     'name' => $arquivo->nome,
                 ])
@@ -737,7 +743,7 @@ class Aproveitamento extends Model
     private static function idsDeCursadasReais(EloquentCollection $vinculos): SupportCollection
     {
         return $vinculos
-            ->filter(fn (Aproveitamento $item) => ! $item->isPlaceholderRequerida())
+            ->filter(fn(Aproveitamento $item) => ! $item->isPlaceholderRequerida())
             ->pluck('cursada_id')
             ->unique()
             ->values();
