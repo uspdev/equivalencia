@@ -14,6 +14,7 @@ use App\Replicado\Graduacao;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
@@ -42,14 +43,32 @@ class AproveitamentoAutomaticoController extends Controller
         Gate::authorize(Permission::APROVEITAMENTOS_AUTOMATICOS_VIEW->value);
 
         $cursos = Graduacao::listarCursosHabilitacoes();
-        $totaisAproveitamentos = Aproveitamento::query()
+        // Consulta para obter o total de aproveitamentos automáticos por curso e habilitação
+        $requeridasPorContexto = Aproveitamento::query()
             ->automaticas()
+            ->join('disciplinas', function ($join) {
+                $join
+                    ->on('disciplinas.aproveitamento_id', '=', 'aproveitamentos.id')
+                    ->where('disciplinas.role', DisciplinaRole::REQUERIDA->value);
+            })
+            ->select([
+                'aproveitamentos.codcur',
+                'aproveitamentos.codhab',
+                'disciplinas.ies',
+                'disciplinas.coddis',
+                'disciplinas.verdis',
+            ])
+            ->distinct();
+        // Agrupa os resultados por curso e habilitação e
+        // conta o total de aproveitamentos automáticos
+        $totaisAproveitamentos = DB::query()
+            ->fromSub($requeridasPorContexto, 'requeridas')
             ->select(['codcur', 'codhab'])
-            ->selectRaw('COUNT(DISTINCT requerida_id) as total')
+            ->selectRaw('COUNT(*) as total')
             ->groupBy('codcur', 'codhab')
             ->get()
             // Mapeia os resultados para um array associativo com chave "codcur/codhab" e valor do total
-            ->mapWithKeys(fn(Aproveitamento $aproveitamento) => [
+            ->mapWithKeys(fn(object $aproveitamento) => [
                 "{$aproveitamento->codcur}/{$aproveitamento->codhab}" => (int) $aproveitamento->total,
             ])
             ->all();
@@ -131,7 +150,7 @@ class AproveitamentoAutomaticoController extends Controller
         }
 
         foreach ($disciplinas as $disciplina) {
-            $requiredKey = 'required-'.$disciplina->id;
+            $requiredKey = 'required-' . $disciplina->id;
             $data['details'][$requiredKey] = $this->disciplineDetails(
                 $disciplina,
                 'Dados da disciplina requerida'
@@ -149,7 +168,7 @@ class AproveitamentoAutomaticoController extends Controller
                     ],
                 ];
 
-                $data['equivalenceForms']['add-'.$disciplina->id] = [
+                $data['equivalenceForms']['add-' . $disciplina->id] = [
                     'title' => 'Adicionar disciplina cursada equivalente',
                     'action' => route('equivalencias.add-equivalencia', [$codcur, $codhab, $disciplina]),
                     'method' => 'POST',
@@ -159,7 +178,7 @@ class AproveitamentoAutomaticoController extends Controller
 
             foreach ($disciplina->equivalentes as $equivalencia) {
                 foreach ($equivalencia->cursadas as $cursada) {
-                    $detailsKey = 'equivalence-'.$cursada->id;
+                    $detailsKey = 'equivalence-' . $cursada->id;
                     $data['details'][$detailsKey] = $this->disciplineDetails(
                         $cursada,
                         'Dados da disciplina cursada',
@@ -174,7 +193,7 @@ class AproveitamentoAutomaticoController extends Controller
             }
 
             foreach ($disciplina->equivalentes as $representante) {
-                $data['equivalenceForms']['edit-'.$representante->id] = [
+                $data['equivalenceForms']['edit-' . $representante->id] = [
                     'title' => 'Editar disciplina cursada equivalente',
                     'action' => route('equivalencias.update-equivalencia', [
                         $codcur,
@@ -202,14 +221,14 @@ class AproveitamentoAutomaticoController extends Controller
     ): array {
         return [
             'title' => $title,
-            'heading' => $disciplina->coddis.' - '.($disciplina->nome_disciplina ?: 'Nome não informado'),
+            'heading' => $disciplina->coddis . ' - ' . ($disciplina->nome_disciplina ?: 'Nome não informado'),
             'code' => $disciplina->coddis,
             'institution' => $disciplina->ies,
             'unit' => $disciplina->sglund,
             'credits' => $disciplina->creditos,
-            'workload' => $disciplina->carga_horaria ? $disciplina->carga_horaria.' horas' : null,
+            'workload' => $disciplina->carga_horaria ? $disciplina->carga_horaria . ' horas' : null,
             'version' => filled($disciplina->verdis)
-                ? $disciplina->verdis.($vigenciaVersao ? ' — '.$vigenciaVersao : '')
+                ? $disciplina->verdis . ($vigenciaVersao ? ' — ' . $vigenciaVersao : '')
                 : null,
             'equivalence' => $equivalencia ? [
                 'meetingNumber' => $equivalencia->numero_reuniao,
@@ -292,9 +311,9 @@ class AproveitamentoAutomaticoController extends Controller
             ->where('ies', $equivalencia->ies)
             ->where('coddis', $equivalencia->coddis)
             ->where('verdis', $equivalencia->verdis)
-            ->whereHas('aproveitamento', fn ($query) => $query->automaticas()->doContexto($codcur, $codhab))
+            ->whereHas('aproveitamento', fn($query) => $query->automaticas()->doContexto($codcur, $codhab))
             ->get()
-            ->each(fn (Disciplina $disciplina) => $disciplina->update($dadosRequerida));
+            ->each(fn(Disciplina $disciplina) => $disciplina->update($dadosRequerida));
 
         return redirect()
             ->back()

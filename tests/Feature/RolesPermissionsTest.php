@@ -67,6 +67,22 @@ class RolesPermissionsTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_index_counts_distinct_required_disciplines_per_course_and_qualification(): void
+    {
+        $this->mockCourses();
+        $this->createAutomaticEquivalence();
+        $this->createAutomaticEquivalence();
+        $this->createAutomaticEquivalence('MAT0111');
+        $svgrad = $this->createUserWithRole(Role::SVGRAD, 800005);
+
+        $this->actingAs($svgrad)
+            ->get(route('equivalencias.index', absolute: false))
+            ->assertOk()
+            ->assertViewHas('totaisAproveitamentos', fn (array $totais) => $totais === [
+                '100/1' => 2,
+            ]);
+    }
+
     public function test_cg_can_view_and_manage_automatic_equivalences(): void
     {
         $cg = $this->createUserWithRole(Role::CG, 800003);
@@ -160,11 +176,12 @@ class RolesPermissionsTest extends TestCase
         $this->app->instance(Graduacao::class, $graduacao);
     }
 
-    private function createAutomaticEquivalence(): void
+    private function createAutomaticEquivalence(string $requiredCode = 'MAC0110'): void
     {
         $required = Disciplina::create([
             'role' => DisciplinaRole::REQUERIDA,
-            'coddis' => 'MAC0110',
+            'verdis' => 1,
+            'coddis' => $requiredCode,
             'nomdis' => 'Introdução à Computação',
             'ies' => 'USP',
         ]);
