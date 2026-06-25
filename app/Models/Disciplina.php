@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DisciplinaRole;
 use App\Replicado\Graduacao;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,8 @@ class Disciplina extends Model
     protected $table = 'disciplinas';
 
     protected $fillable = [
+        'aproveitamento_id',
+        'role',
         'verdis',
         'coddis',
         'nomdis',
@@ -20,36 +23,50 @@ class Disciplina extends Model
         'ies',
         'sglund',
         'disciplina_ativa',
+        'ano',
+        'semestre',
+        'codtur',
+        'frequencia',
+        'nota',
+        'ementa_id',
         'criado_por_id',
         'alterado_por_id',
     ];
 
     protected $casts = [
+        'aproveitamento_id' => 'integer',
+        'role' => DisciplinaRole::class,
         'verdis' => 'integer',
         'creditos' => 'integer',
         'carga_horaria' => 'integer',
         'disciplina_ativa' => 'boolean',
+        'ano' => 'integer',
+        'semestre' => 'integer',
+        'frequencia' => 'decimal:2',
+        'nota' => 'decimal:2',
+        'ementa_id' => 'integer',
     ];
 
     // ── Relacionamentos ─────────────────────────────────────────────
 
-    // Equivalências onde esta disciplina é a requerida
-    public function equivalenciasComoRequerida()
+    public function aproveitamento()
     {
-        return $this->hasMany(Aproveitamento::class, 'requerida_id');
+        return $this->belongsTo(Aproveitamento::class);
     }
 
-    // Equivalências onde esta disciplina é a cursada
-    public function equivalenciasComoCursada()
+    public function ementa()
     {
-        return $this->hasMany(Aproveitamento::class, 'cursada_id');
+        return $this->belongsTo(Arquivo::class, 'ementa_id');
     }
 
-    // Usado pela tela de show para listar apenas as cursadas equivalentes (sem a linha placeholder do grupo).
-    public function equivalentes()
+    public function scopeRequeridas($query)
     {
-        return $this->hasMany(Aproveitamento::class, 'requerida_id')
-            ->where('placeholder_requerida', false);
+        return $query->where('role', DisciplinaRole::REQUERIDA->value);
+    }
+
+    public function scopeCursadas($query)
+    {
+        return $query->where('role', DisciplinaRole::CURSADA->value);
     }
 
     public function criadoPor()
@@ -76,34 +93,37 @@ class Disciplina extends Model
      */
     public static function listarDisciplinasComEquivalencias(int $codcur, int $codhab): Collection
     {
-        $disciplinas = static::query()
-            ->whereHas('equivalenciasComoRequerida', function ($query) use ($codcur, $codhab) {
+        $requeridas = static::query()
+            ->requeridas()
+            ->whereHas('aproveitamento', function ($query) use ($codcur, $codhab) {
                 $query->automaticas()->doContexto($codcur, $codhab);
             })
-            ->with(['equivalentes' => function ($query) use ($codcur, $codhab) {
-                $query->automaticas()->doContexto($codcur, $codhab)->with('cursada')->orderBy('id');
-            }])
+            ->with(['aproveitamento.cursadas'])
             ->orderBy('coddis')
             ->orderBy('verdis')
             ->get();
 
-        return $disciplinas->transform(function (Disciplina $disciplina) {
-            $disciplina->setRelation(
-                'equivalentes',
-                $disciplina->equivalentes
-                    ->sortBy(function (Aproveitamento $item) {
-                        return sprintf(
-                            '%010d-%s-%03d',
-                            (int) $item->grupo,
-                            (string) ($item->coddis ?? ''),
-                            (int) ($item->cursada?->verdis ?? 0)
-                        );
-                    })
-                    ->values()
-            );
+        return $requeridas
+            ->groupBy(fn (Disciplina $disciplina) => implode('|', [
+                $disciplina->ies,
+                $disciplina->coddis,
+                (string) $disciplina->verdis,
+            ]))
+            ->map(function (Collection $grupo) {
+                $disciplina = $grupo->first();
+                $disciplina->setRelation(
+                    'equivalentes',
+                    $grupo
+                        ->pluck('aproveitamento')
+                        ->filter()
+                        ->filter(fn (Aproveitamento $aproveitamento) => $aproveitamento->cursadas->isNotEmpty())
+                        ->sortBy('id')
+                        ->values()
+                );
 
-            return $disciplina;
-        });
+                return $disciplina;
+            })
+            ->values();
     }
 
     /**
@@ -117,24 +137,24 @@ class Disciplina extends Model
         $vigencias = [];
 
         foreach ($disciplinas->flatMap->equivalentes as $equivalencia) {
-            $cursada = $equivalencia->cursada;
-
-            if (! $cursada || $cursada->ies !== 'USP' || ! filled($cursada->verdis)) {
-                continue;
-            }
-
-            if (! array_key_exists($cursada->coddis, $versoesPorCodigo)) {
-                try {
-                    $versoesPorCodigo[$cursada->coddis] = collect(
-                        app(Graduacao::class)->listarVersoesDisciplinaParaSelect($cursada->coddis)
-                    )->keyBy('verdis');
-                } catch (\Throwable $e) {
-                    $versoesPorCodigo[$cursada->coddis] = collect();
+            foreach ($equivalencia->cursadas as $cursada) {
+                if ($cursada->ies !== 'USP' || ! filled($cursada->verdis)) {
+                    continue;
                 }
-            }
 
-            $versao = $versoesPorCodigo[$cursada->coddis]->get($cursada->verdis);
-            $vigencias[$cursada->id] = $versao['vigencia'] ?? null;
+                if (! array_key_exists($cursada->coddis, $versoesPorCodigo)) {
+                    try {
+                        $versoesPorCodigo[$cursada->coddis] = collect(
+                            app(Graduacao::class)->listarVersoesDisciplinaParaSelect($cursada->coddis)
+                        )->keyBy('verdis');
+                    } catch (\Throwable $e) {
+                        $versoesPorCodigo[$cursada->coddis] = collect();
+                    }
+                }
+
+                $versao = $versoesPorCodigo[$cursada->coddis]->get($cursada->verdis);
+                $vigencias[$cursada->id] = $versao['vigencia'] ?? null;
+            }
         }
 
         return $vigencias;
@@ -188,11 +208,14 @@ class Disciplina extends Model
         string $coddis,
         ?int $verdis,
         int $userId,
+        int $aproveitamentoId,
         ?Disciplina $disciplina = null
     ): Disciplina {
         $dados = static::dadosDaRequeridaPorCoddis($coddis, $verdis);
         $dados['nomdis'] ??= $coddis;
         $dados['ies'] = 'USP';
+        $dados['role'] = DisciplinaRole::REQUERIDA;
+        $dados['aproveitamento_id'] = $aproveitamentoId;
         $dados['criado_por_id'] = $userId;
         $dados['alterado_por_id'] = $userId;
 
@@ -209,13 +232,31 @@ class Disciplina extends Model
         int $codhab,
         ?Disciplina $disciplina = null
     ): Disciplina {
-        $requerida = static::upsertRequeridaPorCoddis($coddis, $verdis, $disciplina);
+        $dados = static::dadosDaRequeridaPorCoddis($coddis, $verdis);
+        $dados['role'] = DisciplinaRole::REQUERIDA;
 
-        if (! Aproveitamento::grupoDaRequerida($requerida->id, $codcur, $codhab)) {
-            Aproveitamento::criarPlaceholderDaRequerida($requerida->id, $codcur, $codhab);
+        if ($disciplina) {
+            $disciplina->update($dados);
+
+            return $disciplina;
         }
 
-        return $requerida;
+        $existente = static::query()
+            ->requeridas()
+            ->where('ies', 'USP')
+            ->where('coddis', static::normalizarCoddis($coddis))
+            ->where('verdis', static::normalizarVerdis($verdis))
+            ->whereHas('aproveitamento', fn ($query) => $query->automaticas()->doContexto($codcur, $codhab))
+            ->first();
+
+        if ($existente) {
+            return $existente;
+        }
+
+        $aproveitamento = Aproveitamento::criarAutomatico($codcur, $codhab);
+        $dados['aproveitamento_id'] = $aproveitamento->id;
+
+        return static::create($dados);
     }
 
     /**
@@ -361,9 +402,9 @@ class Disciplina extends Model
     /**
      * Cria uma disciplina cursada a partir dos dados validados do rascunho.
      */
-    public static function criarCursadaDoRascunho(array $dados, int $userId): Disciplina
+    public static function criarCursadaDoRascunho(array $dados, int $userId, int $aproveitamentoId): Disciplina
     {
-        return static::salvarCursadaDoRascunho($dados, $userId);
+        return static::salvarCursadaDoRascunho($dados, $userId, $aproveitamentoId);
     }
 
     /**
@@ -372,9 +413,19 @@ class Disciplina extends Model
     public static function salvarCursadaDoRascunho(
         array $dados,
         int $userId,
+        int $aproveitamentoId,
         ?Disciplina $disciplina = null
     ): Disciplina {
-        return static::persistirPorIdentidade(static::dadosDaCursadaDoRascunho($dados, $userId), $disciplina);
+        $courseData = array_merge(
+            static::dadosDaCursadaDoRascunho($dados, $userId),
+            static::dadosDaOcorrenciaDoRascunho($dados, $userId),
+            [
+                'role' => DisciplinaRole::CURSADA,
+                'aproveitamento_id' => $aproveitamentoId,
+            ]
+        );
+
+        return static::persistirPorIdentidade($courseData, $disciplina);
     }
 
     /**
@@ -390,7 +441,7 @@ class Disciplina extends Model
      */
     public function atualizarCursadaDoRascunho(array $dados, int $userId): Disciplina
     {
-        return static::salvarCursadaDoRascunho($dados, $userId, $this);
+        return static::salvarCursadaDoRascunho($dados, $userId, (int) $this->aproveitamento_id, $this);
     }
 
     /**
@@ -398,9 +449,8 @@ class Disciplina extends Model
      */
     public function pertenceComoRequeridaAoContexto(int $codcur, int $codhab): bool
     {
-        return $this->equivalenciasComoRequerida()
-            ->doContexto($codcur, $codhab)
-            ->exists();
+        return $this->role === DisciplinaRole::REQUERIDA
+            && $this->aproveitamento?->pertenceAoContexto($codcur, $codhab);
     }
 
     /**
@@ -408,12 +458,8 @@ class Disciplina extends Model
      */
     public function removerSeOrfa(): void
     {
-        $temVinculoComoRequerida = $this->equivalenciasComoRequerida()->exists();
-        $temVinculoComoCursada = $this->equivalenciasComoCursada()->exists();
-
-        if (! $temVinculoComoRequerida && ! $temVinculoComoCursada) {
-            $this->delete();
-        }
+        Arquivo::removerDaDisciplina($this);
+        $this->delete();
     }
 
     /**
@@ -506,42 +552,36 @@ class Disciplina extends Model
     }
 
     /**
-     * Monta os valores padrão da edição de um grupo de equivalências automáticas.
+     * Monta os valores padrão da edição de um aproveitamento automático.
      */
     public function defaultsParaFormularioEdicaoDeGrupo(
         Aproveitamento $equivalenciaFilha,
         bool $useOldInput = true
-    ): array {
-        $equivalentesDoMesmoGrupo = $this->equivalentes
-            ->where('grupo', $equivalenciaFilha->grupo)
-            ->sortBy('id')
-            ->values();
-
-        $outrosDoGrupo = $equivalentesDoMesmoGrupo
-            ->reject(fn(Aproveitamento $item) => $item->id === $equivalenciaFilha->id)
-            ->values();
-
-        $equivalencia2 = $outrosDoGrupo->get(0);
-        $equivalencia3 = $outrosDoGrupo->get(1);
+    ): array
+    {
+        $cursadas = $equivalenciaFilha->cursadas->sortBy('id')->values();
+        $cursada1 = $cursadas->get(0);
+        $cursada2 = $cursadas->get(1);
+        $cursada3 = $cursadas->get(2);
 
         $value = fn(string $field, $default) => $useOldInput ? old($field, $default) : $default;
 
         return [
-            'coddis' => $value('coddis', $equivalenciaFilha->coddis),
-            'verdis' => $value('verdis', $equivalenciaFilha->cursada?->verdis),
-            'nome_disciplina' => $value('nome_disciplina', $equivalenciaFilha->nome_disciplina),
-            'ies' => $value('ies', $equivalenciaFilha->ies),
+            'coddis' => $value('coddis', $cursada1?->coddis),
+            'verdis' => $value('verdis', $cursada1?->verdis),
+            'nome_disciplina' => $value('nome_disciplina', $cursada1?->nome_disciplina),
+            'ies' => $value('ies', $cursada1?->ies),
             'numero_reuniao' => $value('numero_reuniao', $equivalenciaFilha->numero_reuniao),
             'data_reuniao' => $value('data_reuniao', $equivalenciaFilha->data_reuniao?->format('Y-m-d')),
             'observacoes' => $value('observacoes', $equivalenciaFilha->observacoes),
-            'coddis2' => $value('coddis2', $equivalencia2?->coddis),
-            'verdis2' => $value('verdis2', $equivalencia2?->cursada?->verdis),
-            'nome_disciplina2' => $value('nome_disciplina2', $equivalencia2?->nome_disciplina),
-            'ies2' => $value('ies2', $equivalencia2?->ies),
-            'coddis3' => $value('coddis3', $equivalencia3?->coddis),
-            'verdis3' => $value('verdis3', $equivalencia3?->cursada?->verdis),
-            'nome_disciplina3' => $value('nome_disciplina3', $equivalencia3?->nome_disciplina),
-            'ies3' => $value('ies3', $equivalencia3?->ies),
+            'coddis2' => $value('coddis2', $cursada2?->coddis),
+            'verdis2' => $value('verdis2', $cursada2?->verdis),
+            'nome_disciplina2' => $value('nome_disciplina2', $cursada2?->nome_disciplina),
+            'ies2' => $value('ies2', $cursada2?->ies),
+            'coddis3' => $value('coddis3', $cursada3?->coddis),
+            'verdis3' => $value('verdis3', $cursada3?->verdis),
+            'nome_disciplina3' => $value('nome_disciplina3', $cursada3?->nome_disciplina),
+            'ies3' => $value('ies3', $cursada3?->ies),
         ];
     }
 
@@ -562,7 +602,8 @@ class Disciplina extends Model
             ->where('coddis', static::normalizarCoddis($coddis))
             ->where('verdis', static::normalizarVerdis($verdis))
             ->where('ies', 'USP')
-            ->whereHas('equivalenciasComoRequerida', function ($query) use ($codcur, $codhab) {
+            ->requeridas()
+            ->whereHas('aproveitamento', function ($query) use ($codcur, $codhab) {
                 $query->automaticas()->doContexto($codcur, $codhab);
             });
 
@@ -672,18 +713,10 @@ class Disciplina extends Model
      */
     private static function persistirPorIdentidade(array $dados, ?Disciplina $disciplina = null): Disciplina
     {
-        if ($disciplina && static::temMesmaIdentidade($disciplina, $dados)) {
+        if ($disciplina) {
             $disciplina->update($dados);
 
             return $disciplina;
-        }
-
-        $existente = static::buscarPorIdentidade($dados);
-
-        if ($existente) {
-            $existente->update($dados);
-
-            return $existente;
         }
 
         return static::create($dados);

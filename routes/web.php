@@ -91,9 +91,9 @@ Route::middleware(['auth'])
         // Rotas de consulta, visualizacao de arquivos e remocao de requerimentos.
         Route::middleware('can:'.Permission::REQUERIMENTOS_VIEW_OWN->value)->controller(AproveitamentoController::class)->group(function () {
             Route::get('/index', 'index')->name('req-index');
-            Route::get('/req/show/{group}', 'show')->name('req-show');
-            Route::get('/req/show/{group}/arquivos/{arquivo}', 'showFile')->name('req-file');
-            Route::get('/req/destroy/{group}', 'destroy')->name('req-destroy');
+            Route::get('/req/show/{aproveitamento}', 'show')->name('req-show');
+            Route::get('/req/show/{aproveitamento}/arquivos/{arquivo}', 'showFile')->name('req-file');
+            Route::get('/req/destroy/{aproveitamento}', 'destroy')->name('req-destroy');
         });
     });
 

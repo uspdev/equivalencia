@@ -54,6 +54,14 @@ class UpdateEquivalenciaRequest extends FormRequest
                     return;
                 }
 
+                if (
+                    $requerida instanceof Disciplina
+                    && $requerida->coddis === (string) $disciplina['coddis']
+                    && (int) $requerida->verdis === (int) $disciplina['verdis']
+                ) {
+                    return;
+                }
+
                 if (Disciplina::existeComoRequeridaNoContexto(
                     (string) $disciplina['coddis'],
                     (int) $disciplina['verdis'],

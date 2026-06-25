@@ -9,6 +9,10 @@
         Envie um único PDF de histórico escolar para este requerimento. O mesmo arquivo será utilizado para todas
         as disciplinas vinculadas, sejam elas USP ou externas.
       </p>
+      <p class="small text-muted">
+        Caso seu histórico esteja fragmentado entre cursos, instituições ou documentos diferentes, reúna todas as
+        informações em um único PDF antes do envio.
+      </p>
       <p id="historico-salvo" class="text-success mb-2 {{ $history ? '' : 'd-none' }}">
         Histórico escolar enviado: <strong>{{ $history?->nome }}</strong>
       </p>

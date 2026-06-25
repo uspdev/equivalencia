@@ -8,7 +8,7 @@
     @forelse ($show_data['historicos'] as $arquivo)
       @include('aproveitamentos.partials.show-arquivo', [
           'arquivo' => $arquivo,
-          'group' => $show_data['grupo'],
+          'aproveitamentoId' => $show_data['id'],
       ])
     @empty
       <p class="alert alert-light border text-center mb-0">Nenhum histórico escolar foi enviado.</p>

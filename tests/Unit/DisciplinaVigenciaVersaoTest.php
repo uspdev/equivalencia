@@ -21,7 +21,7 @@ class DisciplinaVigenciaVersaoTest extends TestCase
         $cursada->id = 20;
 
         $equivalencia = new Aproveitamento();
-        $equivalencia->setRelation('cursada', $cursada);
+        $equivalencia->setRelation('cursadas', new Collection([$cursada]));
 
         $requerida = new Disciplina();
         $requerida->setRelation('equivalentes', new Collection([$equivalencia]));

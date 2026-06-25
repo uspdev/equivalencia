@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\DisciplinaRole;
 use App\Enums\EquivalenciaEstado;
 use App\Enums\EquivalenciaTipo;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Collection as SupportCollection;
+use Illuminate\Validation\ValidationException;
 
 class Aproveitamento extends Model
 {
@@ -23,67 +24,53 @@ class Aproveitamento extends Model
 
     public const TIPO_AUTOMATICA = EquivalenciaTipo::AUTOMATICA->value;
 
-    public const TIPO_REQUERIDA = EquivalenciaTipo::REQUERIDA->value;
+    public const TIPO_SOLICITADA = EquivalenciaTipo::SOLICITADA->value;
 
-    protected $table = 'equivalencias';
+    protected $table = 'aproveitamentos';
 
     protected $fillable = [
-        'grupo',
         'estado',
-        'requerida_id',
-        'cursada_id',
-        'placeholder_requerida',
         'tipo',
         'codcur',
         'codhab',
-        'ano',
-        'semestre',
-        'codtur',
-        'frequencia',
-        'nota',
         'numero_reuniao',
         'data_reuniao',
         'observacoes',
+        'historico_id',
         'criado_por_id',
         'alterado_por_id',
     ];
 
-    protected $attributes = [
-        'tipo' => EquivalenciaTipo::REQUERIDA->value,
-    ];
-
     protected $casts = [
-        'grupo' => 'integer',
         'estado' => EquivalenciaEstado::class,
-        'requerida_id' => 'integer',
-        'cursada_id' => 'integer',
-        'placeholder_requerida' => 'boolean',
         'tipo' => EquivalenciaTipo::class,
         'codcur' => 'integer',
         'codhab' => 'integer',
-        'ano' => 'integer',
-        'semestre' => 'integer',
-        'frequencia' => 'decimal:2',
-        'nota' => 'decimal:2',
         'numero_reuniao' => 'integer',
         'data_reuniao' => 'date',
+        'historico_id' => 'integer',
         'criado_por_id' => 'integer',
         'alterado_por_id' => 'integer',
     ];
 
+    public function disciplinas()
+    {
+        return $this->hasMany(Disciplina::class)->orderBy('id');
+    }
+
     public function requerida()
     {
-        return $this->belongsTo(Disciplina::class, 'requerida_id');
+        return $this->hasOne(Disciplina::class)->where('role', DisciplinaRole::REQUERIDA->value);
     }
 
-    public function cursada()
+    public function cursadas()
     {
-        return $this->belongsTo(Disciplina::class, 'cursada_id');
+        return $this->hasMany(Disciplina::class)->where('role', DisciplinaRole::CURSADA->value)->orderBy('id');
     }
 
-    public function arquivos()
+    public function historico()
     {
-        return $this->hasMany(Arquivo::class, 'equivalencia_id');
+        return $this->belongsTo(Arquivo::class, 'historico_id');
     }
 
     public function criadoPor()
@@ -103,17 +90,12 @@ class Aproveitamento extends Model
 
     public function scopeRequeridas(Builder $query): Builder
     {
-        return $query->where('tipo', EquivalenciaTipo::REQUERIDA->value);
+        return $query->where('tipo', EquivalenciaTipo::SOLICITADA->value);
     }
 
     public function scopeDoUsuario(Builder $query, int $userId): Builder
     {
         return $query->where('criado_por_id', $userId);
-    }
-
-    public function scopeDoGrupo(Builder $query, int $grupo): Builder
-    {
-        return $query->where('grupo', $grupo);
     }
 
     public function scopeRascunhos(Builder $query): Builder
@@ -128,6 +110,13 @@ class Aproveitamento extends Model
                 ->whereNull('estado')
                 ->orWhere('estado', '!=', EquivalenciaEstado::RASCUNHO->value);
         });
+    }
+
+    public function scopeDoContexto(Builder $query, int $codcur, int $codhab): Builder
+    {
+        return $query
+            ->where('codcur', $codcur)
+            ->where('codhab', $codhab);
     }
 
     public function estadoEnum(): ?EquivalenciaEstado
@@ -174,379 +163,130 @@ class Aproveitamento extends Model
         $this->update($dados);
     }
 
-    public function scopeDoContexto(Builder $query, int $codcur, int $codhab): Builder
+    public function pertenceAoContexto(int $codcur, int $codhab): bool
     {
-        return $query
-            ->where('codcur', $codcur)
-            ->where('codhab', $codhab);
+        return (int) $this->codcur === $codcur && (int) $this->codhab === $codhab;
     }
 
-    /**
-     * Verifica se o vínculo é um placeholder da requerida.
-     */
-    public function isPlaceholderRequerida(): bool
+    public static function criarAutomatico(int $codcur, int $codhab): self
     {
-        return (bool) $this->placeholder_requerida;
-    }
-
-    // Compatibilidade com as views atuais que leem campos da cursada no vínculo.
-    public function getCoddisAttribute(): ?string
-    {
-        return $this->cursada?->coddis;
-    }
-
-    public function getNomeDisciplinaAttribute(): ?string
-    {
-        return $this->cursada?->nomdis;
-    }
-
-    public function getIesAttribute(): ?string
-    {
-        return $this->cursada?->ies;
-    }
-
-    /**
-     * Retorna o próximo número de grupo disponível.
-     */
-    public static function proximoGrupo(): int
-    {
-        return ((int) static::max('grupo')) + 1;
-    }
-
-    /**
-     * Busca o primeiro vínculo do grupo associado à requerida no contexto.
-     */
-    public static function primeiroVinculoDoGrupoDaRequerida(int $requeridaId, int $codcur, int $codhab): ?self
-    {
-        return static::query()
-            ->doContexto($codcur, $codhab)
-            ->where('requerida_id', $requeridaId)
-            ->orderBy('id')
-            ->first();
-    }
-
-    /**
-     * Retorna o número do grupo da requerida no contexto, quando existir.
-     */
-    public static function grupoDaRequerida(int $requeridaId, int $codcur, int $codhab): ?int
-    {
-        return static::primeiroVinculoDoGrupoDaRequerida($requeridaId, $codcur, $codhab)?->grupo;
-    }
-
-    /**
-     * Cria o placeholder automático que mantém a requerida vinculada a um grupo.
-     *  Vínculos placeholder são equivalências automáticas em que a disciplina cursada é a mesma da requerida.
-     *   Esses registros são criados automaticamente para garantir que toda
-     *  quando ainda não houver uma disciplina cursada vinculada.
-     *      [
-     *     0 => $vinculoReferencia,
-     *     1 => outroVinculoReal,
-     *     2 => outroVinculoReal,
-     *    ...]
-     *
-     */
-    public static function criarPlaceholderDaRequerida(int $requeridaId, int $codcur, int $codhab): self
-    {
-        return static::criarVinculo(
-            static::proximoGrupo(),
-            $requeridaId,
-            $requeridaId,
-            EquivalenciaTipo::AUTOMATICA,
-            codcur: $codcur,
-            codhab: $codhab,
-            placeholderRequerida: true
-        );
-    }
-
-    /**
-     * Cria um vínculo entre a disciplina requerida e uma disciplina cursada.
-     */
-    public static function criarVinculo(
-        int $grupo,
-        int $requeridaId,
-        int $cursadaId,
-        string|EquivalenciaTipo $tipo = EquivalenciaTipo::REQUERIDA,
-        ?EquivalenciaEstado $estado = null,
-        ?int $codcur = null,
-        ?int $codhab = null,
-        ?int $ano = null,
-        ?int $semestre = null,
-        ?string $codtur = null,
-        mixed $frequencia = null,
-        mixed $nota = null,
-        ?int $numeroReuniao = null,
-        ?string $dataReuniao = null,
-        ?string $observacoes = null,
-        ?int $criadoPorId = null,
-        ?int $alteradoPorId = null,
-        bool $placeholderRequerida = false
-    ): self {
-        $dados = [
-            'grupo' => $grupo,
-            'requerida_id' => $requeridaId,
-            'cursada_id' => $cursadaId,
-            'placeholder_requerida' => $placeholderRequerida,
-            'tipo' => $tipo instanceof EquivalenciaTipo ? $tipo : EquivalenciaTipo::from($tipo),
+        return static::create([
+            'tipo' => EquivalenciaTipo::AUTOMATICA,
             'codcur' => $codcur,
             'codhab' => $codhab,
-            'ano' => $ano,
-            'semestre' => $semestre,
-            'codtur' => $codtur,
-            'frequencia' => $frequencia,
-            'nota' => $nota,
-            'numero_reuniao' => $numeroReuniao,
-            'data_reuniao' => $dataReuniao,
-            'observacoes' => $observacoes,
-            'criado_por_id' => $criadoPorId,
-            'alterado_por_id' => $alteradoPorId,
-        ];
-
-        if ($estado !== null) {
-            $dados['estado'] = $estado;
-        }
-
-        return static::create($dados);
+        ]);
     }
 
-    /**
-     * Cria um vínculo automático entre a disciplina requerida e uma disciplina cursada.
-     */
-    public static function criarVinculoCursada(
-        int $grupo,
-        int $requeridaId,
-        int $cursadaId,
-        int $codcur,
-        int $codhab,
-        string|EquivalenciaTipo $tipo = EquivalenciaTipo::AUTOMATICA,
-        ?int $numeroReuniao = null,
-        ?string $dataReuniao = null,
-        ?string $observacoes = null
-    ): self {
-        return static::criarVinculo(
-            $grupo,
-            $requeridaId,
-            $cursadaId,
-            $tipo,
-            codcur: $codcur,
-            codhab: $codhab,
-            numeroReuniao: $numeroReuniao,
-            dataReuniao: $dataReuniao,
-            observacoes: $observacoes
-        );
-    }
-
-    /**
-     * Cria um grupo automático com uma ou mais disciplinas cursadas.
-     */
-    public static function criarGrupoDeCursadas(
+    public static function criarAproveitamentoAutomaticoComCursadas(
         Disciplina $requerida,
         int $codcur,
         int $codhab,
         array $conjuntosDeCursadas
     ): void {
-        $grupo = static::proximoGrupo();
+        DB::transaction(function () use ($requerida, $codcur, $codhab, $conjuntosDeCursadas) {
+            $aproveitamento = static::create([
+                'tipo' => EquivalenciaTipo::AUTOMATICA,
+                'codcur' => $codcur,
+                'codhab' => $codhab,
+                'numero_reuniao' => $conjuntosDeCursadas[0]['numero_reuniao'] ?? null,
+                'data_reuniao' => $conjuntosDeCursadas[0]['data_reuniao'] ?? null,
+                'observacoes' => $conjuntosDeCursadas[0]['observacoes'] ?? null,
+            ]);
 
-        foreach ($conjuntosDeCursadas as $dadosCursada) {
-            $cursada = Disciplina::criarCursadaPorFormulario($dadosCursada);
+            Disciplina::create(array_merge(
+                $requerida->only([
+                    'verdis',
+                    'coddis',
+                    'nomdis',
+                    'creditos',
+                    'carga_horaria',
+                    'ies',
+                    'sglund',
+                    'disciplina_ativa',
+                ]),
+                [
+                    'aproveitamento_id' => $aproveitamento->id,
+                    'role' => DisciplinaRole::REQUERIDA,
+                ]
+            ));
 
-            static::criarVinculoCursada(
-                $grupo,
-                $requerida->id,
-                $cursada->id,
-                $codcur,
-                $codhab,
-                static::TIPO_AUTOMATICA,
-                $dadosCursada['numero_reuniao'] ?? null,
-                $dadosCursada['data_reuniao'] ?? null,
-                $dadosCursada['observacoes'] ?? null
-            );
-        }
-    }
-
-    /**
-     * Finaliza um requerimento manual a partir das equivalências salvas como rascunho.
-     *
-     * @return array{group: int, name: string}
-     */
-    public static function criarRequerimentoDoRascunho(
-        AproveitamentoRascunho $draft,
-        int $userId
-    ): array {
-        return DB::transaction(function () use ($draft, $userId) {
-            $group = $draft->grupo();
-            $requiredName = $draft->nomeDaDisciplinaRequerida() ?? $draft->requerida_coddis;
-
-            $draft->placeholders()->each->delete();
-
-            $draft->equivalenciasReais()
-                ->each(fn(Aproveitamento $equivalence) => $equivalence->atualizarEstado(
-                    EquivalenciaEstado::PROCESSANDO,
-                    $userId
-                ));
-
-            return ['group' => $group, 'name' => $requiredName];
+            static::salvarCursadasAutomaticas($aproveitamento, $conjuntosDeCursadas);
         });
     }
 
-    /**
-     * Lista os vínculos reais de cursadas de um grupo, ignorando o placeholder.
-     */
-    public static function vinculosReaisDoGrupo(
+    public static function atualizarAproveitamentoAutomaticoComCursadas(
         Disciplina $requerida,
-        int $grupo,
-        int $codcur,
-        int $codhab
-    ): EloquentCollection {
-        return static::query()
-            ->doContexto($codcur, $codhab)
-            ->where('requerida_id', $requerida->id)
-            ->doGrupo($grupo)
-            ->where('placeholder_requerida', false)
-            ->with('cursada')
-            ->orderBy('id')
-            ->get();
-    }
-
-    /**
-     * Atualiza as cursadas de um grupo, reaproveitando vínculos existentes quando possível.
-     */
-    public static function atualizarGrupoDeCursadas(
-        Disciplina $requerida,
-        self $vinculoReferencia,
+        self $aproveitamento,
         int $codcur,
         int $codhab,
         array $conjuntosDeCursadas
     ): void {
-        $vinculosOrdenados = collect([$vinculoReferencia])
-            // Reaproveita o vínculo de referência como primeiro item do grupo, mesmo que ele seja um placeholder.
-            ->merge(
-                static::vinculosReaisDoGrupo($requerida, (int) $vinculoReferencia->grupo, $codcur, $codhab)
-                    ->reject(fn(Aproveitamento $item) => $item->id === $vinculoReferencia->id)
-                    ->values()
-            )
-            ->values();
-        // Itera sobre os dados enviados e atualiza ou cria vínculos conforme a posição,
-        // reaproveitando o máximo possível dos vínculos existentes.
-        foreach ($conjuntosDeCursadas as $index => $dadosCursada) {
-            $vinculoExistente = $vinculosOrdenados->get($index);
+        abort_unless($aproveitamento->isAutomaticoDaRequeridaNoContexto($requerida, $codcur, $codhab), 404);
 
-            if ($vinculoExistente) {
-                $vinculoExistente->loadMissing('cursada');
+        DB::transaction(function () use ($aproveitamento, $conjuntosDeCursadas) {
+            $aproveitamento->update([
+                'numero_reuniao' => $conjuntosDeCursadas[0]['numero_reuniao'] ?? null,
+                'data_reuniao' => $conjuntosDeCursadas[0]['data_reuniao'] ?? null,
+                'observacoes' => $conjuntosDeCursadas[0]['observacoes'] ?? null,
+            ]);
 
-                if (! $vinculoExistente->cursada) {
-                    throw new ModelNotFoundException();
-                }
+            $cursadas = $aproveitamento->cursadas()->get()->values();
 
-                $cursadaAnteriorId = (int) $vinculoExistente->cursada_id;
-                $cursada = $vinculoExistente->cursada->atualizarCursadaPorFormulario($dadosCursada);
+            foreach ($conjuntosDeCursadas as $index => $dadosCursada) {
+                $disciplina = $cursadas->get($index);
+                $dados = array_merge(
+                    Disciplina::dadosDaCursadaPorFormulario($dadosCursada),
+                    [
+                        'aproveitamento_id' => $aproveitamento->id,
+                        'role' => DisciplinaRole::CURSADA,
+                    ]
+                );
 
-                $vinculoExistente->update(array_merge(
-                    ['cursada_id' => $cursada->id],
-                    static::dadosAdministrativosDaCursada($dadosCursada)
-                ));
-
-                if ($cursadaAnteriorId !== (int) $cursada->id) {
-                    Disciplina::removerSeOrfaPorId($cursadaAnteriorId);
-                }
-
-                continue;
+                $disciplina ? $disciplina->update($dados) : Disciplina::create($dados);
             }
-            // Cria nova cursada e vínculo quando não houver mais vínculos existentes para reaproveitar.
-            $novaCursada = Disciplina::criarCursadaPorFormulario($dadosCursada);
-            // Garante que o primeiro vínculo do grupo seja sempre o de referência, mesmo que ele seja um placeholder
-            static::criarVinculoCursada(
-                (int) $vinculoReferencia->grupo,
-                $requerida->id,
-                $novaCursada->id,
-                $codcur,
-                $codhab,
-                static::TIPO_AUTOMATICA,
-                $dadosCursada['numero_reuniao'] ?? null,
-                $dadosCursada['data_reuniao'] ?? null,
-                $dadosCursada['observacoes'] ?? null
-            );
+
+            $cursadas
+                ->slice(count($conjuntosDeCursadas))
+                ->each(fn (Disciplina $disciplina) => $disciplina->removerSeOrfa());
+        });
+    }
+
+    public function removerELimparCursada(Disciplina $cursada): void
+    {
+        abort_unless((int) $cursada->aproveitamento_id === (int) $this->id, 404);
+
+        $cursada->removerSeOrfa();
+
+        if ($this->cursadas()->count() === 0) {
+            $this->deleteComArquivos();
         }
     }
 
-    private static function dadosAdministrativosDaCursada(array $dadosCursada): array
-    {
-        return [
-            'numero_reuniao' => $dadosCursada['numero_reuniao'] ?? null,
-            'data_reuniao' => $dadosCursada['data_reuniao'] ?? null,
-            'observacoes' => $dadosCursada['observacoes'] ?? null,
-        ];
-    }
-
-    /**
-     * Remove todos os vínculos de uma requerida no contexto e limpa disciplinas órfãs.
-     *
-     * Para a exclusão de um requerimento, é necessário remover todos os vínculos associados à disciplina requerida
-     */
-    public static function removerVinculosDaRequeridaNoContexto(Disciplina $requerida, int $codcur, int $codhab): void
-    {
-        $vinculos = static::query()
-            ->doContexto($codcur, $codhab)
-            ->where('requerida_id', $requerida->id)
-            ->get();
-        $grupos = $vinculos->pluck('grupo')->unique();
-
-        $cursadasParaLimpeza = static::idsDeCursadasReais($vinculos);
-
-        static::query()
-            ->whereIn('id', $vinculos->pluck('id'))
-            ->delete();
-
-        foreach ($grupos as $grupo) {
-            Arquivo::removerHistoricosDoGrupo((int) $grupo);
-        }
-
-        foreach ($cursadasParaLimpeza as $cursadaId) {
-            Disciplina::removerSeOrfaPorId((int) $cursadaId);
-        }
-
-        $requerida->removerSeOrfa();
-    }
-
-    /**
-     * Remove este vínculo e limpa a disciplina cursada se ela ficar órfã.
-     */
-    public function removerELimparCursada(): void
-    {
-        $cursadaId = $this->cursada_id;
-
-        $this->delete();
-
-        Disciplina::removerSeOrfaPorId((int) $cursadaId);
-    }
-
-    /**
-     * Remove um grupo de equivalências e limpa as disciplinas relacionadas quando órfãs.
-     */
-    public static function removerGrupoELimparDisciplinas(
+    public static function removerAproveitamentoAutomatico(
         Disciplina $requerida,
-        self $vinculoReferencia,
+        self $aproveitamento,
         int $codcur,
         int $codhab
     ): void {
-        $vinculosDoGrupo = static::query()
-            ->doContexto($codcur, $codhab)
-            ->where('requerida_id', $requerida->id)
-            ->where('grupo', $vinculoReferencia->grupo)
-            ->get();
+        abort_unless($aproveitamento->isAutomaticoDaRequeridaNoContexto($requerida, $codcur, $codhab), 404);
 
-        $cursadasParaLimpeza = static::idsDeCursadasReais($vinculosDoGrupo);
+        $aproveitamento->deleteComArquivos();
+    }
 
+    public static function removerVinculosDaRequeridaNoContexto(Disciplina $requerida, int $codcur, int $codhab): void
+    {
         static::query()
-            ->whereIn('id', $vinculosDoGrupo->pluck('id'))
-            ->delete();
-
-        Arquivo::removerHistoricosDoGrupo((int) $vinculoReferencia->grupo);
-
-        foreach ($cursadasParaLimpeza as $cursadaId) {
-            Disciplina::removerSeOrfaPorId((int) $cursadaId);
-        }
-
-        $requerida->removerSeOrfa();
+            ->automaticas()
+            ->doContexto($codcur, $codhab)
+            ->whereHas('requerida', function ($query) use ($requerida) {
+                $query
+                    ->where('coddis', $requerida->coddis)
+                    ->where('verdis', $requerida->verdis)
+                    ->where('ies', $requerida->ies);
+            })
+            ->with(['disciplinas.ementa', 'historico'])
+            ->get()
+            ->each(fn (Aproveitamento $aproveitamento) => $aproveitamento->deleteComArquivos());
     }
 
     /**
@@ -557,7 +297,6 @@ class Aproveitamento extends Model
         bool $useOldInput = true
     ): array {
         return $disciplinas
-            // Reduz os dados de cada disciplina requerida em um array associativo de formulários
             ->reduce(function (array $forms, Disciplina $disciplinaUsp) use ($useOldInput) {
                 $formsDaDisciplina = $disciplinaUsp->equivalentes
                     ->mapWithKeys(function (Aproveitamento $equivalenciaFilha) use ($disciplinaUsp, $useOldInput) {
@@ -574,178 +313,159 @@ class Aproveitamento extends Model
             }, []);
     }
 
-    /**
-     * Lista os requerimentos criados por um usuário agrupados por equivalência.
-     */
+    public static function criarRequerimentoDoRascunho(
+        AproveitamentoRascunho $draft,
+        int $userId
+    ): array {
+        return DB::transaction(function () use ($draft, $userId) {
+            $aproveitamento = $draft->aproveitamentoOrFail();
+            $requiredName = $draft->nomeDaDisciplinaRequerida() ?? $draft->requerida_coddis;
+
+            if (! $aproveitamento->historico_id) {
+                throw ValidationException::withMessages([
+                    'historico' => 'Envie o histórico escolar do requerimento.',
+                ]);
+            }
+
+            $aproveitamento->atualizarEstado(EquivalenciaEstado::PROCESSANDO, $userId);
+
+            return ['id' => $aproveitamento->id, 'name' => $requiredName];
+        });
+    }
+
     public static function requerimentosDoUsuario(int $userId): array
     {
         return static::query()
             ->doUsuario($userId)
             ->naoRascunhos()
+            ->requeridas()
             ->with('requerida')
             ->orderByDesc('created_at')
             ->get()
-            ->groupBy('grupo')
-            ->map(function ($equivalenciasDoGrupo, $grupo) {
-                $primeiraEquivalencia = $equivalenciasDoGrupo->first();
-
+            ->map(function (Aproveitamento $aproveitamento) {
                 return [
-                    'nomdis' => $primeiraEquivalencia->requerida?->nomdis,
-                    'estado' => $primeiraEquivalencia->estadoLabel(),
-                    'grupo' => (int) $grupo,
+                    'nomdis' => $aproveitamento->requerida?->nomdis ?? $aproveitamento->requerida?->coddis,
+                    'estado' => $aproveitamento->estadoLabel(),
+                    'id' => (int) $aproveitamento->id,
                 ];
             })
             ->all();
     }
 
-    /**
-     * Retorna as equivalências de um requerimento do usuário ou lança exceção.
-     */
-    public static function equivalenciasDoRequerimentoDoUsuario(int $group, int $userId): EloquentCollection
+    public static function requerimentoDoUsuarioOrFail(int $id, int $userId): self
     {
-        $equivalencias = static::query()
-            ->doGrupo($group)
+        $aproveitamento = static::query()
+            ->whereKey($id)
             ->doUsuario($userId)
             ->naoRascunhos()
-            ->with(['requerida', 'cursada', 'arquivos'])
-            ->orderBy('id')
-            ->get();
+            ->requeridas()
+            ->with(['requerida', 'cursadas.ementa', 'historico'])
+            ->first();
 
-        if ($equivalencias->isEmpty()) {
+        if (! $aproveitamento) {
             throw new ModelNotFoundException();
         }
 
-        return $equivalencias;
+        return $aproveitamento;
     }
 
-    /**
-     * Monta os dados usados para exibir um requerimento do usuário.
-     */
-    public static function dadosDeExibicaoDoRequerimento(int $group, int $userId): array
+    public static function dadosDeExibicaoDoRequerimento(int $id, int $userId): array
     {
-        $equivalencias = static::equivalenciasDoRequerimentoDoUsuario($group, $userId);
-        $primeiraEquivalencia = $equivalencias->first();
-        $requerida = $primeiraEquivalencia->requerida;
+        $aproveitamento = static::requerimentoDoUsuarioOrFail($id, $userId);
+        $requerida = $aproveitamento->requerida;
 
         if (! $requerida) {
             throw new ModelNotFoundException();
         }
 
-        $showData = [
+        return [
             'requerida' => [
                 'coddis' => $requerida->coddis,
                 'verdis' => $requerida->verdis,
                 'nomdis' => $requerida->nomdis,
                 'sglund' => $requerida->sglund,
             ],
-            'grupo' => $group,
-            'estado' => $primeiraEquivalencia->estadoLabel(),
-            'created_at' => $equivalencias->min('created_at'),
-            'cursadas' => [],
-            'historicos' => Arquivo::historicosDoGrupo($group)
-                ->map(fn(Arquivo $arquivo) => [
-                    'id' => $arquivo->id,
-                    'name' => $arquivo->nome,
+            'id' => (int) $aproveitamento->id,
+            'estado' => $aproveitamento->estadoLabel(),
+            'created_at' => $aproveitamento->created_at,
+            'historicos' => $aproveitamento->historico ? [[
+                'id' => $aproveitamento->historico->id,
+                'name' => $aproveitamento->historico->nome,
+            ]] : [],
+            'cursadas' => $aproveitamento->cursadas
+                ->map(fn (Disciplina $cursada) => [
+                    'coddis' => $cursada->coddis,
+                    'verdis' => $cursada->verdis,
+                    'nomdis' => $cursada->nomdis,
+                    'ementa_file' => $cursada->ementa ? [
+                        'id' => $cursada->ementa->id,
+                        'name' => $cursada->ementa->nome,
+                    ] : null,
+                    'semestre' => $cursada->semestre,
+                    'ano' => $cursada->ano,
+                    'codtur' => $cursada->codtur,
+                    'freq' => $cursada->frequencia,
+                    'nota' => $cursada->nota,
+                    'creditos' => $cursada->creditos,
+                    'carga_hr' => $cursada->carga_horaria,
+                    'ies' => $cursada->ies,
+                    'sglund' => $cursada->sglund,
+                    'disciplina_ativa' => $cursada->disciplina_ativa,
                 ])
                 ->all(),
         ];
-
-        foreach ($equivalencias as $equivalencia) {
-            $cursada = $equivalencia->cursada;
-
-            if (! $cursada) {
-                throw new ModelNotFoundException();
-            }
-
-            $ementa = $equivalencia->arquivos
-                ->firstWhere('tipo', Arquivo::TIPO_EMENTA);
-
-            $showData['cursadas'][] = [
-                'coddis' => $cursada->coddis,
-                'verdis' => $cursada->verdis,
-                'nomdis' => $cursada->nomdis,
-                'ementa_file' => $ementa ? [
-                    'id' => $ementa->id,
-                    'name' => $ementa->nome,
-                ] : null,
-                'semestre' => $equivalencia->semestre,
-                'ano' => $equivalencia->ano,
-                'codtur' => $equivalencia->codtur,
-                'freq' => $equivalencia->frequencia,
-                'nota' => $equivalencia->nota,
-                'creditos' => $cursada->creditos,
-                'carga_hr' => $cursada->carga_horaria,
-                'ies' => $cursada->ies,
-                'sglund' => $cursada->sglund,
-                'disciplina_ativa' => $cursada->disciplina_ativa,
-            ];
-        }
-
-        return $showData;
     }
 
     /**
      * Remove um requerimento do usuário e retorna o nome da disciplina requerida removida.
      */
-    public static function removerRequerimentoDoUsuario(int $group, int $userId): string
+    public static function removerRequerimentoDoUsuario(int $id, int $userId): string
     {
-        $equivalencias = static::equivalenciasDoRequerimentoDoUsuario($group, $userId);
-        $requerida = $equivalencias->first()->requerida;
+        $aproveitamento = static::requerimentoDoUsuarioOrFail($id, $userId);
+        $nomeRequerida = $aproveitamento->requerida?->nomdis ?? $aproveitamento->requerida?->coddis ?? '';
 
-        if (! $requerida) {
-            throw new ModelNotFoundException();
-        }
-
-        $nomeRequerida = $requerida->nomdis;
-        $requeridaId = (int) $requerida->id;
-        $cursadaIds = static::idsDeCursadasReais($equivalencias);
-
-        Arquivo::removerHistoricosDoGrupo($group);
-
-        foreach ($equivalencias as $equivalencia) {
-            $equivalencia->delete();
-        }
-
-        foreach ($cursadaIds as $cursadaId) {
-            Disciplina::removerSeOrfaPorId((int) $cursadaId);
-        }
-
-        Disciplina::removerSeOrfaPorId($requeridaId);
+        $aproveitamento->deleteComArquivos();
 
         return $nomeRequerida;
     }
 
-    /**
-     * Verifica se a equivalência pertence ao curso e habilitação informados.
-     */
-    public function pertenceAoContexto(int $codcur, int $codhab): bool
+    public function isAutomaticoDaRequeridaNoContexto(Disciplina $requerida, int $codcur, int $codhab): bool
     {
-        return (int) $this->codcur === $codcur && (int) $this->codhab === $codhab;
+        $this->loadMissing('requerida');
+
+        return $this->tipo === EquivalenciaTipo::AUTOMATICA
+            && $this->pertenceAoContexto($codcur, $codhab)
+            && $this->requerida
+            && $this->requerida->coddis === $requerida->coddis
+            && (int) $this->requerida->verdis === (int) $requerida->verdis
+            && $this->requerida->ies === $requerida->ies;
     }
 
-    /**
-     * Verifica se a equivalência pertence à requerida dentro do contexto informado.
-     */
-    public function pertenceARequeridaNoContexto(int $requeridaId, int $codcur, int $codhab): bool
+    public function deleteComArquivos(): void
     {
-        return (int) $this->requerida_id === $requeridaId && $this->pertenceAoContexto($codcur, $codhab);
+        $this->loadMissing(['disciplinas.ementa', 'historico']);
+
+        foreach ($this->disciplinas as $disciplina) {
+            $disciplina->removerSeOrfa();
+        }
+
+        if ($this->historico) {
+            $this->historico->removerArquivoERegistro();
+        }
+
+        $this->delete();
     }
 
-    /**
-     * Verifica se a equivalência é um vínculo real da requerida no contexto.
-     */
-    public function isEquivalenciaRealDaRequeridaNoContexto(int $requeridaId, int $codcur, int $codhab): bool
+    private static function salvarCursadasAutomaticas(self $aproveitamento, array $conjuntosDeCursadas): void
     {
-        return $this->pertenceARequeridaNoContexto($requeridaId, $codcur, $codhab)
-            && ! $this->isPlaceholderRequerida();
-    }
-
-    private static function idsDeCursadasReais(EloquentCollection $vinculos): SupportCollection
-    {
-        return $vinculos
-            ->filter(fn(Aproveitamento $item) => ! $item->isPlaceholderRequerida())
-            ->pluck('cursada_id')
-            ->unique()
-            ->values();
+        foreach ($conjuntosDeCursadas as $dadosCursada) {
+            Disciplina::create(array_merge(
+                Disciplina::dadosDaCursadaPorFormulario($dadosCursada),
+                [
+                    'aproveitamento_id' => $aproveitamento->id,
+                    'role' => DisciplinaRole::CURSADA,
+                ]
+            ));
+        }
     }
 }

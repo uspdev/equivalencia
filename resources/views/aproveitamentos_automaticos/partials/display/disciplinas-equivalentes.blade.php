@@ -1,33 +1,28 @@
-@php
-  $equivalenciasPorGrupo = $disciplina->equivalentes->groupBy('grupo');
-@endphp
-@forelse ($equivalenciasPorGrupo as $grupo => $equivalenciasDoGrupo)
-  @php
-    $equivalenciaRepresentante = $equivalenciasDoGrupo->first();
-  @endphp
-
+@forelse ($disciplina->equivalentes as $equivalenciaRepresentante)
   <div class="disciplina-equivalente d-flex align-items-center flex-nowrap mb-2">
     <p class="mb-0 text-truncate">
-      @foreach ($equivalenciasDoGrupo as $e)
+      @foreach ($equivalenciaRepresentante->cursadas as $e)
         @php
           $modalDadosDisciplinaId = 'modalDadosDisciplinaCursada' . $e->id;
         @endphp
 
-        <span title="{{ $e->cursada->nome_disciplina }}">
+        <span title="{{ $e->nome_disciplina }}">
           <button type="button" class="btn p-0 text-left align-baseline disciplina-dados-trigger"
             data-toggle="modal" data-target="#{{ $modalDadosDisciplinaId }}">
-            {{ $e->cursada->coddis }} -
-            @limitarTexto($e->cursada->nome_disciplina)
-            ({{ $e->cursada->sglund }})
+            {{ $e->coddis }} -
+            @limitarTexto($e->nome_disciplina)
+            @if ($e->sglund)
+              ({{ $e->sglund }})
+            @endif
           </button>
         </span>
 
         @include('aproveitamentos_automaticos.partials.modals.modal-disciplina-dados', [
-            'disciplina' => $e->cursada,
-            'equivalencia' => $e,
+            'disciplina' => $e,
+            'equivalencia' => $equivalenciaRepresentante,
             'modalId' => $modalDadosDisciplinaId,
             'titulo' => 'Dados da disciplina cursada',
-            'vigenciaVersao' => $vigenciasVersoesCursadas[$e->cursada->id] ?? null,
+            'vigenciaVersao' => $vigenciasVersoesCursadas[$e->id] ?? null,
         ])
 
         @notLast('|')

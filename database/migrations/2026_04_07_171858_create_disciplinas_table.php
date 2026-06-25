@@ -14,6 +14,13 @@ return new class extends Migration
         Schema::create('disciplinas', function (Blueprint $table) {
             $table->id();
 
+            $table->foreignId('aproveitamento_id')
+                ->nullable()
+                ->constrained('aproveitamentos')
+                ->cascadeOnDelete();
+
+            $table->string('role', 20); // app/Enums/DisciplinaRole.php
+
             // CAMPOS USP
             $table->tinyInteger('verdis')->nullable();
 
@@ -29,8 +36,17 @@ return new class extends Migration
 
             $table->boolean('disciplina_ativa')->nullable();
 
-            // Campo para vincular um pedido de equivalência a um aluno
-            // seguindo a lógica aluno -> entra com cursada (c) e requerida (r) que ele quer equivalente
+            $table->integer('ano')->nullable();
+            $table->integer('semestre')->nullable();
+            $table->string('codtur', 5)->nullable();
+            $table->decimal('frequencia', 5, 2)->nullable();
+            $table->decimal('nota', 5, 2)->nullable();
+
+            $table->foreignId('ementa_id')
+                ->nullable()
+                ->constrained('arquivos')
+                ->nullOnDelete();
+
             $table->foreignId('criado_por_id')
                 ->nullable()
                 ->constrained('users')
@@ -41,7 +57,8 @@ return new class extends Migration
                 ->constrained('users')
                 ->cascadeOnDelete();
 
-            $table->unique(['ies', 'coddis', 'verdis']);
+            $table->index(['aproveitamento_id', 'role']);
+            $table->index(['ies', 'coddis', 'verdis']);
 
             $table->timestamps();
         });

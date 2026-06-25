@@ -59,7 +59,7 @@
         @if ($cursada['ementa_file'])
           @include('aproveitamentos.partials.show-arquivo', [
               'arquivo' => $cursada['ementa_file'],
-              'group' => $group,
+              'aproveitamentoId' => $aproveitamentoId,
           ])
         @else
           <span class="text-muted">Nenhuma ementa enviada.</span>

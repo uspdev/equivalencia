@@ -209,13 +209,13 @@ class AproveitamentoController extends Controller
 
     /**
      * Exibe um pedido de aproveitamento do usuário autenticado.
-     * @param int $group
+     * @param int $aproveitamento
      */
-    public function show(int $group): View
+    public function show(int $aproveitamento): View
     {
         Gate::authorize(Permission::REQUERIMENTOS_VIEW_OWN->value);
 
-        $show_data = Aproveitamento::dadosDeExibicaoDoRequerimento($group, Auth::id());
+        $show_data = Aproveitamento::dadosDeExibicaoDoRequerimento($aproveitamento, Auth::id());
 
         return view('aproveitamentos.show', ['show_data' => $show_data]);
     }
@@ -223,11 +223,11 @@ class AproveitamentoController extends Controller
     /**
      * Exibe um PDF do requerimento no navegador.
      */
-    public function showFile(int $group, int $arquivo): StreamedResponse
+    public function showFile(int $aproveitamento, int $arquivo): StreamedResponse
     {
         Gate::authorize(Permission::REQUERIMENTOS_VIEW_OWN->value);
 
-        $file = Arquivo::doRequerimentoDoUsuarioOrFail($arquivo, $group, (int) Auth::id());
+        $file = Arquivo::pertencenteAoRequerimentoDoUsuarioOrFail($arquivo, $aproveitamento, (int) Auth::id());
 
         abort_unless(Storage::exists($file->path), 404);
 
@@ -241,14 +241,14 @@ class AproveitamentoController extends Controller
 
     /**
      * Remove um pedido de aproveitamento do banco de dados
-     * @param int $group
+     * @param int $aproveitamento
      * @return RedirectResponse
      */
-    public function destroy(int $group): RedirectResponse
+    public function destroy(int $aproveitamento): RedirectResponse
     {
         Gate::authorize(Permission::REQUERIMENTOS_VIEW_OWN->value);
 
-        $req_name = Aproveitamento::removerRequerimentoDoUsuario($group, Auth::id());
+        $req_name = Aproveitamento::removerRequerimentoDoUsuario($aproveitamento, Auth::id());
 
         return redirect()
             ->back()

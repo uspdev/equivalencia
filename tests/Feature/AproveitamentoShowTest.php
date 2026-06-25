@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\DisciplinaRole;
 use App\Enums\Role;
 use App\Models\Aproveitamento;
 use App\Models\Arquivo;
@@ -57,20 +58,20 @@ class AproveitamentoShowTest extends TestCase
             'carga_horaria' => 60,
         ]);
         $syllabus = $this->createFile([
-            'equivalencia_id' => $request->id,
             'tipo' => Arquivo::TIPO_EMENTA,
             'nome' => 'ementa-programacao.pdf',
             'path' => 'requerimentos/ementa-programacao.pdf',
         ]);
+        $request->cursadas()->first()->update(['ementa_id' => $syllabus->id]);
         $transcript = $this->createFile([
-            'grupo' => 10,
             'tipo' => Arquivo::TIPO_HISTORICO,
             'nome' => 'historico-escolar.pdf',
             'path' => 'requerimentos/historico-escolar.pdf',
         ]);
+        $request->update(['historico_id' => $transcript->id]);
 
         $this->actingAs($user)
-            ->get(route('equivalencias.req-show', ['group' => 10], false))
+            ->get(route('equivalencias.req-show', ['aproveitamento' => $request->id], false))
             ->assertOk()
             ->assertSee('MAC0110 - Introdução à Computação')
             ->assertSee('15/06/2026 14:30')
@@ -83,11 +84,11 @@ class AproveitamentoShowTest extends TestCase
             ->assertSee('ementa-programacao.pdf')
             ->assertSee('historico-escolar.pdf')
             ->assertSee(route('equivalencias.req-file', [
-                'group' => 10,
+                'aproveitamento' => $request->id,
                 'arquivo' => $syllabus->id,
             ], false), false)
             ->assertSee(route('equivalencias.req-file', [
-                'group' => 10,
+                'aproveitamento' => $request->id,
                 'arquivo' => $transcript->id,
             ], false), false);
     }
@@ -95,10 +96,10 @@ class AproveitamentoShowTest extends TestCase
     public function test_explicit_status_is_displayed(): void
     {
         $user = $this->createAuthorizedUser(700002);
-        $this->createRequest($user, 11, ['estado' => EquivalenciaEstado::PROCESSANDO]);
+        $request = $this->createRequest($user, 11, ['estado' => EquivalenciaEstado::PROCESSANDO]);
 
         $this->actingAs($user)
-            ->get(route('equivalencias.req-show', ['group' => 11], false))
+            ->get(route('equivalencias.req-show', ['aproveitamento' => $request->id], false))
             ->assertOk()
             ->assertSee('Processando')
             ->assertDontSee('Enviado');
@@ -107,7 +108,7 @@ class AproveitamentoShowTest extends TestCase
     public function test_usp_discipline_without_syllabus_is_displayed(): void
     {
         $user = $this->createAuthorizedUser(700003);
-        $this->createRequest($user, 12, [
+        $request = $this->createRequest($user, 12, [
             'ies' => 'USP',
             'sglund' => 'IME',
             'coddis' => 'MAT0111',
@@ -123,7 +124,7 @@ class AproveitamentoShowTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get(route('equivalencias.req-show', ['group' => 12], false))
+            ->get(route('equivalencias.req-show', ['aproveitamento' => $request->id], false))
             ->assertOk()
             ->assertSee('MAT0111 - Cálculo Diferencial')
             ->assertSee('Nenhuma ementa enviada.')
@@ -138,19 +139,19 @@ class AproveitamentoShowTest extends TestCase
         $otherUser = $this->createAuthorizedUser(700005);
         $request = $this->createRequest($owner, 13);
         $file = $this->createFile([
-            'equivalencia_id' => $request->id,
             'tipo' => Arquivo::TIPO_EMENTA,
             'nome' => 'ementa.pdf',
             'path' => 'requerimentos/ementa.pdf',
         ]);
+        $request->cursadas()->first()->update(['ementa_id' => $file->id]);
 
         $this->actingAs($otherUser)
-            ->get(route('equivalencias.req-show', ['group' => 13], false))
+            ->get(route('equivalencias.req-show', ['aproveitamento' => $request->id], false))
             ->assertNotFound();
 
         $this->actingAs($otherUser)
             ->get(route('equivalencias.req-file', [
-                'group' => 13,
+                'aproveitamento' => $request->id,
                 'arquivo' => $file->id,
             ], false))
             ->assertNotFound();
@@ -161,15 +162,15 @@ class AproveitamentoShowTest extends TestCase
         $user = $this->createAuthorizedUser(700006);
         $request = $this->createRequest($user, 14);
         $file = $this->createFile([
-            'equivalencia_id' => $request->id,
             'tipo' => Arquivo::TIPO_EMENTA,
             'nome' => 'ementa.pdf',
             'path' => 'requerimentos/ementa.pdf',
         ]);
+        $request->cursadas()->first()->update(['ementa_id' => $file->id]);
 
         $this->actingAs($user)
             ->get(route('equivalencias.req-file', [
-                'group' => 14,
+                'aproveitamento' => $request->id,
                 'arquivo' => $file->id,
             ], false))
             ->assertOk()
@@ -181,24 +182,24 @@ class AproveitamentoShowTest extends TestCase
     {
         $user = $this->createAuthorizedUser(700007);
         $firstRequest = $this->createRequest($user, 15);
-        $this->createRequest($user, 16);
+        $secondRequest = $this->createRequest($user, 16);
         $file = $this->createFile([
-            'equivalencia_id' => $firstRequest->id,
             'tipo' => Arquivo::TIPO_EMENTA,
             'nome' => 'ementa.pdf',
             'path' => 'requerimentos/ementa.pdf',
         ]);
+        $firstRequest->cursadas()->first()->update(['ementa_id' => $file->id]);
 
         $this->actingAs($user)
             ->get(route('equivalencias.req-file', [
-                'group' => 16,
+                'aproveitamento' => $secondRequest->id,
                 'arquivo' => $file->id,
             ], false))
             ->assertNotFound();
 
         $this->actingAs($user)
             ->get(route('equivalencias.req-file', [
-                'group' => 15,
+                'aproveitamento' => $firstRequest->id,
                 'arquivo' => 999999,
             ], false))
             ->assertNotFound();
@@ -209,15 +210,15 @@ class AproveitamentoShowTest extends TestCase
         $user = $this->createAuthorizedUser(700008);
         $request = $this->createRequest($user, 17);
         $file = Arquivo::create([
-            'equivalencia_id' => $request->id,
             'tipo' => Arquivo::TIPO_EMENTA,
             'nome' => 'arquivo-ausente.pdf',
             'path' => 'requerimentos/arquivo-ausente.pdf',
         ]);
+        $request->cursadas()->first()->update(['ementa_id' => $file->id]);
 
         $this->actingAs($user)
             ->get(route('equivalencias.req-file', [
-                'group' => 17,
+                'aproveitamento' => $request->id,
                 'arquivo' => $file->id,
             ], false))
             ->assertNotFound();
@@ -238,7 +239,16 @@ class AproveitamentoShowTest extends TestCase
 
     private function createRequest(User $user, int $group, array $courseOverrides = []): Aproveitamento
     {
+        $aproveitamento = Aproveitamento::create([
+            'estado' => $courseOverrides['estado'] ?? null,
+            'tipo' => Aproveitamento::TIPO_SOLICITADA,
+            'criado_por_id' => $user->id,
+            'alterado_por_id' => $user->id,
+        ]);
+
         $required = Disciplina::create([
+            'aproveitamento_id' => $aproveitamento->id,
+            'role' => DisciplinaRole::REQUERIDA,
             'coddis' => 'MAC0110',
             'nomdis' => 'Introdução à Computação',
             'ies' => 'USP',
@@ -247,6 +257,8 @@ class AproveitamentoShowTest extends TestCase
             'alterado_por_id' => $user->id,
         ]);
         $course = Disciplina::create(array_merge([
+            'aproveitamento_id' => $aproveitamento->id,
+            'role' => DisciplinaRole::CURSADA,
             'coddis' => 'EXT100',
             'nomdis' => 'Programação',
             'ies' => 'Universidade Externa',
@@ -261,14 +273,7 @@ class AproveitamentoShowTest extends TestCase
             'alterado_por_id' => $user->id,
         ], collect($courseOverrides)->except('estado')->all()));
 
-        return Aproveitamento::create([
-            'grupo' => $group,
-            'estado' => $courseOverrides['estado'] ?? null,
-            'requerida_id' => $required->id,
-            'cursada_id' => $course->id,
-            'criado_por_id' => $user->id,
-            'alterado_por_id' => $user->id,
-        ]);
+        return $aproveitamento->load(['requerida', 'cursadas']);
     }
 
     private function createFile(array $data): Arquivo

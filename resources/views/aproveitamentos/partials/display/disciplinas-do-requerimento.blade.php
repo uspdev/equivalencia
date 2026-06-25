@@ -8,7 +8,7 @@
     @forelse ($show_data['cursadas'] as $cursada)
       @include('aproveitamentos.partials.display.disciplina-do-requerimento', [
           'position' => $loop->iteration,
-          'group' => $show_data['grupo'],
+          'aproveitamentoId' => $show_data['id'],
       ])
     @empty
       <p class="alert alert-light border text-center mb-0">Nenhuma disciplina cursada foi informada.</p>

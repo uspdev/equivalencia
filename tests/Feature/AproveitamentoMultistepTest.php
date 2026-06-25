@@ -10,7 +10,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Tests\TestCase;
 use Uspdev\Replicado\Replicado;
 use Mockery;
@@ -52,8 +51,32 @@ class AproveitamentoMultistepTest extends TestCase
             ->with('MAT0111')
             ->andReturnTrue()
             ->byDefault();
+        $graduacao->shouldReceive('existeDisciplinaPorCodigoVersao')
+            ->andReturnTrue()
+            ->byDefault();
         $graduacao->shouldReceive('obterDadosDisciplinaPorCodigo')
             ->andReturn([])
+            ->byDefault();
+        $graduacao->shouldReceive('existeDisciplinaPorCodigoVersao')
+            ->andReturnTrue()
+            ->byDefault();
+        $graduacao->shouldReceive('obterDadosDisciplinaPorCodigoVersao')
+            ->andReturnUsing(fn (string $receivedCoddis, ?int $verdis = null) => [
+                'coddis' => $receivedCoddis,
+                'verdis' => $history['verdis'] ?? $verdis ?? 1,
+                'nomdis' => $history['nomdis'] ?? $receivedCoddis,
+                'creaul' => $history['creaul'] ?? 0,
+                'cretrb' => $history['cretrb'] ?? 0,
+                'sglund' => 'IME',
+            ])
+            ->byDefault();
+        $graduacao->shouldReceive('obterDadosDisciplinaPorCodigoVersao')
+            ->andReturnUsing(fn (string $coddis, ?int $verdis = null) => [
+                'coddis' => $coddis,
+                'verdis' => $verdis ?? 1,
+                'nomdis' => $coddis,
+                'sglund' => 'IME',
+            ])
             ->byDefault();
         $graduacao->shouldReceive('obterDisciplinaCursadaPorAlunoEmPeriodoCodtur')
             ->andReturn([])
@@ -100,14 +123,10 @@ class AproveitamentoMultistepTest extends TestCase
 
         $draft = AproveitamentoRascunho::atualDoUsuario($user->id);
         $this->assertSame('MAC0110', $draft->requerida_coddis);
-        $transcriptKey = $this->transcriptKey('Universidade Externa');
-
         $this->actingAs($user)
             ->post(route('equivalencias.newreq-store', absolute: false), [
-                'historicos' => [
-                    $transcriptKey => UploadedFile::fake()
-                        ->create('historico.pdf', 100, 'application/pdf'),
-                ],
+                'historico' => UploadedFile::fake()
+                    ->create('historico.pdf', 100, 'application/pdf'),
             ])
             ->assertRedirect(route('equivalencias.req-index', absolute: false))
             ->assertSessionHas('alert-success');
@@ -124,19 +143,20 @@ class AproveitamentoMultistepTest extends TestCase
             ->assertDontSee('Editar');
 
         $this->assertDatabaseCount('disciplinas', 2);
-        $this->assertDatabaseCount('equivalencias', 1);
+        $this->assertDatabaseCount('aproveitamentos', 1);
         $this->assertDatabaseCount('arquivos', 2);
-        $this->assertDatabaseMissing('equivalencias', [
+        $this->assertDatabaseMissing('aproveitamentos', [
             'criado_por_id' => $user->id,
             'estado' => 'rascunho',
         ]);
 
+        $aproveitamentoId = DB::table('aproveitamentos')->value('id');
         $this->actingAs($user)
             ->from(route('equivalencias.req-index', absolute: false))
-            ->get(route('equivalencias.req-destroy', ['group' => 1], false))
+            ->get(route('equivalencias.req-destroy', ['aproveitamento' => $aproveitamentoId], false))
             ->assertRedirect(route('equivalencias.req-index', absolute: false));
 
-        $this->assertDatabaseCount('equivalencias', 0);
+        $this->assertDatabaseCount('aproveitamentos', 0);
         $this->assertDatabaseCount('arquivos', 0);
         Storage::assertMissing($transcriptPath);
     }
@@ -172,100 +192,52 @@ class AproveitamentoMultistepTest extends TestCase
             ]))
             ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
 
-        $transcriptKey = $this->transcriptKey('Universidade São Paulo');
         $this->actingAs($user)
             ->get(route('equivalencias.newreq-create', absolute: false))
             ->assertOk()
             ->assertSee('Universidade São Paulo')
             ->assertSee('EXT100 - Programação')
             ->assertSee('EXT200 - Algoritmos')
-            ->assertSee("name=\"historicos[{$transcriptKey}]\"", false);
+            ->assertSee('name="historico"', false);
 
         $this->actingAs($user)
             ->post(route('equivalencias.newreq-store', absolute: false), [
-                'historicos' => [
-                    $transcriptKey => UploadedFile::fake()
-                        ->create('historico-compartilhado.pdf', 100, 'application/pdf'),
-                ],
+                'historico' => UploadedFile::fake()
+                    ->create('historico-unico.pdf', 100, 'application/pdf'),
             ])
             ->assertRedirect(route('equivalencias.req-index', absolute: false));
 
-        $this->assertDatabaseCount('equivalencias', 2);
+        $this->assertDatabaseCount('aproveitamentos', 1);
         $this->assertDatabaseCount('arquivos', 3);
         $this->assertDatabaseHas('arquivos', [
-            'equivalencia_id' => null,
-            'grupo' => 1,
             'tipo' => 'historico',
-            'nome' => 'historico-compartilhado.pdf',
+            'nome' => 'historico-unico.pdf',
         ]);
         $this->assertSame(1, DB::table('arquivos')->where('tipo', 'historico')->count());
     }
 
-    public function test_optional_additional_transcript_is_saved_with_submission(): void
+    public function test_history_help_text_mentions_single_merged_pdf(): void
     {
         $user = $this->createAuthorizedUser(654317);
-        $transcriptKey = $this->transcriptKey('Universidade Externa');
-
-        $this->actingAs($user)
-            ->post(route('equivalencias.newreq-discipline-store', absolute: false), [
-                'requerida_coddis' => 'MAC0110',
-                'unidade_tipo' => 'OUTRA',
-                'unidade_nome' => 'Universidade Externa',
-                'coddis' => 'EXT100',
-                'nomdis' => 'Programação',
-                'codtur' => '20251',
-                'ementa' => UploadedFile::fake()->create('ementa.pdf', 100, 'application/pdf'),
-                'frequencia' => 90,
-                'nota' => 8.5,
-                'creditos' => 4,
-                'carga_horaria' => 60,
-            ])
-            ->assertRedirect(route('equivalencias.newreq-create', absolute: false));
+        $this->createExternalDraft($user);
 
         $this->actingAs($user)
             ->get(route('equivalencias.newreq-create', absolute: false))
             ->assertOk()
-            ->assertSee('Histórico escolar adicional')
-            ->assertSee('(opcional)')
-            ->assertSee('name="historico_adicional"', false);
-
-        $this->actingAs($user)
-            ->post(route('equivalencias.newreq-store', absolute: false), [
-                'historicos' => [
-                    $transcriptKey => UploadedFile::fake()
-                        ->create('historico.pdf', 100, 'application/pdf'),
-                ],
-                'historico_adicional' => UploadedFile::fake()
-                    ->create('historico-completo.pdf', 100, 'application/pdf'),
-            ])
-            ->assertRedirect(route('equivalencias.req-index', absolute: false));
-
-        $this->assertDatabaseCount('arquivos', 3);
-        $this->assertSame(2, DB::table('arquivos')->where('tipo', 'historico')->count());
-        $this->assertDatabaseHas('arquivos', [
-            'equivalencia_id' => null,
-            'grupo' => 1,
-            'tipo' => 'historico',
-            'nome' => 'historico-completo.pdf',
-        ]);
+            ->assertSee('reúna todas as');
     }
 
-    public function test_additional_transcript_must_be_a_pdf_when_provided(): void
+    public function test_history_must_be_a_pdf_when_provided(): void
     {
         $user = $this->createAuthorizedUser(654316);
-        $transcriptKey = $this->transcriptKey('Universidade Externa');
         $this->createExternalDraft($user);
 
         $this->actingAs($user)
             ->post(route('equivalencias.newreq-store', absolute: false), [
-                'historicos' => [
-                    $transcriptKey => UploadedFile::fake()
-                        ->create('historico.pdf', 100, 'application/pdf'),
-                ],
-                'historico_adicional' => UploadedFile::fake()
+                'historico' => UploadedFile::fake()
                     ->create('historico.txt', 10, 'text/plain'),
             ])
-            ->assertSessionHasErrors('historico_adicional');
+            ->assertSessionHasErrors('historico');
     }
 
     public function test_transcript_is_required_only_when_submitting_request(): void
@@ -277,15 +249,12 @@ class AproveitamentoMultistepTest extends TestCase
             ->from(route('equivalencias.newreq-create', absolute: false))
             ->post(route('equivalencias.newreq-store', absolute: false))
             ->assertRedirect(route('equivalencias.newreq-create', absolute: false))
-            ->assertSessionHasErrors("historicos.{$this->transcriptKey('Universidade Externa')}");
+            ->assertSessionHasErrors('historico');
 
-        $transcriptKey = $this->transcriptKey('Universidade Externa');
         $this->actingAs($user)
             ->post(route('equivalencias.newreq-store', absolute: false), [
-                'historicos' => [
-                    $transcriptKey => UploadedFile::fake()
-                        ->create('historico.pdf', 100, 'application/pdf'),
-                ],
+                'historico' => UploadedFile::fake()
+                    ->create('historico.pdf', 100, 'application/pdf'),
             ])
             ->assertRedirect(route('equivalencias.req-index', absolute: false));
     }
@@ -374,7 +343,7 @@ class AproveitamentoMultistepTest extends TestCase
             'nota' => 8.0,
             'disciplina_ativa' => true,
         ]);
-        $this->assertDatabaseHas('equivalencias', [
+        $this->assertDatabaseHas('aproveitamentos', [
             'criado_por_id' => $user->id,
             'estado' => 'rascunho',
         ]);
@@ -493,11 +462,6 @@ class AproveitamentoMultistepTest extends TestCase
         return $user;
     }
 
-    private function transcriptKey(string $unitName): string
-    {
-        return hash('sha256', Str::of($unitName)->ascii()->lower()->squish()->value());
-    }
-
     private function mockGraduacaoWithUspHistory(int $codpes, string $coddis, int $ano, int $semestre, array $history): void
     {
         $codtur = sprintf('%04d%d', $ano, $semestre);
@@ -519,6 +483,21 @@ class AproveitamentoMultistepTest extends TestCase
         }
         $graduacao->shouldReceive('obterDadosDisciplinaPorCodigo')
             ->andReturn([])
+            ->byDefault();
+        $graduacao->shouldReceive('existeDisciplinaPorCodigoVersao')
+            ->andReturnTrue()
+            ->byDefault();
+        $graduacao->shouldReceive('obterDadosDisciplinaPorCodigoVersao')
+            ->andReturnUsing(fn (string $receivedCoddis, ?int $verdis = null) => [
+                'coddis' => $receivedCoddis,
+                'verdis' => $history['verdis'] ?? $verdis ?? 1,
+                'nomdis' => $history['nomdis'] ?? $receivedCoddis,
+                'creaul' => $history['creaul'] ?? 0,
+                'cretrb' => $history['cretrb'] ?? 0,
+                'sglund' => 'IME',
+                'dtaatvdis' => $history['dtaatvdis'] ?? null,
+                'dtadtvdis' => $history['dtadtvdis'] ?? null,
+            ])
             ->byDefault();
         $graduacao->shouldReceive('obterDisciplinaCursadaPorAlunoEmPeriodoCodtur')
             ->andReturnUsing(function (int $receivedCodpes, string $receivedCoddis, string $receivedCodtur) use (

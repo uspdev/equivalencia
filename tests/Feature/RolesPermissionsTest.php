@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\DisciplinaRole;
 use App\Enums\Role;
 use App\Models\Aproveitamento;
 use App\Models\Disciplina;
@@ -83,7 +84,7 @@ class RolesPermissionsTest extends TestCase
             'nomdis' => 'Introdução à Computação',
             'ies' => 'USP',
         ]);
-        $this->assertDatabaseHas('equivalencias', [
+        $this->assertDatabaseHas('aproveitamentos', [
             'tipo' => Aproveitamento::TIPO_AUTOMATICA,
             'codcur' => 100,
             'codhab' => 1,
@@ -162,32 +163,26 @@ class RolesPermissionsTest extends TestCase
     private function createAutomaticEquivalence(): void
     {
         $required = Disciplina::create([
+            'role' => DisciplinaRole::REQUERIDA,
             'coddis' => 'MAC0110',
             'nomdis' => 'Introdução à Computação',
             'ies' => 'USP',
         ]);
-        $equivalent = Disciplina::create([
+
+        $aproveitamento = Aproveitamento::create([
+            'tipo' => Aproveitamento::TIPO_AUTOMATICA,
+            'codcur' => 100,
+            'codhab' => 1,
+        ]);
+
+        $required->update(['aproveitamento_id' => $aproveitamento->id]);
+
+        Disciplina::create([
+            'aproveitamento_id' => $aproveitamento->id,
+            'role' => DisciplinaRole::CURSADA,
             'coddis' => 'EXT100',
             'nomdis' => 'Programação',
             'ies' => 'Universidade Externa',
-        ]);
-
-        Aproveitamento::create([
-            'grupo' => 1,
-            'requerida_id' => $required->id,
-            'cursada_id' => $required->id,
-            'tipo' => Aproveitamento::TIPO_AUTOMATICA,
-            'codcur' => 100,
-            'codhab' => 1,
-        ]);
-
-        Aproveitamento::create([
-            'grupo' => 1,
-            'requerida_id' => $required->id,
-            'cursada_id' => $equivalent->id,
-            'tipo' => Aproveitamento::TIPO_AUTOMATICA,
-            'codcur' => 100,
-            'codhab' => 1,
         ]);
     }
 }

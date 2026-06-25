@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\Permission;
+use App\Enums\DisciplinaRole;
 use App\Http\Requests\SaveEditModeStateRequest;
 use App\Http\Requests\SaveEquivalenciaFilhaRequest;
 use App\Http\Requests\StoreEquivalenciaRequest;
@@ -157,26 +158,22 @@ class AproveitamentoAutomaticoController extends Controller
             }
 
             foreach ($disciplina->equivalentes as $equivalencia) {
-                $detailsKey = 'equivalence-'.$equivalencia->id;
-                $data['details'][$detailsKey] = $this->disciplineDetails(
-                    $equivalencia->cursada,
-                    'Dados da disciplina cursada',
-                    $vigenciasVersoesCursadas[$equivalencia->cursada->id] ?? null,
-                    $equivalencia
-                );
+                foreach ($equivalencia->cursadas as $cursada) {
+                    $detailsKey = 'equivalence-'.$cursada->id;
+                    $data['details'][$detailsKey] = $this->disciplineDetails(
+                        $cursada,
+                        'Dados da disciplina cursada',
+                        $vigenciasVersoesCursadas[$cursada->id] ?? null,
+                        $equivalencia
+                    );
+                }
             }
 
             if (! $canManageEquivalencias) {
                 continue;
             }
 
-            foreach ($disciplina->equivalentes->groupBy('grupo') as $equivalenciasDoGrupo) {
-                $representante = $equivalenciasDoGrupo->first();
-
-                if (! $representante) {
-                    continue;
-                }
-
+            foreach ($disciplina->equivalentes as $representante) {
                 $data['equivalenceForms']['edit-'.$representante->id] = [
                     'title' => 'Editar disciplina cursada equivalente',
                     'action' => route('equivalencias.update-equivalencia', [
@@ -285,25 +282,19 @@ class AproveitamentoAutomaticoController extends Controller
         abort_unless($equivalencia->pertenceComoRequeridaAoContexto($codcur, $codhab), 404);
 
         $dados = $request->validated();
-        $requerida = Disciplina::upsertRequeridaPorCoddis($dados['coddis'], $dados['verdis'] ?? null, $equivalencia);
+        $dadosRequerida = array_merge(
+            Disciplina::dadosDaRequeridaPorCoddis($dados['coddis'], $dados['verdis'] ?? null),
+            ['role' => DisciplinaRole::REQUERIDA]
+        );
 
-        if ((int) $requerida->id !== (int) $equivalencia->id) {
-            $vinculos = $equivalencia->equivalenciasComoRequerida()
-                ->automaticas()
-                ->doContexto($codcur, $codhab)
-                ->get();
-
-            foreach ($vinculos as $vinculo) {
-                $vinculo->update([
-                    'requerida_id' => $requerida->id,
-                    'cursada_id' => $vinculo->isPlaceholderRequerida()
-                        ? $requerida->id
-                        : $vinculo->cursada_id,
-                ]);
-            }
-
-            $equivalencia->removerSeOrfa();
-        }
+        Disciplina::query()
+            ->requeridas()
+            ->where('ies', $equivalencia->ies)
+            ->where('coddis', $equivalencia->coddis)
+            ->where('verdis', $equivalencia->verdis)
+            ->whereHas('aproveitamento', fn ($query) => $query->automaticas()->doContexto($codcur, $codhab))
+            ->get()
+            ->each(fn (Disciplina $disciplina) => $disciplina->update($dadosRequerida));
 
         return redirect()
             ->back()
@@ -360,7 +351,7 @@ class AproveitamentoAutomaticoController extends Controller
 
         abort_unless($equivalencia->pertenceComoRequeridaAoContexto($codcur, $codhab), 404);
 
-        Aproveitamento::criarGrupoDeCursadas(
+        Aproveitamento::criarAproveitamentoAutomaticoComCursadas(
             $equivalencia,
             $codcur,
             $codhab,
@@ -373,14 +364,14 @@ class AproveitamentoAutomaticoController extends Controller
     }
 
     /**
-     * Atualiza um grupo de equivalências para uma disciplina USP.
-     * Permite editar as disciplinas equivalentes de um grupo mantendo ou criando novos vínculos.
+     * Atualiza um aproveitamento automático para uma disciplina USP.
+     * Permite editar as disciplinas cursadas equivalentes mantendo ou criando novos vínculos.
      *
      * @param  SaveEquivalenciaFilhaRequest  $request  Dados da requisição
      * @param  int  $codcur  Código do curso
      * @param  int  $codhab  Código da habilitação
-     * @param  Disciplina  $equivalencia  A disciplina USP proprietária do grupo
-     * @param  Aproveitamento  $equivalenciaFilha  Uma equivalência do grupo a ser atualizado
+     * @param  Disciplina  $equivalencia  A disciplina USP proprietária
+     * @param  Aproveitamento  $equivalenciaFilha  O aproveitamento automático a ser atualizado
      * @return RedirectResponse
      */
     public function updateEquivalencia(SaveEquivalenciaFilhaRequest $request, int $codcur, int $codhab, Disciplina $equivalencia, Aproveitamento $equivalenciaFilha)
@@ -389,7 +380,7 @@ class AproveitamentoAutomaticoController extends Controller
 
         $this->abortUnlessEquivalenciaFilhaValida($equivalencia, $equivalenciaFilha, $codcur, $codhab);
 
-        Aproveitamento::atualizarGrupoDeCursadas(
+        Aproveitamento::atualizarAproveitamentoAutomaticoComCursadas(
             $equivalencia,
             $equivalenciaFilha,
             $codcur,
@@ -403,7 +394,7 @@ class AproveitamentoAutomaticoController extends Controller
     }
 
     /**
-     * Remove uma única equivalência de um grupo.
+     * Remove uma única disciplina cursada de um aproveitamento automático.
      * Realiza limpeza da disciplina cursada se ficar órfã após a remoção.
      *
      * @param  int  $codcur  Código do curso
@@ -412,13 +403,15 @@ class AproveitamentoAutomaticoController extends Controller
      * @param  Aproveitamento  $equivalenciaFilha  A equivalência a ser removida
      * @return RedirectResponse
      */
-    public function destroyEquivalencia(int $codcur, int $codhab, Disciplina $equivalencia, Aproveitamento $equivalenciaFilha)
+    public function destroyEquivalencia(int $codcur, int $codhab, Disciplina $equivalencia, Disciplina $equivalenciaFilha)
     {
         Gate::authorize(Permission::APROVEITAMENTOS_AUTOMATICOS_MANAGE->value);
 
-        $this->abortUnlessEquivalenciaFilhaValida($equivalencia, $equivalenciaFilha, $codcur, $codhab);
+        $aproveitamento = $equivalenciaFilha->aproveitamento;
+        abort_unless($aproveitamento instanceof Aproveitamento, 404);
+        $this->abortUnlessEquivalenciaFilhaValida($equivalencia, $aproveitamento, $codcur, $codhab);
 
-        $equivalenciaFilha->removerELimparCursada();
+        $aproveitamento->removerELimparCursada($equivalenciaFilha);
 
         return redirect()
             ->back()
@@ -426,13 +419,13 @@ class AproveitamentoAutomaticoController extends Controller
     }
 
     /**
-     * Remove um grupo inteiro de equivalências para uma disciplina USP.
-     * Remove todos os vínculos do grupo e realiza limpeza de disciplinas órfãs.
+     * Remove um aproveitamento automático inteiro para uma disciplina USP.
+     * Remove todos os vínculos e realiza limpeza de disciplinas órfãs.
      *
      * @param  int  $codcur  Código do curso
      * @param  int  $codhab  Código da habilitação
-     * @param  Disciplina  $equivalencia  A disciplina USP proprietária do grupo
-     * @param  Aproveitamento  $equivalenciaFilha  Uma equivalência do grupo a ser removido
+     * @param  Disciplina  $equivalencia  A disciplina USP proprietária
+     * @param  Aproveitamento  $equivalenciaFilha  O aproveitamento automático a ser removido
      * @return RedirectResponse
      */
     public function destroyEquivalenciaGrupo(int $codcur, int $codhab, Disciplina $equivalencia, Aproveitamento $equivalenciaFilha)
@@ -441,7 +434,7 @@ class AproveitamentoAutomaticoController extends Controller
 
         $this->abortUnlessEquivalenciaFilhaValida($equivalencia, $equivalenciaFilha, $codcur, $codhab);
 
-        Aproveitamento::removerGrupoELimparDisciplinas($equivalencia, $equivalenciaFilha, $codcur, $codhab);
+        Aproveitamento::removerAproveitamentoAutomatico($equivalencia, $equivalenciaFilha, $codcur, $codhab);
 
         return redirect()
             ->back()
@@ -455,6 +448,6 @@ class AproveitamentoAutomaticoController extends Controller
         int $codhab
     ): void {
         abort_unless($equivalencia->pertenceComoRequeridaAoContexto($codcur, $codhab), 404);
-        abort_unless($equivalenciaFilha->isEquivalenciaRealDaRequeridaNoContexto($equivalencia->id, $codcur, $codhab), 404);
+        abort_unless($equivalenciaFilha->isAutomaticoDaRequeridaNoContexto($equivalencia, $codcur, $codhab), 404);
     }
 }

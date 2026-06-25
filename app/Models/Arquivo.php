@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -15,111 +14,83 @@ class Arquivo extends Model
     public const TIPO_EMENTA = 'ementa';
 
     protected $fillable = [
-        'equivalencia_id',
-        'grupo',
         'tipo',
         'nome',
         'path',
     ];
 
-    protected $casts = [
-        'equivalencia_id' => 'integer',
-        'grupo' => 'integer',
-    ];
-
-    public function aproveitamento()
-    {
-        return $this->belongsTo(Aproveitamento::class, 'equivalencia_id');
-    }
-
-    public static function criarHistorico(int $grupo, array $dadosArquivo): self
-    {
-        static::removerHistoricosDoGrupo($grupo);
-
-        return static::create([
-            'grupo' => $grupo,
-            'tipo' => static::TIPO_HISTORICO,
-            'nome' => $dadosArquivo['original_name'],
-            'path' => $dadosArquivo['stored_path'],
-        ]);
-    }
-
-    /**
-     * Armazena um upload de aproveitamento e retorna os metadados usados na persistência.
-     */
-    public static function armazenarUploadDoAproveitamento(int $grupo, UploadedFile $arquivo, string $diretorio): array
+    public static function armazenarUploadDoAproveitamento(int $aproveitamentoId, UploadedFile $arquivo, string $diretorio): array
     {
         return [
             'original_name' => $arquivo->getClientOriginalName(),
-            'stored_path' => $arquivo->store("aproveitamentos/{$grupo}/{$diretorio}"),
+            'stored_path' => $arquivo->store("aproveitamentos/{$aproveitamentoId}/{$diretorio}"),
         ];
     }
 
-    /**
-     * Cria o arquivo de ementa associado a uma equivalência.
-     */
-    public static function criarEmenta(int $equivalenciaId, array $dadosArquivo): self
+    public static function criarHistorico(Aproveitamento $aproveitamento, array $dadosArquivo): self
     {
-        return static::criarDoFormulario($equivalenciaId, static::TIPO_EMENTA, $dadosArquivo);
+        if ($aproveitamento->historico) {
+            $aproveitamento->historico->removerArquivoERegistro();
+        }
+
+        $arquivo = static::criarDoFormulario(static::TIPO_HISTORICO, $dadosArquivo);
+        $aproveitamento->update(['historico_id' => $arquivo->id]);
+        $aproveitamento->setRelation('historico', $arquivo);
+
+        return $arquivo;
     }
 
-    /**
-     * Cria ou atualiza a ementa de uma equivalência conforme o tipo da unidade.
-     */
-    public static function salvarEmentaDaEquivalencia(
-        Aproveitamento $equivalencia,
+    public static function salvarEmentaDaDisciplina(
+        Disciplina $disciplina,
         string $unidadeTipo,
         ?UploadedFile $ementa
     ): void {
-        $ementaAtual = $equivalencia->arquivos->firstWhere('tipo', static::TIPO_EMENTA);
+        $ementaAtual = $disciplina->ementa;
 
         if ($unidadeTipo === 'OUTRA' && $ementa) {
-            $dadosArquivo = static::armazenarUploadDoAproveitamento((int) $equivalencia->grupo, $ementa, 'ementas');
+            $dadosArquivo = static::armazenarUploadDoAproveitamento(
+                (int) $disciplina->aproveitamento_id,
+                $ementa,
+                'ementas'
+            );
 
-            $ementaAtual
-                ? $ementaAtual->atualizarDoFormulario($dadosArquivo)
-                : static::criarEmenta($equivalencia->id, $dadosArquivo);
+            if ($ementaAtual) {
+                $ementaAtual->atualizarDoFormulario($dadosArquivo);
+                return;
+            }
+
+            $arquivo = static::criarDoFormulario(static::TIPO_EMENTA, $dadosArquivo);
+            $disciplina->update(['ementa_id' => $arquivo->id]);
+            $disciplina->setRelation('ementa', $arquivo);
 
             return;
         }
 
         if ($unidadeTipo !== 'OUTRA' && $ementaAtual) {
             $ementaAtual->removerArquivoERegistro();
+            $disciplina->update(['ementa_id' => null]);
+            $disciplina->unsetRelation('ementa');
         }
     }
 
-    public static function historicosDoGrupo(int $grupo): Collection
-    {
-        return static::query()
-            ->where('grupo', $grupo)
-            ->where('tipo', static::TIPO_HISTORICO)
-            ->orderBy('id')
-            ->get();
-    }
+    public static function pertencenteAoRequerimentoDoUsuarioOrFail(
+        int $arquivoId,
+        int $aproveitamentoId,
+        int $userId
+    ): self {
+        $aproveitamento = Aproveitamento::requerimentoDoUsuarioOrFail($aproveitamentoId, $userId);
+        $idsPermitidos = collect([$aproveitamento->historico_id])
+            ->merge($aproveitamento->cursadas->pluck('ementa_id'))
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
 
-    /**
-     * Retorna um arquivo que pertença ao requerimento do usuário ou lança exceção.
-     */
-    public static function doRequerimentoDoUsuarioOrFail(int $arquivoId, int $grupo, int $userId): self
-    {
-        $equivalencias = Aproveitamento::equivalenciasDoRequerimentoDoUsuario($grupo, $userId);
+        if (! $idsPermitidos->contains((int) $arquivoId)) {
+            throw (new ModelNotFoundException())->setModel(static::class, [$arquivoId]);
+        }
 
-        $arquivo = static::query()
-            ->whereKey($arquivoId)
-            ->where(function ($query) use ($grupo, $equivalencias) {
-                $query
-                    ->where(function ($ementaQuery) use ($equivalencias) {
-                        $ementaQuery
-                            ->where('tipo', static::TIPO_EMENTA)
-                            ->whereIn('equivalencia_id', $equivalencias->pluck('id'));
-                    })
-                    ->orWhere(function ($historicoQuery) use ($grupo) {
-                        $historicoQuery
-                            ->where('tipo', static::TIPO_HISTORICO)
-                            ->where('grupo', $grupo);
-                    });
-            })
-            ->first();
+        $arquivo = static::query()->whereKey($arquivoId)->first();
 
         if (! $arquivo) {
             throw (new ModelNotFoundException())->setModel(static::class, [$arquivoId]);
@@ -128,28 +99,14 @@ class Arquivo extends Model
         return $arquivo;
     }
 
-    public static function removerHistoricosDoGrupo(int $grupo): void
+    public static function removerDaDisciplina(Disciplina $disciplina): void
     {
-        $historicos = static::historicosDoGrupo($grupo);
-
-        foreach ($historicos as $historico) {
-            $historico->removerArquivoERegistro();
+        if ($disciplina->ementa) {
+            $disciplina->ementa->removerArquivoERegistro();
+            $disciplina->update(['ementa_id' => null]);
         }
     }
 
-    /**
-     * Remove todos os arquivos vinculados à equivalência.
-     */
-    public static function removerDaEquivalencia(Aproveitamento $equivalencia): void
-    {
-        foreach ($equivalencia->arquivos as $arquivo) {
-            $arquivo->removerArquivoERegistro();
-        }
-    }
-
-    /**
-     * Atualiza os metadados do arquivo a partir dos dados armazenados pelo formulário.
-     */
     public function atualizarDoFormulario(array $dadosArquivo): void
     {
         if ($this->path !== $dadosArquivo['stored_path']) {
@@ -168,13 +125,9 @@ class Arquivo extends Model
         $this->delete();
     }
 
-    /**
-     * Persiste um arquivo de formulário usando o tipo informado.
-     */
-    private static function criarDoFormulario(int $equivalenciaId, string $tipo, array $dadosArquivo): self
+    private static function criarDoFormulario(string $tipo, array $dadosArquivo): self
     {
         return static::create([
-            'equivalencia_id' => $equivalenciaId,
             'tipo' => $tipo,
             'nome' => $dadosArquivo['original_name'],
             'path' => $dadosArquivo['stored_path'],

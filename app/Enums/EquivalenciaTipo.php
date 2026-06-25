@@ -4,14 +4,14 @@ namespace App\Enums;
 
 enum EquivalenciaTipo: string
 {
-    case AUTOMATICA = 'a';
-    case REQUERIDA = 'r';
+    case AUTOMATICA = 'automatica';
+    case SOLICITADA = 'solicitada';
 
     public function label(): string
     {
         return match ($this) {
             self::AUTOMATICA => 'Automática',
-            self::REQUERIDA => 'Solicitação do aluno',
+            self::SOLICITADA => 'Solicitação do aluno',
         };
     }
 
@@ -19,7 +19,7 @@ enum EquivalenciaTipo: string
     {
         return match ($this) {
             self::AUTOMATICA => 'success',
-            self::REQUERIDA => 'warning',
+            self::SOLICITADA => 'warning',
         };
     }
 }
