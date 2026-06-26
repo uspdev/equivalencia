@@ -23,6 +23,7 @@ $totalAproveitamentosCriados = 0;
 $totalAproveitamentosJaExistentes = 0;
 $totalDisciplinasCriadas = 0;
 $totalSemDadosReplicado = 0;
+$disciplinasSemDadosReplicado = [];
 $ignoradas = 0;
 
 // Remove chaves com valores nulos ou string vazia, para não apagar dados já
@@ -34,6 +35,26 @@ $dadosPreenchidos = static function (array $dados): array {
 // Padroniza os códigos para facilitar validações e comparações.
 $normalizarCodigo = static function (string $codigo): string {
     return strtoupper((string) preg_replace('/\s+/u', '', trim($codigo)));
+};
+
+$registrarSemDadosReplicado = static function (
+    string $role,
+    string $codigo,
+    ?string $nomeFallback = null
+) use (&$disciplinasSemDadosReplicado): void {
+    $nomeFallback = filled($nomeFallback) ? trim($nomeFallback) : null;
+    $chave = implode('|', [$role, $codigo, $nomeFallback ?? '']);
+
+    if (! isset($disciplinasSemDadosReplicado[$chave])) {
+        $disciplinasSemDadosReplicado[$chave] = [
+            'role' => $role,
+            'coddis' => $codigo,
+            'nomdis' => $nomeFallback,
+            'ocorrencias' => 0,
+        ];
+    }
+
+    $disciplinasSemDadosReplicado[$chave]['ocorrencias']++;
 };
 
 // A identidade é usada somente para tornar a importação idempotente. No novo
@@ -73,12 +94,13 @@ $mesmoConjuntoDeDisciplinas = static function (
 $dadosDaRequerida = function (
     string $codigo,
     ?string $nomeFallback = null
-) use (&$totalSemDadosReplicado, $normalizarCodigo): array {
+) use (&$totalSemDadosReplicado, $normalizarCodigo, $registrarSemDadosReplicado): array {
     $codigo = $normalizarCodigo($codigo);
     $dados = Disciplina::dadosDaRequeridaPorCoddis($codigo);
 
     if (empty($dados['nomdis'])) {
         $totalSemDadosReplicado++;
+        $registrarSemDadosReplicado('requerida', $codigo, $nomeFallback);
         $dados['nomdis'] = filled($nomeFallback) ? trim($nomeFallback) : null;
     }
 
@@ -93,7 +115,7 @@ $dadosDaRequerida = function (
 $dadosDaCursada = function (
     string $codigo,
     ?string $nomeFallback = null
-) use (&$totalSemDadosReplicado, $normalizarCodigo): array {
+) use (&$totalSemDadosReplicado, $normalizarCodigo, $registrarSemDadosReplicado): array {
     $codigo = $normalizarCodigo($codigo);
     $dados = Disciplina::dadosDaCursadaPorFormulario([
         'is_usp' => true,
@@ -104,6 +126,7 @@ $dadosDaCursada = function (
 
     if (empty($dados['nomdis'])) {
         $totalSemDadosReplicado++;
+        $registrarSemDadosReplicado('cursada', $codigo, $nomeFallback);
         $dados['nomdis'] = filled($nomeFallback) ? trim($nomeFallback) : null;
     }
 
@@ -248,7 +271,12 @@ foreach ($arquivos as $caminho) {
         }
 
         if ($codigosCursada === []) {
-            echo 'Erro em ' . basename($caminho) . " (linha {$numeroLinha}): nenhuma disciplina cursada válida.\n";
+            $codigoCursadaInformado = trim($codigosCursadaRaw);
+            $codigoCursadaInformado = $codigoCursadaInformado !== '' ? $codigoCursadaInformado : 'campo vazio';
+            $nomeRequerida = trim((string) ($linha['nome_disciplina_requerida'] ?? ''));
+            $disciplinaRequerida = $codigoReq . ($nomeRequerida !== '' ? " — {$nomeRequerida}" : '');
+
+            echo 'Erro em ' . basename($caminho) . " (registro JSON {$numeroLinha}): nenhuma disciplina cursada válida ({$codigoCursadaInformado}) para {$disciplinaRequerida}.\n";
             $ignoradas++;
 
             continue;
@@ -395,4 +423,21 @@ echo "Aproveitamentos automáticos criados: {$totalAproveitamentosCriados}\n";
 echo "Aproveitamentos já existentes (atualizados/ignorados): {$totalAproveitamentosJaExistentes}\n";
 echo "Disciplinas criadas: {$totalDisciplinasCriadas}\n";
 echo "Disciplinas sem dados oficiais no Replicado: {$totalSemDadosReplicado}\n";
+if ($disciplinasSemDadosReplicado !== []) {
+    echo "Lista de disciplinas sem dados oficiais no Replicado:\n";
+
+    foreach ($disciplinasSemDadosReplicado as $disciplinaSemDados) {
+        $descricao = "{$disciplinaSemDados['role']} — {$disciplinaSemDados['coddis']}";
+
+        if (filled($disciplinaSemDados['nomdis'])) {
+            $descricao .= " — {$disciplinaSemDados['nomdis']}";
+        }
+
+        if ($disciplinaSemDados['ocorrencias'] > 1) {
+            $descricao .= " ({$disciplinaSemDados['ocorrencias']} ocorrências)";
+        }
+
+        echo "- {$descricao}\n";
+    }
+}
 echo "Registros ignorados/avisos: {$ignoradas}\n";
