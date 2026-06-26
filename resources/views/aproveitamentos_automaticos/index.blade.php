@@ -10,7 +10,7 @@
         <p class="mb-0">Nenhum curso/habilitação ativo encontrado.</p>
       @else
         <div class="table-responsive">
-          <table class="table table-striped table-bordered mb-0">
+          <table class="table table-sm table-striped table-bordered mb-0">
             <thead>
               <tr>
                 <th>Cursos/Habilitação</th>
