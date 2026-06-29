@@ -28,7 +28,8 @@ return new class extends Migration
             // Codigo da disciplina -> USP usa 7 caracteres, mas outras instituições podem usar mais
             $table->string('coddis', 15);
             $table->string('nomdis', 240)->nullable();
-            $table->tinyInteger('creditos')->nullable()->default(0);
+            $table->tinyInteger('credito_aula')->nullable();
+            $table->tinyInteger('credito_trabalho')->nullable();
             $table->smallInteger('carga_horaria')->nullable();
 
             $table->string('ies')->nullable(); // Externa(nome) ou USP

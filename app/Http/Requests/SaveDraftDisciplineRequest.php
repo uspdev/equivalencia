@@ -61,7 +61,8 @@ class SaveDraftDisciplineRequest extends FormRequest
             'ementa' => [$this->needsSyllabus() ? 'required' : 'nullable', 'file', 'mimes:pdf', 'max:10240'],
             'frequencia' => [$isExternal ? 'required' : 'nullable', 'numeric', 'min:0', 'max:100'],
             'nota' => [$isExternal ? 'required' : 'nullable', 'numeric', 'min:0', 'max:10'],
-            'creditos' => [$isExternal ? 'required' : 'nullable', 'integer', 'min:1'],
+            'credito_aula' => ['nullable', 'integer', 'min:0'],
+            'credito_trabalho' => ['nullable', 'integer', 'min:0'],
             'carga_horaria' => [$isExternal ? 'required' : 'nullable', 'integer', 'min:1'],
             'requerida_coddis' => ['bail', 'required', 'string', 'regex:/^[A-Za-z0-9]{3,7}$/'],
         ];

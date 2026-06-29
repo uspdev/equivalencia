@@ -18,7 +18,8 @@ class Disciplina extends Model
         'verdis',
         'coddis',
         'nomdis',
-        'creditos',
+        'credito_aula',
+        'credito_trabalho',
         'carga_horaria',
         'ies',
         'sglund',
@@ -37,7 +38,8 @@ class Disciplina extends Model
         'aproveitamento_id' => 'integer',
         'role' => DisciplinaRole::class,
         'verdis' => 'integer',
-        'creditos' => 'integer',
+        'credito_aula' => 'integer',
+        'credito_trabalho' => 'integer',
         'carga_horaria' => 'integer',
         'disciplina_ativa' => 'boolean',
         'ano' => 'integer',
@@ -179,7 +181,8 @@ class Disciplina extends Model
 
         $dados['nomdis'] = $disciplinaReplicado['nomdis'] ?? null;
         $dados['verdis'] = $disciplinaReplicado['verdis'] ?? null;
-        $dados['creditos'] = static::creditosUsp($disciplinaReplicado);
+        $dados['credito_aula'] = static::creditoAulaUsp($disciplinaReplicado);
+        $dados['credito_trabalho'] = static::creditoTrabalhoUsp($disciplinaReplicado);
         $dados['carga_horaria'] = static::cargaHorariaUsp($disciplinaReplicado);
         $dados['sglund'] = $disciplinaReplicado['sglund'] ?? null;
         $dados['ies'] = 'USP';
@@ -271,7 +274,8 @@ class Disciplina extends Model
             'coddis' => $coddis,
             'nomdis' => $dados['nome_disciplina'] ?? null,
             'ies' => $dados['ies'] ?? null,
-            'creditos' => $dados['creditos'] ?? null,
+            'credito_aula' => $dados['credito_aula'] ?? null,
+            'credito_trabalho' => $dados['credito_trabalho'] ?? null,
             'carga_horaria' => $dados['carga_horaria'] ?? null,
             'verdis' => $verdis,
             'sglund' => $dados['sglund'] ?? null,
@@ -291,7 +295,8 @@ class Disciplina extends Model
                 'coddis' => $disciplinaReplicado['coddis'] ?? $coddis,
                 'nomdis' => $disciplinaReplicado['nomdis'] ?? null,
                 'ies' => 'USP',
-                'creditos' => static::creditosUsp($disciplinaReplicado),
+                'credito_aula' => static::creditoAulaUsp($disciplinaReplicado),
+                'credito_trabalho' => static::creditoTrabalhoUsp($disciplinaReplicado),
                 'carga_horaria' => static::cargaHorariaUsp($disciplinaReplicado),
                 'verdis' => $disciplinaReplicado['verdis'] ?? null,
                 'sglund' => $disciplinaReplicado['sglund'] ?? ($base['sglund'] ?? null),
@@ -312,7 +317,8 @@ class Disciplina extends Model
             'verdis' => $dados['verdis'] ?? null,
             'nome_disciplina' => $isExternal ? trim($dados['nomdis']) : null,
             'ies' => $isExternal ? trim($dados['unidade_nome']) : 'USP',
-            'creditos' => $isExternal ? $dados['creditos'] : null,
+            'credito_aula' => $isExternal ? ($dados['credito_aula'] ?? null) : null,
+            'credito_trabalho' => $isExternal ? ($dados['credito_trabalho'] ?? null) : null,
             'carga_horaria' => $isExternal ? $dados['carga_horaria'] : null,
         ]);
 
@@ -536,6 +542,8 @@ class Disciplina extends Model
                 'verdis' => $fieldValue('verdis' . $suffix),
                 'nome' => $fieldValue('nome_disciplina' . $suffix),
                 'ies' => $fieldValue('ies' . $suffix),
+                'credito_aula' => $fieldValue('credito_aula' . $suffix),
+                'credito_trabalho' => $fieldValue('credito_trabalho' . $suffix),
             ];
         }
 
@@ -571,6 +579,8 @@ class Disciplina extends Model
             'verdis' => $value('verdis', $cursada1?->verdis),
             'nome_disciplina' => $value('nome_disciplina', $cursada1?->nome_disciplina),
             'ies' => $value('ies', $cursada1?->ies),
+            'credito_aula' => $value('credito_aula', $cursada1?->credito_aula),
+            'credito_trabalho' => $value('credito_trabalho', $cursada1?->credito_trabalho),
             'numero_reuniao' => $value('numero_reuniao', $equivalenciaFilha->numero_reuniao),
             'data_reuniao' => $value('data_reuniao', $equivalenciaFilha->data_reuniao?->format('Y-m-d')),
             'observacoes' => $value('observacoes', $equivalenciaFilha->observacoes),
@@ -578,10 +588,14 @@ class Disciplina extends Model
             'verdis2' => $value('verdis2', $cursada2?->verdis),
             'nome_disciplina2' => $value('nome_disciplina2', $cursada2?->nome_disciplina),
             'ies2' => $value('ies2', $cursada2?->ies),
+            'credito_aula2' => $value('credito_aula2', $cursada2?->credito_aula),
+            'credito_trabalho2' => $value('credito_trabalho2', $cursada2?->credito_trabalho),
             'coddis3' => $value('coddis3', $cursada3?->coddis),
             'verdis3' => $value('verdis3', $cursada3?->verdis),
             'nome_disciplina3' => $value('nome_disciplina3', $cursada3?->nome_disciplina),
             'ies3' => $value('ies3', $cursada3?->ies),
+            'credito_aula3' => $value('credito_aula3', $cursada3?->credito_aula),
+            'credito_trabalho3' => $value('credito_trabalho3', $cursada3?->credito_trabalho),
         ];
     }
 
@@ -659,7 +673,8 @@ class Disciplina extends Model
             'coddis' => $dadosReplicado['coddis'] ?? $coddis,
             'nomdis' => $dadosReplicado['nomdis'] ?? null,
             'ies' => 'USP',
-            'creditos' => static::creditosUsp($dadosReplicado),
+            'credito_aula' => static::creditoAulaUsp($dadosReplicado),
+            'credito_trabalho' => static::creditoTrabalhoUsp($dadosReplicado),
             'carga_horaria' => static::cargaHorariaUsp($dadosReplicado),
             'verdis' => $dadosReplicado['verdis'] ?? null,
             'sglund' => $dadosReplicado['sglund'] ?? null,
@@ -804,19 +819,23 @@ class Disciplina extends Model
     }
 
     /**
-     * Calcula os créditos USP persistidos localmente a partir dos créditos aula e trabalho.
-     * Retorna null quando o Replicado não fornece nenhum dos dois componentes.
+     * Retorna o crédito-aula USP informado pelo Replicado.
      */
-    private static function creditosUsp(array $dados): ?int
+    private static function creditoAulaUsp(array $dados): ?int
     {
-        $creaul = $dados['creaul'] ?? null;
-        $cretrb = $dados['cretrb'] ?? null;
+        return array_key_exists('creaul', $dados) && $dados['creaul'] !== null
+            ? (int) $dados['creaul']
+            : null;
+    }
 
-        if ($creaul === null && $cretrb === null) {
-            return null;
-        }
-
-        return (int) $creaul + (int) $cretrb;
+    /**
+     * Retorna o crédito-trabalho USP informado pelo Replicado.
+     */
+    private static function creditoTrabalhoUsp(array $dados): ?int
+    {
+        return array_key_exists('cretrb', $dados) && $dados['cretrb'] !== null
+            ? (int) $dados['cretrb']
+            : null;
     }
 
     /**

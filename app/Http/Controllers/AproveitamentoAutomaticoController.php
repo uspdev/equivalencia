@@ -225,7 +225,8 @@ class AproveitamentoAutomaticoController extends Controller
             'code' => $disciplina->coddis,
             'institution' => $disciplina->ies,
             'unit' => $disciplina->sglund,
-            'credits' => $disciplina->creditos,
+            'classCredits' => $disciplina->credito_aula,
+            'workCredits' => $disciplina->credito_trabalho,
             'workload' => $disciplina->carga_horaria ? $disciplina->carga_horaria . ' horas' : null,
             'version' => filled($disciplina->verdis)
                 ? $disciplina->verdis . ($vigenciaVersao ? ' — ' . $vigenciaVersao : '')

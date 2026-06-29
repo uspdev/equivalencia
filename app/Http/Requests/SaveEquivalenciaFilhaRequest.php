@@ -24,6 +24,8 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
             'verdis' => ['nullable', 'integer', 'min:1', 'max:255'],
             'nome_disciplina' => ['nullable', 'string', 'max:240'],
             'ies' => ['nullable', 'string', 'max:255'],
+            'credito_aula' => ['nullable', 'integer', 'min:0'],
+            'credito_trabalho' => ['nullable', 'integer', 'min:0'],
             'numero_reuniao' => ['nullable', 'integer'],
             'data_reuniao' => ['nullable', 'date'],
             'observacoes' => ['nullable', 'string'],
@@ -32,11 +34,15 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
             'verdis2' => ['nullable', 'integer', 'min:1', 'max:255'],
             'nome_disciplina2' => ['nullable', 'string', 'max:240'],
             'ies2' => ['nullable', 'string', 'max:255'],
+            'credito_aula2' => ['nullable', 'integer', 'min:0'],
+            'credito_trabalho2' => ['nullable', 'integer', 'min:0'],
             'is_usp3' => ['nullable', 'boolean'],
             'coddis3' => ['nullable', 'string', 'max:'.$this->maxCoddisLength('3'), 'min:3'],
             'verdis3' => ['nullable', 'integer', 'min:1', 'max:255'],
             'nome_disciplina3' => ['nullable', 'string', 'max:240'],
             'ies3' => ['nullable', 'string', 'max:255'],
+            'credito_aula3' => ['nullable', 'integer', 'min:0'],
+            'credito_trabalho3' => ['nullable', 'integer', 'min:0'],
         ];
     }
 
@@ -64,17 +70,23 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
             $kVerdis = 'verdis'.$sufixo;
             $kNome = 'nome_disciplina'.$sufixo;
             $kIes = 'ies'.$sufixo;
+            $kCreditoAula = 'credito_aula'.$sufixo;
+            $kCreditoTrabalho = 'credito_trabalho'.$sufixo;
             $kIsUsp = 'is_usp'.$sufixo;
 
             $coddis = trim((string) ($dados[$kCoddis] ?? ''));
             $verdis = trim((string) ($dados[$kVerdis] ?? ''));
             $nome = trim((string) ($dados[$kNome] ?? ''));
             $ies = trim((string) ($dados[$kIes] ?? ''));
+            $creditoAula = trim((string) ($dados[$kCreditoAula] ?? ''));
+            $creditoTrabalho = trim((string) ($dados[$kCreditoTrabalho] ?? ''));
             $marcadaComoUsp = $this->boolean($kIsUsp);
             $temDadosPreenchidos = $coddis !== '' ||
                 $verdis !== '' ||
                 $nome !== '' ||
-                $ies !== '';
+                $ies !== '' ||
+                $creditoAula !== '' ||
+                $creditoTrabalho !== '';
 
             // Se não tem dados preenchidos, ignora o conjunto, a menos que seja o primeiro (sufixo vazio)
             // ou esteja marcado como USP
@@ -106,6 +118,8 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
                 'verdis' => $disciplinaUsp['verdis'] ?? ($verdis !== '' ? (int) $verdis : null),
                 'nome_disciplina' => $nome !== '' ? $nome : null,
                 'ies' => $ies !== '' ? $ies : null,
+                'credito_aula' => $creditoAula !== '' ? (int) $creditoAula : null,
+                'credito_trabalho' => $creditoTrabalho !== '' ? (int) $creditoTrabalho : null,
                 'numero_reuniao' => $numeroReuniao !== '' ? (int) $numeroReuniao : null,
                 'data_reuniao' => $dataReuniao !== '' ? $dataReuniao : null,
                 'observacoes' => $observacoes !== '' ? $observacoes : null,
@@ -122,6 +136,8 @@ class SaveEquivalenciaFilhaRequest extends FormRequest
             } else {
                 $dadosCursada['nome_disciplina'] = null;
                 $dadosCursada['ies'] = 'USP';
+                $dadosCursada['credito_aula'] = null;
+                $dadosCursada['credito_trabalho'] = null;
             }
 
             $conjuntos[] = $dadosCursada;
