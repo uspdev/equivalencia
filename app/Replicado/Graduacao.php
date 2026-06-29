@@ -4,7 +4,6 @@ namespace App\Replicado;
 
 use Carbon\Carbon;
 use Illuminate\Support\Str;
-use Uspdev\Forms\Replicado\Graduacao as GraduacaoForms;
 use Uspdev\Replicado\DB;
 use Uspdev\Replicado\Estrutura;
 use Uspdev\Replicado\Graduacao as GraduacaoReplicado;
@@ -19,19 +18,11 @@ class Graduacao extends GraduacaoReplicado
      */
     public function obterDadosDisciplinaAtivaPorCodigo(string $code): array
     {
-        $code = Str::upper(trim($code));
-
-        if (! preg_match('/^[A-Z0-9]+$/', $code)) {
-            return [];
-        }
-
-        foreach (GraduacaoForms::procurarDisciplinas($code, 50) as $disciplina) {
-            if (Str::upper(trim((string) ($disciplina['coddis'] ?? ''))) === $code) {
-                return $this->adicionarUnidadeDaDisciplina($disciplina);
-            }
-        }
-
-        return [];
+        $disciplina = $this->obterDadosDisciplinaPorCodigo($code);
+        // Se a disciplina não estiver ativa, retorna array vazio.
+        return ! empty($disciplina['dtaatvdis'] ?? null) && empty($disciplina['dtadtvdis'] ?? null)
+            ? $disciplina
+            : [];
     }
 
     /**
@@ -55,24 +46,22 @@ class Graduacao extends GraduacaoReplicado
         if (! preg_match('/^[A-Z0-9]+$/', $code)) {
             return [];
         }
+        // Ordena as versões de forma que as mais recentes e ativas venham primeiro.
+        $query = "SELECT TOP 1 D1.*
+                    FROM DISCIPLINAGR D1
+                    WHERE D1.coddis = :coddis
+                    ORDER BY
+                    CASE WHEN D1.dtadtvdis IS NULL AND D1.dtaatvdis IS NOT NULL THEN 0 ELSE 1 END,
+                    CASE WHEN D1.dtadtvdis IS NULL THEN 0 ELSE 1 END,
+                    CASE WHEN D1.dtaatvdis IS NOT NULL THEN 0 ELSE 1 END,
+                    D1.dtaatvdis DESC,
+                    D1.verdis DESC";
 
         try {
-            $disciplinas = static::obterDisciplinas([$code]) ?? [];
+            return $this->adicionarUnidadeDaDisciplina(DB::fetch($query, ['coddis' => $code]) ?: []);
         } catch (\Throwable $e) {
             return [];
         }
-
-        foreach ($disciplinas as $disciplina) {
-            if (! is_array($disciplina)) {
-                continue;
-            }
-
-            if (Str::upper(trim((string) ($disciplina['coddis'] ?? ''))) === $code) {
-                return $this->adicionarUnidadeDaDisciplina($disciplina);
-            }
-        }
-
-        return [];
     }
 
     /**
@@ -87,10 +76,16 @@ class Graduacao extends GraduacaoReplicado
             return [];
         }
 
+        // Ordena as versões de forma que as mais recentes e ativas venham primeiro.
         $query = "SELECT D1.coddis, D1.verdis, D1.dtaatvdis, D1.dtadtvdis
                     FROM DISCIPLINAGR D1
                     WHERE D1.coddis = :coddis
-                    ORDER BY D1.verdis DESC";
+                    ORDER BY
+                    CASE WHEN D1.dtadtvdis IS NULL AND D1.dtaatvdis IS NOT NULL THEN 0 ELSE 1 END,
+                    CASE WHEN D1.dtadtvdis IS NULL THEN 0 ELSE 1 END,
+                    CASE WHEN D1.dtaatvdis IS NOT NULL THEN 0 ELSE 1 END,
+                    D1.dtaatvdis DESC,
+                    D1.verdis DESC";
 
         try {
             return DB::fetchAll($query, ['coddis' => $code]) ?: [];
