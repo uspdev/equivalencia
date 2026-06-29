@@ -59,7 +59,8 @@ função dentro do agregado:
 | `verdis` | Versão da disciplina. |
 | `coddis` | Código da disciplina. |
 | `nomdis` | Nome da disciplina. |
-| `creditos` | Quantidade de créditos. |
+| `credito_aula` | Quantidade de créditos-aula. Para disciplinas USP, vem do campo `creaul` do Replicado. |
+| `credito_trabalho` | Quantidade de créditos-trabalho. Para disciplinas USP, vem do campo `cretrb` do Replicado. |
 | `carga_horaria` | Carga horária da disciplina. |
 | `ies` | Instituição em que a disciplina foi cursada, quando aplicável. |
 | `sglund` | Sigla da unidade. |
@@ -88,6 +89,9 @@ Um aproveitamento deve ter obrigatóriamente e exclusivamente uma disciplina req
 Um aproveitamento deve ter obrigatóriamente ao menos uma disciplina cursada, com um máximo de três
 
 Disciplina externa exige ementa, disciplina USP não. A ementa pertence à disciplina cursada, não ao aproveitamento como um todo.
+
+Para disciplinas USP, `credito_aula` e `credito_trabalho` são preenchidos automaticamente a partir do Replicado.
+Para disciplinas externas, esses dois campos são opcionais e podem ser informados manualmente.
 
 ## Tabela `arquivos`
 
