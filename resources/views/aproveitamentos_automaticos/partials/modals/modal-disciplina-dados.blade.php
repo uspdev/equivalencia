@@ -27,8 +27,12 @@
             <span data-detail-field="unit">-</span>
           </div>
           <div class="col-md-3 mb-3">
-            <strong class="d-block">Créditos</strong>
-            <span data-detail-field="credits">-</span>
+            <strong class="d-block">Crédito aula</strong>
+            <span data-detail-field="classCredits">-</span>
+          </div>
+          <div class="col-md-3 mb-3">
+            <strong class="d-block">Crédito trabalho</strong>
+            <span data-detail-field="workCredits">-</span>
           </div>
           <div class="col-md-4 mb-3">
             <strong class="d-block">Carga horária</strong>

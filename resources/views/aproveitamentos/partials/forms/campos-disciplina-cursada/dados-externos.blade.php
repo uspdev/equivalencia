@@ -12,8 +12,8 @@
   <div class="form-row">
     <div class="form-group col-md-3">
       <label for="{{ $fieldId('frequencia') }}">Frequência (%) <span class="text-danger">*</span></label>
-      <input type="number" class="form-control js-external-field" id="{{ $fieldId('frequencia') }}"
-        name="frequencia" min="0" max="100" step="0.01"
+      <input type="number" class="form-control js-external-field" id="{{ $fieldId('frequencia') }}" name="frequencia"
+        min="0" max="100" step="0.01"
         value="{{ $value('frequencia', $discipline['frequencia'] ?? '') }}">
     </div>
     <div class="form-group col-md-3">
@@ -22,9 +22,16 @@
         min="0" max="10" step="0.01" value="{{ $value('nota', $discipline['nota'] ?? '') }}">
     </div>
     <div class="form-group col-md-3">
-      <label for="{{ $fieldId('creditos') }}">Créditos <span class="text-danger">*</span></label>
-      <input type="number" class="form-control js-external-field" id="{{ $fieldId('creditos') }}" name="creditos"
-        min="1" step="1" value="{{ $value('creditos', $discipline['creditos'] ?? '') }}">
+      <label for="{{ $fieldId('credito_aula') }}">Crédito aula</label>
+      <input type="number" class="form-control js-external-field js-optional-external-field"
+        id="{{ $fieldId('credito_aula') }}" name="credito_aula" min="0" step="1"
+        value="{{ $value('credito_aula', $discipline['credito_aula'] ?? '') }}">
+    </div>
+    <div class="form-group col-md-3">
+      <label for="{{ $fieldId('credito_trabalho') }}">Crédito trabalho</label>
+      <input type="number" class="form-control js-external-field js-optional-external-field"
+        id="{{ $fieldId('credito_trabalho') }}" name="credito_trabalho" min="0" step="1"
+        value="{{ $value('credito_trabalho', $discipline['credito_trabalho'] ?? '') }}">
     </div>
     <div class="form-group col-md-3">
       <label for="{{ $fieldId('carga_horaria') }}">Carga horária <span class="text-danger">*</span></label>

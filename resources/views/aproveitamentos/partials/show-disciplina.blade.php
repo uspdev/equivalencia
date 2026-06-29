@@ -28,9 +28,13 @@
         <div class="text-muted small">Nota</div>
         <strong>{{ $cursada['nota'] ?? 'Não informada' }}</strong>
       </div>
-      <div class="col-md-3 mb-3 mb-md-0">
-        <div class="text-muted small">Créditos</div>
-        <strong>{{ $cursada['creditos'] ?? 'Não informados' }}</strong>
+      <div class="col-md-2 mb-3 mb-md-0">
+        <div class="text-muted small">Crédito aula</div>
+        <strong>{{ $cursada['credito_aula'] ?? 'Não informado' }}</strong>
+      </div>
+      <div class="col-md-2 mb-3 mb-md-0">
+        <div class="text-muted small">Crédito trabalho</div>
+        <strong>{{ $cursada['credito_trabalho'] ?? 'Não informado' }}</strong>
       </div>
       <div class="col-md-3 mb-3 mb-md-0">
         <div class="text-muted small">Carga horária</div>

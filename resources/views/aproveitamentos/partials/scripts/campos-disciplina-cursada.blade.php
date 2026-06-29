@@ -1,3 +1,4 @@
+```blade
 {{-- Controla a alternância entre campos USP e campos de disciplina externa. --}}
 @once
   @push('scripts')
@@ -18,6 +19,7 @@
             return;
           }
 
+          // Aplica a máscara do código da turma e sincroniza o valor limpo no campo hidden.
           if (codtur && codturValue) {
             function syncCodtur() {
               var typedSlashAfterYear = /^\d{4}\/$/.test(codtur.value);
@@ -30,6 +32,7 @@
               codtur.value = digits.length > 4 || typedSlashAfterYear ?
                 digits.slice(0, 4) + '/' + digits.slice(4) :
                 digits;
+
               codturValue.value = digits;
             }
 
@@ -37,22 +40,27 @@
             codtur.form.addEventListener('submit', syncCodtur);
             syncCodtur();
           } else if (codtur) {
+            // Aplica apenas a máscara visual quando não existe campo hidden.
             codtur.addEventListener('input', function() {
               var typedSlashAfterYear = /^\d{4}\/$/.test(codtur.value);
               var digits = codtur.value.replace(/\D/g, '').slice(0, 5);
+
               codtur.value = digits.length > 4 || typedSlashAfterYear ?
                 digits.slice(0, 4) + '/' + digits.slice(4) :
                 digits;
             });
           }
 
+          // Define o código e a versão que serão enviados no formulário.
           function syncCode() {
             code.value = unit.value === 'USP' ? uspCode.value : externalCode.value;
+
             if (version) {
               version.value = unit.value === 'USP' && uspVersion ? uspVersion.value : '';
             }
           }
 
+          // Alterna exibição, obrigatoriedade e habilitação dos campos conforme o tipo da disciplina.
           function toggleFields() {
             var isExternal = unit.value === 'OUTRA';
 
@@ -64,27 +72,35 @@
 
             uspCode.required = !isExternal;
             uspCode.disabled = isExternal;
+
             if (uspVersion) {
               uspVersion.required = !isExternal;
               uspVersion.disabled = isExternal || !uspCode.value;
             }
+
             externalCode.required = isExternal;
             externalCode.disabled = !isExternal;
+
             container.querySelectorAll('.js-external-field').forEach(function(field) {
               field.disabled = !isExternal;
-              field.required = isExternal && (!field.classList.contains('js-syllabus-field') || !hasSyllabus);
+              field.required = isExternal &&
+                !field.classList.contains('js-optional-external-field') &&
+                (!field.classList.contains('js-syllabus-field') || !hasSyllabus);
             });
+
             syncCode();
           }
 
           unit.addEventListener('change', toggleFields);
           uspCode.addEventListener('change', syncCode);
           uspCode.addEventListener('disciplina-usp:identity', syncCode);
+
           if (uspVersion) {
             uspVersion.addEventListener('change', syncCode);
           }
           externalCode.addEventListener('input', syncCode);
 
+          // Mantém a sincronização funcionando também com Select2.
           if (window.jQuery) {
             window.jQuery(uspCode)
               .off('.draftCodeSync')
@@ -97,3 +113,4 @@
     </script>
   @endpush
 @endonce
+```

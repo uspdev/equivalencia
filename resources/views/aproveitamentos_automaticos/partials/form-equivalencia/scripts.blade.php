@@ -32,7 +32,7 @@ e limitando o número de blocos de equivalência que podem ser exibidos.
             }
 
             field.disabled = !enabled;
-            field.required = Boolean(enabled && required);
+            field.required = Boolean(enabled && required && field.dataset.optional !== 'true');
           });
         }
 

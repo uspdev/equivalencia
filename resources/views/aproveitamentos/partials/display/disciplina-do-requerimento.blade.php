@@ -42,10 +42,16 @@
             'value' => $cursada['nota'],
         ])
       </div>
-      <div class="col-md-3 mb-3 mb-md-0">
+      <div class="col-md-2 mb-3 mb-md-0">
         @include('aproveitamentos.partials.display.show-info-item', [
-            'label' => 'Créditos',
-            'value' => $cursada['creditos'],
+            'label' => 'Crédito aula',
+            'value' => $cursada['credito_aula'] ?? null,
+        ])
+      </div>
+      <div class="col-md-2 mb-3 mb-md-0">
+        @include('aproveitamentos.partials.display.show-info-item', [
+            'label' => 'Crédito trabalho',
+            'value' => $cursada['credito_trabalho'] ?? null,
         ])
       </div>
       <div class="col-md-3 mb-3 mb-md-0">

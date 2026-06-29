@@ -251,7 +251,7 @@
         this.querySelector('.modal-title').textContent = details.title;
         this.querySelector('[data-detail-heading]').textContent = details.heading;
 
-        ['code', 'institution', 'unit', 'credits', 'workload', 'version'].forEach(function(field) {
+        ['code', 'institution', 'unit', 'classCredits', 'workCredits', 'workload', 'version'].forEach(function(field) {
           setText(this, '[data-detail-field="' + field + '"]', details[field]);
         }, this);
 

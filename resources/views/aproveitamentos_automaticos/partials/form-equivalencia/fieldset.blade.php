@@ -7,6 +7,8 @@
   $verdisField = 'verdis' . $suffix;
   $nomeField = 'nome_disciplina' . $suffix;
   $iesField = 'ies' . $suffix;
+  $creditoAulaField = 'credito_aula' . $suffix;
+  $creditoTrabalhoField = 'credito_trabalho' . $suffix;
   $isUspField = 'is_usp' . $suffix;
   $baseId = $formId . '-disciplina-' . $number;
 @endphp
@@ -42,6 +44,8 @@
         'coddis' => $block['coddis'],
         'nome' => $block['nome'],
         'ies' => $block['ies'],
+        'creditoAula' => $block['credito_aula'],
+        'creditoTrabalho' => $block['credito_trabalho'],
     ])
   </div>
 </fieldset>
