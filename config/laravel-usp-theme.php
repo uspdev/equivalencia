@@ -2,61 +2,26 @@
 
 use App\Enums\Permission;
 
-$admin = [
-    [
-        'text' => '<i class="fas fa-atom"></i>  SubItem 1',
-        'url' => 'subitem1',
-    ],
-    [
-        'text' => 'SubItem 2',
-        'url' =>  '/subitem2',
-        'can' => 'admin',
-    ],
-    [
-        'type' => 'divider',
-    ],
-    [
-        'type' => 'header',
-        'text' => 'Cabeçalho',
-    ],
-    [
-        'text' => 'SubItem 3',
-        'url' => 'subitem3',
-    ],
-];
-
-$submenu2 = [
-    [
-        'text' => 'SubItem 1',
-        'url' => 'subitem1',
-    ],
-    [
-        'text' => 'SubItem 2',
-        'url' => 'subitem2',
-        'can' => 'admin',
-    ],
-];
-
 $menu = [
-    [
-        'text' => '<i class="fas fa-home"></i> Home',
-        'url' => './',
-    ],
-    [
-        'text' => 'Meus requerimentos',
-        'url' => 'equivalencias/index',
-        'can' => Permission::REQUERIMENTOS_VIEW_OWN->value,
-    ],
-    [
-        'text' => 'Novo requerimento',
-        'url' => 'equivalencias/newreq',
-        'can' => Permission::REQUERIMENTOS_CREATE->value,
-    ],
-    [
-        'text' => 'Atendimentos',
-        'url' => 'equivalencias/atendimentos',
-        'can' => 'user',
-    ],
+    // [
+    //     'text' => '<i class="fas fa-home"></i> Home',
+    //     'url' => './',
+    // ],
+    // [
+    //     'text' => 'Meus requerimentos',
+    //     'url' => 'equivalencias/index',
+    //     'can' => Permission::REQUERIMENTOS_VIEW_OWN->value,
+    // ],
+    // [
+    //     'text' => 'Novo requerimento',
+    //     'url' => 'equivalencias/newreq',
+    //     'can' => Permission::REQUERIMENTOS_CREATE->value,
+    // ],
+    // [
+    //     'text' => 'Atendimentos',
+    //     'url' => 'equivalencias/atendimentos',
+    //     'can' => 'user',
+    // ],
     [
         'text' => 'Aproveitamentos automáticos',
         'url' => 'equivalencias',

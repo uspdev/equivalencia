@@ -26,10 +26,7 @@ Route::get('/', [AproveitamentoController::class, 'home'])->name('workflows.inde
 // BLOCO 2: EQUIVALENCIAS
 // ==========================================
 // Agrupa as rotas protegidas por autenticacao e permissoes de negocio.
-Route::middleware(['auth'])
-    ->prefix('equivalencias')
-    ->name('equivalencias.')
-    ->group(function () {
+Route::middleware(['auth'])->prefix('equivalencias')->name('equivalencias.')->group(function () {
 
         // ==========================================
         // BLOCO 2.1: NOVO REQUERIMENTO
