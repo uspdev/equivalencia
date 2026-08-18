@@ -3,47 +3,29 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
+use Uspdev\Forms\Services\FormDefinitionSyncService;
 
 class FormDefinitionsTableSeeder extends Seeder
 {
-    public function run()
-    {
-        $formDefinitions = [
-            [2, 'tr_conferencia_inicio', 'equivalencia', null, '[{"name":"retorno","type":"texttextarea","label":"Informações sobre retorno ao aluno","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [3, 'tr_conferencia_indica', 'equivalencia', null, '[{"name":"obs","type":"texttextarea","label":"Enviar ao departamento","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [4, 'tr_indica_parecerista', 'equivalencia', null, '[{"name":"obs","type":"texttextarea","label":"Nomear o docente a emitir o parecer","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [5, 'tr_emite_parecer', 'equivalencia', null, '[{"name":"parecer","type":"texttextarea","label":"Parecer","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [6, 'tr_envia_apreciacao', 'equivalencia', null, '[{"name":"obs","type":"texttextarea","label":"Observações sobre a apreciação","required":false},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [7, 'tr_delibera_parecer', 'equivalencia', null, '[{"name":"deliberacao","type":"texttextarea","label":"Deliberação sobre os pareceres emitidos","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [8, 'tr_retorna_apreciacao', 'equivalencia', null, '[{"name":"obs","type":"texttextarea","label":"Enviar pareceres à CoC","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [9, 'tr_conferencia_apreciacao', 'equivalencia', null, '[{"name":"obs","type":"texttextarea","label":"Solicitação à CoC","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [10, 'tr_solicitacao_coc', 'equivalencia', null, '[{"name":"obs","type":"texttextarea","label":"Enviar apreciação à CoC","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [11, 'tr_envia_deliberacao', 'equivalencia', null, '[{"name":"deliberacao","type":"texttextarea","label":"Deliberação sobre a apreciação","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [12, 'tr_conferencia_deliberacao', 'equivalencia', null, '[{"name":"obs","type":"texttextarea","label":"Enviar para cadastro","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [13, 'tr_enviar_aprovada', 'equivalencia', null, '[{"name":"obs","type":"texttextarea","label":"Cadastrar aprovada","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [14, 'tr_enviar_negada', 'equivalencia', null, '[{"name":"obs","type":"texttextarea","label":"Cadastrar negada","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [15, 'tr_enviar_condicional', 'equivalencia', null, '[{"name":"obs","type":"texttextarea","label":"Cadastrar condicional","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [16, 'tr_enviar_avaliacao', 'equivalencia', null, '[{"name":"avaliacao","type":"texttextarea","label":"Informações para avaliação","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [17, 'tr_realizar_avaliacao', 'equivalencia', null, '[{"name":"avaliacao","type":"texttextarea","label":"Informações sobre a avaliação","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [18, 'tr_submeter_avaliacao', 'equivalencia', null, '[{"name":"avaliacao_submetida","type":"texttextarea","label":"Submissão da avaliação para docente","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [19, 'tr_delibera_avaliacao', 'equivalencia', null, '[{"name":"parecer_docente","type":"texttextarea","label":"Parecer sobre a avaliação condicional","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [20, 'tr_cadastrar_solicitacoes', 'equivalencia', null, '[{"name":"cadastro","type":"texttextarea","label":"Cadastro das solicitações aprovadas","required":true},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [21, 'tr_finalizar_enviar', 'equivalencia', null, '[{"name":"obs","type":"texttextarea","label":"Observações sobre finalização","required":false},{"name":"definition_name","type":"hidden","value":"workflowDefinitionName"},{"name":"place","type":"hidden","value":"place_name"},{"name":"transition","type":"hidden","value":"transition_name"}]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [22, 'eq_usp_create', 'equivalencia-crud', 'Cadastro de disciplina USP', '[[{"name":"coddis","type":"disciplina-usp","label":"Código da disciplina","required":true}]]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [23, 'eq_usp_edit', 'equivalencia-crud', 'Edição de disciplina USP', '[[{"name":"coddis","type":"disciplina-usp","label":"Código da disciplina","required":true}]]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-            [24, 'eq_child_add', 'equivalencia-crud', 'Cadastro de equivalência', '[[{"name":"coddis","type":"text","label":"Código","maxlength":"15","width":3,"required":true},{"name":"nome_disciplina","type":"text","label":"Nome da equivalência","maxlength":"240","required":true}],[{"name":"ies","type":"text","label":"IES","maxlength":"255","required":true}],[{"name":"coddis2","type":"text","label":"Código","maxlength":"15","width":3},{"name":"nome_disciplina2","type":"text","label":"Nome da equivalência","maxlength":"240"}],[{"name":"ies2","type":"text","label":"IES","maxlength":"255"}],[{"name":"coddis3","type":"text","label":"Código","maxlength":"15","width":3},{"name":"nome_disciplina3","type":"text","label":"Nome da equivalência","maxlength":"240"}],[{"name":"ies3","type":"text","label":"IES","maxlength":"255"}]]', '2025-03-17 19:33:49', '2025-03-17 19:33:49'],
-        ];
+    public function __construct(private readonly FormDefinitionSyncService $forms) {}
 
-        foreach ($formDefinitions as $formDefinition) {
-            DB::table('form_definitions')->insert([
-                'id' => $formDefinition[0],
-                'name' => $formDefinition[1],
-                'group' => $formDefinition[2],
-                'description' => $formDefinition[3],
-                'fields' => $formDefinition[4],
-                'created_at' => $formDefinition[5],
-                'updated_at' => $formDefinition[6],
+    public function run(): void
+    {
+        foreach (config('equivalencia-forms.definitions', []) as $name => $definition) {
+            $fields = $definition['fields'] ?? [[
+                'name' => $definition['name'],
+                'type' => $definition['type'] ?? 'textarea',
+                'label' => $definition['label'] ?? $name,
+                'required' => $definition['required'] ?? false,
+            ]];
+
+            $this->forms->syncDefinition([
+                'name' => $name,
+                'version' => (int) ($definition['version'] ?? 1),
+                'status' => $definition['status'] ?? 'active',
+                'group' => $definition['group'] ?? config('equivalencia-forms.group', 'equivalencia'),
+                'description' => $definition['description'] ?? null,
+                'fields' => $fields,
             ]);
         }
     }

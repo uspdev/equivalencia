@@ -19,6 +19,10 @@ class RolesAndPermissionsSeeder extends Seeder
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
+        foreach (AppRole::cases() as $role) {
+            Role::firstOrCreate(['name' => $role->value, 'guard_name' => 'web']);
+        }
+
         foreach (User::$permissoesHierarquia as $permission) {
             Permission::firstOrCreate([
                 'name' => $permission,
@@ -39,8 +43,6 @@ class RolesAndPermissionsSeeder extends Seeder
 
             return [$permission->value => $model];
         });
-
-        Role::firstOrCreate(['name' => AppRole::ADMIN->value, 'guard_name' => 'web']);
 
         Role::findByName(AppRole::ALUNO->value, 'web')->givePermissionTo([
             $permissions[AppPermission::REQUERIMENTOS_CREATE->value],

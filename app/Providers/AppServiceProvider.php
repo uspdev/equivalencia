@@ -2,8 +2,13 @@
 
 namespace App\Providers;
 
+use App\Contracts\WorkflowGateway;
+use App\Services\Workflow\ConfiguredWorkflowRoleResolver;
+use App\Services\Workflow\UspdevWorkflowGateway;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
+use Uspdev\Workflow\Contracts\RoleResolver;
+use Uspdev\Workflow\WorkflowService;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -14,7 +19,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->app->singleton(RoleResolver::class, ConfiguredWorkflowRoleResolver::class);
+
+        $this->app->singleton(WorkflowGateway::class, function ($app): WorkflowGateway {
+            return new UspdevWorkflowGateway(
+                $app->make(WorkflowService::class),
+                (string) config('equivalencia.workflow.name', 'equivalencia'),
+            );
+        });
     }
 
     /**
