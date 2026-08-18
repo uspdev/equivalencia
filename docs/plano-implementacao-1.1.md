@@ -1,7 +1,8 @@
 # Plano de implementação em ondas — Forms V2, Workflow V2 e Equivalencia
 
-Status: plano aprovado para execução por tickets independentes  
+Status: execução em andamento — ondas 1 a 5 concluídas  
 Data: 2026-08-17
+Última atualização: 2026-08-18
 
 ## 1. Objetivo
 
@@ -21,6 +22,27 @@ Cada ticket deve ser entregue ao agente responsável pelo seu repositório. Um
 ticket posterior só deve começar quando as condições de entrada do ticket
 anterior estiverem confirmadas. Nenhuma etapa deste plano autoriza
 `migrate:fresh` em produção.
+
+### 1.1. Acompanhamento objetivo
+
+Legenda: ✅ concluído; 🟡 em andamento; ⬜ não iniciado.
+
+| Ticket | Status | Evidência ou pendência principal |
+| --- | --- | --- |
+| F01 | ✅ Concluído | Schema, versionamento, migrations V2 e provider implementados no Forms. |
+| F02 | ✅ Concluído | API pública do Forms V2 implementada, testada e documentada. |
+| W01 | ✅ Concluído | Schema, migrations e histórico V2 implementados no Workflow. |
+| W02 | ✅ Concluído | Sync atômico, idempotente, publicado e com erros agrupados implementado. |
+| W03 | ✅ Concluído | Fluxo mínimo sem formulário, estado e histórico implementados e testados. |
+| W04 | ✅ Concluído | Transição `tr_conferencia_indica` usa `obs` pela API pública do Forms V2. |
+| W05 | ✅ Concluído | Contrato funcional de notifications por roles implementado e testado; a entrega técnica continua pendente da decisão de Lucas e não faz parte de W05. |
+| E01 | ✅ Concluído | Laravel 12, dependências V2, adapter público, seeders via APIs públicas e teste de carregamento conjunto implementados. |
+| E02 | ⬜ Não iniciado | Aguardando a conclusão de E01. |
+| E03 | ⬜ Não iniciado | Aguardando E02 e a integração do consumidor. |
+| E04 | ⬜ Não iniciado | Aguardando o fluxo completo e a preparação do clone limpo de produção. |
+
+Resumo das ondas: ondas 1 a 5 concluídas; ondas 6 a 8
+não iniciadas.
 
 ## 2. Tickets abrangidos
 
@@ -164,12 +186,16 @@ as condições de entrada.
 
 ### Onda 1 — Fundamentos dos pacotes
 
+**Status da onda:** ✅ Concluída.
+
 Tickets: F01 e W01, em paralelo.
 
 Objetivo: estabelecer as bases de schema, migrations, ownership e contratos
 de persistência que serão consumidas pelas ondas seguintes.
 
 #### F01 — Schema e versionamento do Forms V2
+
+**Status:** ✅ Concluído no repositório Forms.
 
 O agente deve:
 
@@ -192,6 +218,8 @@ Critério de passagem: F02 pode começar somente quando o schema e o provider
 forem executáveis e os testes do ticket passarem.
 
 #### W01 — Schema, migrations e histórico do Workflow V2
+
+**Status:** ✅ Concluído no repositório Workflow.
 
 O agente deve:
 
@@ -217,9 +245,13 @@ sem depender das migrations históricas e os testes de persistência passarem.
 
 ### Onda 2 — Contratos públicos e sincronização
 
+**Status da onda:** ✅ Concluída.
+
 Tickets: F02 e W02, em paralelo.
 
 #### F02 — API pública de consumo do Forms V2
+
+**Status:** ✅ Concluído no repositório Forms.
 
 O agente deve disponibilizar uma facade ou serviço público para:
 
@@ -240,6 +272,8 @@ Critério de passagem: W04 e E01 só podem consumir o Forms quando a API estiver
 testada e sua assinatura estiver documentada no ticket.
 
 #### W02 — Sincronização atômica de definições do Workflow
+
+**Status:** ✅ Concluído no repositório Workflow.
 
 O agente deve corrigir o serviço de sync para:
 
@@ -263,9 +297,13 @@ comprovada de persistência parcial.
 
 ### Onda 3 — Fluxo mínimo do Workflow
 
+**Status da onda:** ✅ Concluída.
+
 Ticket: W03.
 
 #### W03 — Fluxo mínimo sem formulário
+
+**Status:** ✅ Concluído no repositório Workflow.
 
 O agente deve implementar e testar o caminho que não depende do Forms:
 
@@ -286,9 +324,14 @@ formulário e a leitura do histórico estiverem cobertas por testes.
 
 ### Onda 4 — Formulário `obs` e contrato funcional de notifications
 
+**Status da onda:** ✅ Concluída. A pendência técnica de entrega de
+notifications atribuída a Lucas é posterior e não reabre W05.
+
 Tickets: W04 e W05, em paralelo.
 
 #### W04 — Transição com o formulário `obs`
+
+**Status:** ✅ Concluído no repositório Workflow.
 
 O agente deve:
 
@@ -310,6 +353,10 @@ essa transição for executável com os contratos públicos dos dois pacotes.
 
 #### W05 — Notifications por roles
 
+**Status:** ✅ Contrato funcional concluído no repositório Workflow. A
+implementação técnica de entrega permanece pendente de decisão e documentação
+de Lucas, fora do escopo de W05.
+
 O agente deve implementar somente a validação funcional acordada:
 
 - `notifications` aceita um único objeto opcional por transição;
@@ -326,11 +373,64 @@ Eventos, listeners, Mailables, filas, retries e tratamento técnico da entrega
 ficam fora deste ticket e serão definidos por Lucas em outra documentação do
 Workflow.
 
+##### Pendência de Lucas — decisão e implementação técnica
+
+W05 não implementou entrega de notifications. Ele encerrou somente o contrato
+funcional de configuração, cálculo e validação de roles. As seguintes regras
+já estão decididas e não precisam ser redefinidas por Lucas:
+
+- as roles dos places em `tos` são os destinatários potenciais padrão;
+- `append_roles` apenas acrescenta roles e não há deduplicação;
+- `override_roles`, `users` e `emails` não pertencem ao contrato V2;
+- role inexistente bloqueia o sync;
+- role existente sem membros não desfaz a transição e não exige retry somente
+  por estar vazia;
+- ausência de roles calculadas não deve criar trabalho de entrega;
+- o Workflow não é dono de usuários, membros de roles, conteúdo ou transporte.
+
+Lucas ainda deve decidir e documentar:
+
+1. qual será o mecanismo de integração depois da transição confirmada: evento,
+   callback, chamada de serviço, outbox ou outra alternativa;
+2. em que momento esse mecanismo será acionado e como garantir que nenhuma
+   entrega seja iniciada antes do commit do estado e do histórico;
+3. qual será o payload técnico definitivo, preferencialmente com
+   identificadores e roles, sem serializar models completos nem o payload do
+   formulário;
+4. qual contrato o consumidor implementará para resolver os membros atuais das
+   roles e executar a entrega;
+5. se o processamento será síncrono ou assíncrono e quais canais serão
+   suportados;
+6. conteúdo, assunto, templates, idioma e demais dados pertencentes ao
+   consumidor;
+7. fila, idempotência, retries, tratamento de falhas, observabilidade,
+   segurança e operação do worker, se houver;
+8. quais testes de integração e quais instruções operacionais comprovarão a
+   solução escolhida.
+
+Depois dessas decisões, a implementação deverá respeitar esta divisão:
+
+- no Workflow: disponibilizar o hook/contrato escolhido somente após a
+  transição e o histórico estarem confirmados, não gerar trabalho para uma
+  lista vazia de roles e não reverter a transição por falha posterior de
+  entrega;
+- no Equivalencia ou consumidor: resolver membros, definir conteúdo e canais,
+  executar a entrega e operar fila, retries e observabilidade conforme a
+  solução documentada.
+
+Nenhuma dessas escolhas técnicas foi tomada durante W05. A implementação atual
+apenas calcula `['roles' => [...]]`; esse retorno não foi definido como payload
+final de evento ou Job. `WorkflowObject::apply()` não emite notification, e o
+`RoleResolver` atual apenas verifica a existência de roles durante o sync, sem
+resolver membros.
+
 Critério de passagem: o contrato de configuração e seus erros precisam estar
 testados, sem ampliar o escopo para ownership de usuários ou implementação de
 entrega.
 
 ### Onda 5 — Adoção dos pacotes no Equivalencia
+
+**Status da onda:** ✅ Concluída.
 
 Ticket: E01.
 
@@ -338,6 +438,11 @@ Dependência formal: F02 e W04.
 Gate recomendado: W05 também concluído.
 
 #### E01 — Laravel 12 e APIs V2
+
+**Status:** ✅ Concluído. O Equivalencia executa em Laravel 12, carrega as
+dependências Forms/Workflow V2 em conjunto e acessa o Workflow pelo adapter
+público da aplicação. Os seeders deixaram de gravar nas tabelas internas dos
+pacotes e usam os serviços públicos de sincronização.
 
 O agente deve:
 
@@ -360,11 +465,15 @@ pacotes e executar uma integração básica sem depender de schema local duplica
 
 ### Onda 6 — Migração controlada e ownership no consumidor
 
+**Status da onda:** ⬜ Não iniciada.
+
 Ticket: E02.
 
 Dependências: E01, F01 e W01.
 
 #### E02 — Migration controlada e remoção de duplicações
+
+**Status:** ⬜ Não iniciado; depende da conclusão de E01.
 
 O agente deve:
 
@@ -390,11 +499,15 @@ schemas oficiais dos pacotes.
 
 ### Onda 7 — Fluxo completo do Equivalencia
 
+**Status da onda:** ⬜ Não iniciada.
+
 Ticket: E03.
 
 Dependências: E02 e W04.
 
 #### E03 — Integração ponta a ponta
+
+**Status:** ⬜ Não iniciado; depende de E02.
 
 O agente deve validar o comportamento real da aplicação:
 
@@ -419,11 +532,16 @@ com os pacotes reais e o schema V2 recém-criado.
 
 ### Onda 8 — Validação final no clone de produção
 
+**Status da onda:** ⬜ Não iniciada.
+
 Ticket: E04.
 
 Dependência: E03.
 
 #### E04 — Evidência de implantação
+
+**Status:** ⬜ Não iniciado; depende da conclusão do fluxo completo de E03 e de
+uma cópia limpa e recente do banco de produção.
 
 O agente deve usar uma cópia recente e limpa do banco de produção e registrar:
 
